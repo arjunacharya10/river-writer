@@ -34,3 +34,4 @@ services, non-creative templates.
 2. Open Highland `.highland` files as a migration path? (ZIP → TextBundle → `text.fountain`/`text.md`)
 3. Pricing: one-time purchase (assumed), price point TBD.
 4. Exact autosave interval and retention.
+5. Spellcheck: OS webview spellcheck (differs on Linux) vs bundled Hunspell-based checking for identical behaviour (doc 07).

@@ -8,6 +8,8 @@ subscription.**
 Positioning: **lead with craft** ("the most beautiful, correct pages"). Privacy and
 offline operation are the proof points, not the headline.
 
+Shorthand: **Obsidian's foundations, Final Draft's pages, iA Writer's restraint.**
+
 ## Audience
 Creative writers only:
 * **Screen:** features, TV (with a multi-cam option)
@@ -17,7 +19,7 @@ Creative writers only:
 Out: comics/graphic novels, essays, academic/MLA, wikis, bulletins, speeches, articles.
 
 ## Principles
-1. **Your words are plain text files you own.** Readable in any editor, forever.
+1. **File over app.** Your words are plain text files you own: readable in any editor, forever.
 2. **The page is the truth.** An exact live preview of the printed page; correct
    formatting by default.
 3. **Nothing leaves the machine** unless you explicitly push, pull, fetch or clone.
