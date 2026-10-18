@@ -259,10 +259,30 @@ try {
   await page.keyboard.press("ArrowRight");
   const resized = await page.locator(".sidebar").evaluate((e) => e.clientWidth);
   assert.notEqual(width, resized);
-  // A dirty close can be cancelled without losing the tab.
-  await page
-    .getByRole("button", { name: "Close Script.fountain", exact: true })
-    .click();
+  // Repeated Close while a native confirmation is pending must not stack dialogs.
+  await page.evaluate(() => {
+    const original = window.__RIVER_TEST__.invoke;
+    window.__discardCalls = 0;
+    window.__RIVER_TEST__.invoke = (name, args) => {
+      if (name !== "confirm_discard") return original(name, args);
+      window.__discardCalls++;
+      return new Promise((resolve) => {
+        window.__finishDiscard = () => {
+          window.__RIVER_TEST__.invoke = original;
+          resolve(false);
+        };
+      });
+    };
+  });
+  const closeStory = page.getByRole("button", {
+    name: "Close Script.fountain",
+    exact: true,
+  });
+  await closeStory.click();
+  await page.waitForFunction(() => window.__discardCalls === 1);
+  await closeStory.click();
+  assert.equal(await page.evaluate(() => window.__discardCalls), 1);
+  await page.evaluate(() => window.__finishDiscard());
   assert.equal(
     await page.getByRole("tab", { name: /Script.fountain/ }).count(),
     1,

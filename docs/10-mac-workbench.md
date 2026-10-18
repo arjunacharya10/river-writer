@@ -565,10 +565,52 @@ with committed fixtures. The user's fixture is unchanged. PDF exports for all fo
 templates were independently rendered through Poppler; all 11 sample pages were
 visually inspected with no clipping or overlap found.
 
-**Native end-to-end sign-off is blocked, not passed.** The computer-use controller
+**Previous native testing block (resolved by the follow-up below).** The computer-use controller
 lists `app.riverwriter.mac` but rejects attachment with `Invalid app`; resolving
 River by name/path instead targets the obsolete `dev.riverwriter.desktop` identifier.
 Finder attachment also failed (`cgWindowNotFound`). Resetting the controller session
 and the user reopening the rebuilt app did not resolve it. No native project,
 menu/dialog, Finder-open, quit/relaunch or crash-recovery click-through was completed
 in this pass. These checks remain required before claiming full Mac verification.
+
+
+## Native end-to-end follow-up (2026-10-18)
+
+After the user restarted/reconnected Computer Use, attachment to `app.riverwriter.mac`
+worked. Tested the real bundled WKWebView app with disposable files under
+`/private/tmp/river-native-qa-20261018`; no user story files were changed.
+
+Passed in the native app:
+* New Project dialog, cancel, creation; Open Project folder picker; Recents.
+* Fountain/Markdown story tabs, Unicode writing, Undo/Redo, Save and one-second
+  autosave verified on disk; Explorer New File.
+* Outline jump, Find, command palette, native File/View actions, Light/Dark through
+  both palette and menu, template switching and rendered preview pages.
+* Keyboard splitter resize and sidebar hide/reopen preserving its width.
+* PDF export through File → Export PDF and the native Save dialog; exported PDF
+  validated as a two-page US Letter PDF.
+* Git review, commit, commit diff, single-file restore and Undo with editor refresh;
+  branch menu create/switch, committed branch contents reloaded, dirty switch refused.
+* Scratchpad saving, external-conflict protection, cancelled copy, native Save Copy
+  and reload; confirmed both local copy and external notes survive. Todos add,
+  complete and reopen; persisted Markdown verified.
+* Story save refusal after an outside edit; source left unchanged. Forced termination
+  of the disposable River process with both a blocked-save draft and an untitled
+  draft journaled. Relaunch offered both; recovered as separate unsaved copies;
+  native Save saved both to new paths without touching the outside edit.
+* Dirty Close and Quit cancellation preserve writing; explicit discard closes only
+  the disposable draft. Normal Quit exits. Reopening the project restores tabs,
+  active story, template, preview, Scratchpad, theme and pane sizes.
+* Finder → Open With → River Writer receives a Fountain file both while River is
+  running and on a cold launch. The user's existing default handler (Beat) is unchanged.
+
+Found and fixed #73: repeated Close requests could stack unparented discard alerts.
+The rebuilt bundle presents one attached Mac sheet, even on repeated Close; Keep
+Editing and Discard were both retested natively. The browser suite now holds a
+confirmation pending and verifies a second Close creates no second request. Also
+corrected preview's singular page label (`1 page`). The full workbench browser
+suite, native compile/clippy and bundle signature verification pass after the fix.
+
+This completes the normal v1 flow check on this Mac. It is not an exhaustive test
+of every OS/input-method or filesystem failure; composition edge cases remain
+covered by the existing editor transaction tests rather than native IME switching.

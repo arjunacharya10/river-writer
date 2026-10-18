@@ -78,7 +78,9 @@ export function PagePreview(props: {
     <section class="page-preview" aria-label="Page preview">
       <header class="preview-toolbar">
         <span>
-          {props.busy ? "Updating…" : `${props.preview?.pages ?? 0} pages`}
+          {props.busy
+            ? "Updating…"
+            : `${props.preview?.pages ?? 0} ${props.preview?.pages === 1 ? "page" : "pages"}`}
         </span>
       </header>
       <Show when={props.error || renderError()}>

@@ -91,7 +91,8 @@ impl Shell for MacShell {
         )
     }
     fn confirm_discard(&self, name: &str) -> bool {
-        self.0
+        let dialog = self
+            .0
             .dialog()
             .message(format!(
                 "Discard unsaved changes to {name}? Your saved file will be kept."
@@ -100,8 +101,12 @@ impl Shell for MacShell {
             .buttons(MessageDialogButtons::OkCancelCustom(
                 "Discard Changes".into(),
                 "Keep Editing".into(),
-            ))
-            .blocking_show()
+            ));
+        let dialog = match self.0.get_webview_window("main") {
+            Some(window) => dialog.parent(&window),
+            None => dialog,
+        };
+        dialog.blocking_show()
     }
     fn config_dir(&self) -> Option<PathBuf> {
         self.0.path().app_config_dir().ok()

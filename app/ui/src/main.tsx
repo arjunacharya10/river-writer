@@ -416,14 +416,21 @@ function App() {
         session: sessionSnapshot(),
       });
   }
+  let discardPending = false;
+  async function confirmDiscard(name: string): Promise<boolean> {
+    if (discardPending) return false;
+    discardPending = true;
+    try {
+      return await call<boolean>("confirm_discard", { name });
+    } finally {
+      discardPending = false;
+    }
+  }
   async function mayLeave() {
     await flushExtras();
     for (const id of autosaveTimers.keys()) cancelAutosave(id);
     for (const d of tabs()) {
-      if (
-        d.dirty &&
-        !(await call<boolean>("confirm_discard", { name: nameOf(d) }))
-      ) {
+      if (d.dirty && !(await confirmDiscard(nameOf(d)))) {
         for (const doc of tabs()) if (doc.dirty) scheduleAutosave(doc.id);
         return false;
       }
@@ -565,16 +572,14 @@ function App() {
     return true;
   }
   async function close(id: number) {
-    await flushExtras();
-    const doc = tabs().find((d) => d.id === id);
-    if (!doc) return;
-    cancelAutosave(id);
+    if (closing.has(id)) return;
     closing.add(id);
     try {
-      if (
-        doc.dirty &&
-        !(await call<boolean>("confirm_discard", { name: nameOf(doc) }))
-      ) {
+      await flushExtras();
+      const doc = tabs().find((d) => d.id === id);
+      if (!doc) return;
+      cancelAutosave(id);
+      if (doc.dirty && !(await confirmDiscard(nameOf(doc)))) {
         scheduleAutosave(id);
         return;
       }
@@ -601,11 +606,7 @@ function App() {
     try {
       await flushExtras();
       for (const d of tabs()) {
-        if (
-          d.dirty &&
-          !(await call<boolean>("confirm_discard", { name: nameOf(d) }))
-        )
-          return;
+        if (d.dirty && !(await confirmDiscard(nameOf(d)))) return;
       }
       await rememberSession();
       await clearWorkspace();
@@ -618,11 +619,7 @@ function App() {
   async function reload() {
     const doc = current();
     if (!doc) return;
-    if (
-      doc.dirty &&
-      !(await call<boolean>("confirm_discard", { name: nameOf(doc) }))
-    )
-      return;
+    if (doc.dirty && !(await confirmDiscard(nameOf(doc)))) return;
     await sync(doc.id);
     const d = await call<Story>("reload_document", { id: doc.id });
     patch(d.id, d);

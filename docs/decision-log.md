@@ -112,3 +112,5 @@ supersede older ones.
 | 71 | Narrow crash recovery | **Journal untitled drafts and blocked saves only, including subsequent edits until saved/discarded.** Ordinary named-file and Scratchpad edits rely on one-second autosave | User approved (2026-10-18). Supersedes #41 protection of every unsaved named edit. A crash before autosave can lose recent named-file edits. Existing recovery drafts remain readable. |
 
 | 72 | Single-file Git restore | **Remove Restore project and its whole-project Undo path. Retain single-file restore with safe in-session Undo.** Rust restore requires a file path | User approved (2026-10-18). Supersedes whole-project portion of #53. Branch creation still starts at HEAD, not an old commit. |
+
+| 73 | Native discard confirmations | **Use a River-parented Mac sheet and allow only one pending discard confirmation; repeated Close on the same tab is ignored until it completes.** Keep Editing preserves the draft; explicit discard clears it | Found during native end-to-end testing (2026-10-18). Prevents stacked floating alerts on repeated Close and makes confirmation accessible in the River window. |
