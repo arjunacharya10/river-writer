@@ -80,6 +80,18 @@ try {
     await page.getByLabel("Current page", { exact: true }).innerText(),
     "1",
   );
+  await page.mouse.move(0, 0);
+  await page
+    .getByRole("button", { name: "Toggle page preview", exact: true })
+    .hover();
+  const tip = page
+    .getByRole("tooltip")
+    .filter({ hasText: "Toggle page preview" });
+  await tip.waitFor();
+  assert.equal(
+    await tip.evaluate((node) => getComputedStyle(node).pointerEvents),
+    "none",
+  );
   await page.getByRole("button", { name: "Next page", exact: true }).click();
   await page.waitForFunction(
     () =>
@@ -92,6 +104,65 @@ try {
     () =>
       document.querySelector('[aria-label="Current page"]').textContent === "1",
   );
+  // Repeated hide/show must preserve both source visibility and real pane geometry.
+  // Reading .cm-content alone misses a zero-width editor containing intact text.
+  const toggle = page.getByRole("button", {
+    name: "Toggle page preview",
+    exact: true,
+  });
+  async function assertPanes(open) {
+    await page.waitForFunction((open) => {
+      const editor = document
+        .querySelector(".editor-pane")
+        .getBoundingClientRect();
+      const preview = document
+        .querySelector(".preview-pane")
+        .getBoundingClientRect();
+      const split = document
+        .querySelector(".editor-split")
+        .getBoundingClientRect();
+      const text = document.querySelector(".cm-line").getBoundingClientRect();
+      return (
+        editor.width >= 219 &&
+        text.width > 0 &&
+        text.right > editor.left &&
+        text.left < editor.right &&
+        (open
+          ? preview.width >= 219 &&
+            editor.right <= preview.left + 1 &&
+            preview.right <= split.right + 1
+          : preview.width < 1 && editor.width >= split.width - 1)
+      );
+    }, open);
+    assert.match(await page.locator(".cm-content").innerText(), /CAFÉ/);
+  }
+  for (const width of [800, 1512, 1280]) {
+    await page.setViewportSize({ width, height: 840 });
+    for (let n = 0; n < 3; n++) {
+      await toggle.click();
+      await assertPanes(false);
+      await toggle.click();
+      await assertPanes(true);
+    }
+  }
+  const divider = page.getByRole("separator", { name: "Resize page preview" });
+  await divider.focus();
+  for (let n = 0; n < 15; n++) await page.keyboard.press("ArrowLeft");
+  await assertPanes(true);
+  assert.ok((await page.locator(".editor-pane").boundingBox()).width < 225);
+  for (let n = 0; n < 15; n++) await page.keyboard.press("ArrowRight");
+  await assertPanes(true);
+  assert.ok((await page.locator(".preview-pane").boundingBox()).width < 225);
+  await toggle.click();
+  await toggle.click();
+  await assertPanes(true);
+  // Sidebar hide/show uses the same stable registration and must not shrink the editor.
+  for (let n = 0; n < 3; n++) {
+    await page.keyboard.press("ControlOrMeta+b");
+    await assertPanes(true);
+    await page.keyboard.press("ControlOrMeta+b");
+    await assertPanes(true);
+  }
   const editor = page.getByRole("textbox", { name: "Story editor" });
   await editor.click();
   await page.keyboard.press("ControlOrMeta+End");
@@ -201,7 +272,7 @@ try {
   console.log(
     JSON.stringify({
       checks:
-        "open, edit, save, Rust preview, outline, tabs, undo, templates, themes, palette, find, keyboard resize, dirty close, PDF, external changes, fonts",
+        "open, edit, save, Rust preview, repeated pane toggles, minimum widths, window resizing, tooltips, outline, tabs, undo, templates, themes, palette, find, keyboard resize, dirty close, PDF, external changes, fonts",
       result: "passed",
     }),
   );

@@ -105,3 +105,16 @@ complete automated Mac interaction suite.
   full font-license presentation, signed packaging and other v1 polish remain later
   phases. Until local history/backups land, unsaved text is in memory only.
 * Development icon/identity only. No public push or licensing decision was made.
+
+## Preview toggle fix (2026-10-18)
+Repeated preview/sidebar unmounts exposed Corvu 0.2.5's remaining-panel size
+redistribution issue: the editor could reach zero width while its text stayed intact.
+River now keeps both panels registered, explicitly sets collapsed/expanded sizes and
+remembers the visible split. CSS and splitter constraints enforce 220 px editor/preview
+and 170 px sidebar floors (#38). Hidden panels are inert and excluded from focus.
+Regression coverage checks real pane bounds and visible text across repeated toggles,
+800/1280/1512 px windows, keyboard resizing to both limits, and sidebar toggles.
+
+Native WKWebView also rechecked the reported open → preview → close → preview
+sequence: source and rendered pages remain visible side by side. Informational
+tooltips no longer intercept neighbouring toolbar buttons.

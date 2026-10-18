@@ -136,3 +136,9 @@ CodeMirror with Rust-driven script geometry, outline/diagnostics, the template p
 page preview, PDF export, basic command palette, two themes and Corvu keyboard-resizable
 splits. Native menus/dialogs are wired. This is the first shell/preview slice; the full
 UI described above is still the target. See [current scope and verification](10-mac-workbench.md).
+
+Pane sizing (#38): editor and preview have a **220 CSS px minimum** each; the sidebar
+has a **170 px minimum**, matching VS Code's defaults. Visible panes do not collapse
+when dragged below these limits. Explicit hiding returns the space to the remaining
+pane; reopening restores the prior split. If minimums cannot fit, the split scrolls
+instead of squeezing a pane away.

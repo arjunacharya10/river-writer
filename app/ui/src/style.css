@@ -608,3 +608,31 @@ kbd {
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
 }
+
+/* VS Code-style floors: editor columns cannot collapse while visible. */
+.editor-pane {
+  min-width: 220px;
+}
+.preview-pane:not([aria-hidden="true"]) {
+  min-width: 220px;
+}
+.sidebar:not([aria-hidden="true"]) {
+  min-width: 170px;
+}
+[aria-hidden="true"].sidebar,
+[aria-hidden="true"].preview-pane {
+  visibility: hidden;
+  min-width: 0;
+  overflow: hidden;
+}
+.workbench-split,
+.editor-split {
+  overflow-x: auto;
+}
+/* Informational tooltips must not intercept neighbouring toolbar buttons. */
+.tooltip {
+  pointer-events: none !important;
+}
+[data-popper-positioner]:has(> .tooltip) {
+  pointer-events: none !important;
+}

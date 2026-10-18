@@ -4,7 +4,7 @@ An offline writing app for screenwriters, playwrights and novelists. You write p
 text, and River turns it into perfectly formatted pages. No cloud, no accounts, no
 subscription.
 
-Status: **engine CLI and first Mac workbench slice implemented** (37 decisions).
+Status: **engine CLI and first Mac workbench slice implemented** (38 decisions).
 The native app now opens/edits/saves story files, shows Rust page previews and exports
 PDF, using the approved Kobalte/Corvu foundation. macOS is the sole current/v1 target.
 See [workbench usage and boundaries](docs/10-mac-workbench.md) and

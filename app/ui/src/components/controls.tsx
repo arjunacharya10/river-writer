@@ -3,9 +3,42 @@ import { Tooltip } from "@kobalte/core/tooltip";
 import { Select } from "@kobalte/core/select";
 import { Dialog } from "@kobalte/core/dialog";
 import Resizable from "@corvu/resizable";
-import { For, type JSX } from "solid-js";
+import { For, createEffect, on, untrack, type JSX } from "solid-js";
 import { templates, templateNames, type TemplateId } from "../types";
 export const Split = Resizable;
+/** Keep both panels registered: removing a Corvu 0.2.5 panel corrupts the
+ * remaining size on repeated toggles. Visibility changes only the sizes. */
+export function SplitVisibility(props: {
+  open: boolean;
+  panel: 0 | 1;
+  defaultSizes: [number, number];
+}) {
+  const context = Resizable.useContext();
+  let expanded = props.defaultSizes;
+  createEffect(
+    on(
+      () => props.open,
+      (open, previous) =>
+        untrack(() => {
+          if (!open && previous) {
+            const sizes = context.sizes();
+            if (
+              sizes.length === 2 &&
+              sizes.every((size) => Number.isFinite(size) && size > 0)
+            ) {
+              const total = sizes[0] + sizes[1];
+              expanded = [sizes[0] / total, sizes[1] / total];
+            }
+          }
+          context.setSizes(
+            open ? [...expanded] : props.panel === 0 ? [0, 1] : [1, 0],
+          );
+        }),
+    ),
+  );
+  return null;
+}
+
 export function Icon(props: { name: string }) {
   return <i aria-hidden="true" class={`codicon codicon-${props.name}`} />;
 }

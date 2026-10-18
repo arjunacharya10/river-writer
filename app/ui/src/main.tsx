@@ -18,6 +18,7 @@ import {
   TemplatePicker,
   Palette,
   Split,
+  SplitVisibility,
   type Command,
 } from "./components/controls";
 import { PagePreview } from "./components/preview";
@@ -495,82 +496,90 @@ function App() {
           />
         </nav>
         <Split class="workbench-split" initialSizes={[0.19, 0.81]}>
-          <Show when={sidebar()}>
-            <Split.Panel
-              minSize="170px"
-              maxSize="420px"
-              initialSize="230px"
-              class="sidebar"
-            >
-              <header>
-                {sideView() === "outline" ? "OUTLINE" : "EXPLORER"}
-                <Action
-                  label="Open Folder"
-                  icon="folder-opened"
-                  onClick={run(openFolder)}
-                />
-              </header>
-              <Show
-                when={sideView() === "explorer"}
-                fallback={
-                  <div class="outline">
-                    <For each={analysis()?.outline}>
-                      {(item) => (
-                        <button onClick={() => jump(item.source.bytes.start)}>
-                          <Icon
-                            name={
-                              item.kind === "scene"
-                                ? "symbol-event"
-                                : "symbol-namespace"
-                            }
-                          />
-                          <span>{item.text}</span>
-                        </button>
-                      )}
-                    </For>
-                    <Show when={!analysis()?.outline.length}>
-                      <p class="muted">Scenes and headings appear here.</p>
-                    </Show>
-                  </div>
-                }
-              >
-                <Show
-                  when={folder()}
-                  fallback={
-                    <div class="sidebar-welcome">
-                      <p>Open a folder to explore your story files.</p>
-                      <button class="primary" onClick={run(openFolder)}>
-                        Open Folder
-                      </button>
-                    </div>
-                  }
-                >
-                  <div class="folder-title" title={folder()}>
-                    {folder().split("/").pop()}
-                  </div>
-                  <For each={files()}>
-                    {(file) => (
-                      <button
-                        class={`file ${current()?.path === file.path ? "selected" : ""}`}
-                        title={file.path}
-                        onClick={run(() => open(file.path))}
-                      >
-                        <Icon name="file-text" />
-                        <span>{file.name}</span>
+          <Split.Panel
+            aria-hidden={!sidebar()}
+            inert={!sidebar()}
+            minSize="170px"
+            maxSize="420px"
+            initialSize="230px"
+            class="sidebar"
+          >
+            <header>
+              {sideView() === "outline" ? "OUTLINE" : "EXPLORER"}
+              <Action
+                label="Open Folder"
+                icon="folder-opened"
+                onClick={run(openFolder)}
+              />
+            </header>
+            <Show
+              when={sideView() === "explorer"}
+              fallback={
+                <div class="outline">
+                  <For each={analysis()?.outline}>
+                    {(item) => (
+                      <button onClick={() => jump(item.source.bytes.start)}>
+                        <Icon
+                          name={
+                            item.kind === "scene"
+                              ? "symbol-event"
+                              : "symbol-namespace"
+                          }
+                        />
+                        <span>{item.text}</span>
                       </button>
                     )}
                   </For>
-                  <Show when={!files().length}>
-                    <p class="muted">
-                      No .md or .fountain files in this folder.
-                    </p>
+                  <Show when={!analysis()?.outline.length}>
+                    <p class="muted">Scenes and headings appear here.</p>
                   </Show>
+                </div>
+              }
+            >
+              <Show
+                when={folder()}
+                fallback={
+                  <div class="sidebar-welcome">
+                    <p>Open a folder to explore your story files.</p>
+                    <button class="primary" onClick={run(openFolder)}>
+                      Open Folder
+                    </button>
+                  </div>
+                }
+              >
+                <div class="folder-title" title={folder()}>
+                  {folder().split("/").pop()}
+                </div>
+                <For each={files()}>
+                  {(file) => (
+                    <button
+                      class={`file ${current()?.path === file.path ? "selected" : ""}`}
+                      title={file.path}
+                      onClick={run(() => open(file.path))}
+                    >
+                      <Icon name="file-text" />
+                      <span>{file.name}</span>
+                    </button>
+                  )}
+                </For>
+                <Show when={!files().length}>
+                  <p class="muted">No .md or .fountain files in this folder.</p>
                 </Show>
               </Show>
-            </Split.Panel>
-            <Split.Handle class="split-handle" aria-label="Resize sidebar" />
-          </Show>
-          <Split.Panel minSize="440px" class="main-area">
+            </Show>
+          </Split.Panel>
+          <Split.Handle
+            class="split-handle"
+            aria-label="Resize sidebar"
+            style={{ display: sidebar() ? undefined : "none" }}
+          />
+          <Split.Panel
+            minSize={previewOpen() && current() ? "444px" : "220px"}
+            class="main-area"
+            style={{
+              "min-width": previewOpen() && current() ? "444px" : "220px",
+            }}
+          >
             <header class="editor-title">
               <div class="tabs" role="tablist" aria-label="Open stories">
                 <For each={tabs()}>
@@ -648,7 +657,7 @@ function App() {
             </Show>
             <div class="content">
               <Split class="editor-split" initialSizes={[0.5, 0.5]}>
-                <Split.Panel minSize="300px" class="editor-pane">
+                <Split.Panel minSize="220px" class="editor-pane">
                   <Show
                     when={current()}
                     fallback={
@@ -674,12 +683,20 @@ function App() {
                     class={`editor-host ${current() ? "" : "hidden"} ${current()?.template === "manuscript" ? "manuscript" : "script"}`}
                   />
                 </Split.Panel>
-                <Show when={previewOpen() && current()}>
-                  <Split.Handle
-                    class="split-handle"
-                    aria-label="Resize page preview"
-                  />
-                  <Split.Panel minSize="240px" class="preview-pane">
+                <Split.Handle
+                  style={{
+                    display: previewOpen() && current() ? undefined : "none",
+                  }}
+                  class="split-handle"
+                  aria-label="Resize page preview"
+                />
+                <Split.Panel
+                  minSize="220px"
+                  class="preview-pane"
+                  aria-hidden={!(previewOpen() && current())}
+                  inert={!(previewOpen() && current())}
+                >
+                  <Show when={previewOpen() && current()}>
                     <PagePreview
                       id={active()!}
                       preview={preview()}
@@ -688,8 +705,13 @@ function App() {
                       onClose={togglePreview}
                       onExport={run(exportPdf)}
                     />
-                  </Split.Panel>
-                </Show>
+                  </Show>
+                </Split.Panel>
+                <SplitVisibility
+                  open={!!(previewOpen() && current())}
+                  panel={1}
+                  defaultSizes={[0.5, 0.5]}
+                />
               </Split>
             </div>
             <Show when={analysis()?.diagnostics.length}>
@@ -707,6 +729,11 @@ function App() {
               </div>
             </Show>
           </Split.Panel>
+          <SplitVisibility
+            open={sidebar()}
+            panel={0}
+            defaultSizes={[0.19, 0.81]}
+          />
         </Split>
       </div>
       <footer class="status-bar">
