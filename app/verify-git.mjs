@@ -166,30 +166,20 @@ try {
   await page.getByRole("button", { name: "Undo restore", exact: true }).click();
   await until(async () => /Later ending/.test(await readFile(story, "utf8")));
   await until(async () => /Later ending/.test(await editorText()));
-  // Whole project: removes files added since, then undo brings them back.
-  await diff
-    .getByRole("button", { name: "Restore project…", exact: true })
-    .click();
-  await confirm.getByRole("button", { name: "Restore", exact: true }).click();
-  await page
-    .getByRole("status")
-    .filter({ hasText: "Restored 2 files" })
-    .waitFor();
-  assert.match(await readFile(story, "utf8"), /A first draft/);
-  await assert.rejects(readFile(`${folder}/_river/todos.md`, "utf8"));
-  assert.equal(await readFile(`${folder}/private.md`, "utf8"), "Private notes");
-  await page.getByRole("button", { name: "Undo restore", exact: true }).click();
-  await until(async () => {
-    try {
-      return (
-        (await readFile(`${folder}/_river/todos.md`, "utf8")) ===
-        "- [ ] Rewrite ending\n"
-      );
-    } catch {
-      return false;
-    }
-  });
-  assert.match(await readFile(story, "utf8"), /Later ending/);
+  assert.equal(
+    await diff
+      .getByRole("button", { name: "Restore project…", exact: true })
+      .count(),
+    0,
+  );
+  const oldCommit = (await invoke("git_log", { root: folder }))[1].id;
+  await assert.rejects(
+    invoke("git_restore", { root: folder, commit: oldCommit, path: null }),
+  );
+  assert.equal(
+    await readFile(`${folder}/_river/todos.md`, "utf8"),
+    "- [ ] Rewrite ending\n",
+  );
   // Undo never overwrites writing done after a restore.
   await confirm.count();
   await diff
@@ -261,7 +251,7 @@ try {
   await page.screenshot({ path: `${root}/app/output/source-control.png` });
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: Git on by default with a starting snapshot and untouched .gitignore, local identity, ignored files, ordinary commits, notes/tasks, side-pane diff, stale-review rejection, Mac-account identity without a form, commit history, file/project restore, undo and edit-after-restore protection, branch create/switch/status bar and dirty-switch refusal.",
+    "PASS: Git on by default with a starting snapshot and untouched .gitignore, local identity, ignored files, ordinary commits, notes/tasks, side-pane diff, stale-review rejection, Mac-account identity without a form, commit history, single-file restore, undo and edit-after-restore protection, branch create/switch/status bar and dirty-switch refusal.",
   );
 } catch (e) {
   console.error(await page.locator("body").innerText());

@@ -19,8 +19,8 @@ export function createGitWorkflow(deps: {
   notify: (text: string) => void;
 }) {
   const [diff, setDiff] = createSignal<GitDiff | null>(null);
-  /** `undefined`: no confirmation; `null`: whole project; string: one file. */
-  const [ask, setAsk] = createSignal<string | null | undefined>(undefined);
+  /** `undefined`: no confirmation; string: one file. */
+  const [ask, setAsk] = createSignal<string | undefined>(undefined);
   const [busy, setBusy] = createSignal(false);
   const [undo, setUndo] = createSignal<{
     root: string;
@@ -71,7 +71,7 @@ export function createGitWorkflow(deps: {
       await deps.afterWrite(root, paths);
       deps.notify(`Switched to ${name}.`);
     });
-  const restore = (path: string | null) =>
+  const restore = (path: string) =>
     exclusive(async () => {
       const shown = diff(),
         root = deps.folder();
@@ -84,13 +84,10 @@ export function createGitWorkflow(deps: {
       });
       setAsk(undefined);
       await deps.afterWrite(root, restored.paths);
-      const count = restored.paths.length;
       setUndo({
         root,
         restored,
-        label: path
-          ? `Restored ${path} from “${shown.title}”.`
-          : `Restored ${count} file${count === 1 ? "" : "s"} from “${shown.title}”.`,
+        label: `Restored ${path} from “${shown.title}”.`,
       });
     });
   const undoRestore = () =>

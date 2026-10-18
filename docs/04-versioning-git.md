@@ -41,7 +41,7 @@ reset modes, detached HEAD, submodules, hooks. SHAs appear only as a short code 
 * River saves each named file to disk after one second of idle typing; crash recovery
   protects text not yet saved. There is no private local history or Timeline.
 * Versions are Git commits. Commit when a draft is worth keeping; Restore brings back a
-  file or the project from any commit in the branch.
+  file from any commit in the branch.
 
 ## Diff, built for prose
 Git diffs by line, and a prose paragraph is one long line, so River diffs at three levels:
@@ -124,8 +124,8 @@ and restore are the next slices.
 
 ### Restore (2026-10-18, #53)
 Selecting a commit shows its files and diff in the right pane. **Restore** beside a
-file, or **Restore project…** in the header, asks for confirmation and then rewrites
-working files to match that commit. A file the commit deleted is brought back from
+file asks for confirmation and then rewrites that file to match the commit.
+Whole-project restore was removed (#72); single-file restore retains safe Undo. A file the commit deleted is brought back from
 the commit's parent. Restore never commits or moves the branch; the result appears as
 ordinary uncommitted changes.
 

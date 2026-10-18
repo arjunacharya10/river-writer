@@ -126,7 +126,7 @@ impl Service {
                 reply(git::restore(
                     &root()?,
                     &arg::<String>(args, "commit")?,
-                    arg::<Option<String>>(args, "path")?.as_deref(),
+                    &arg::<String>(args, "path")?,
                 )?)
             }
             "git_undo_restore" => {

@@ -624,46 +624,28 @@ fn apply(
     }
     Ok(())
 }
-/// Restore one file (`path`) or the whole project from a commit in this branch.
+/// Restore one file from a commit in this branch.
 /// A file deleted by that commit is restored from the commit's parent.
-pub fn restore(root: &Path, commit: &str, path: Option<&str>) -> Result<Restored, String> {
+pub fn restore(root: &Path, commit: &str, path: &str) -> Result<Restored, String> {
     let repo = open(root)?;
     let c = reachable(&repo, commit)?;
     let before_id = current_tree(&repo)?;
     let before = repo.find_tree(before_id).map_err(err)?;
-    let (source, paths) = match path {
-        Some(path) => {
-            let tree = c.tree().map_err(err)?;
-            let source = if blob_at(&tree, path)?.is_some() {
-                tree
-            } else {
-                (c.parent_count() > 0)
-                    .then(|| c.parent(0).and_then(|p| p.tree()))
-                    .transpose()
-                    .map_err(err)?
-                    .filter(|t| matches!(blob_at(t, path), Ok(Some(_))))
-                    .ok_or_else(|| format!("{path} is not part of this commit."))?
-            };
-            let paths = if blob_at(&before, path)? == blob_at(&source, path)? {
-                vec![]
-            } else {
-                vec![path.to_owned()]
-            };
-            (source, paths)
-        }
-        None => {
-            let source = c.tree().map_err(err)?;
-            let diff = repo
-                .diff_tree_to_tree(Some(&before), Some(&source), None)
-                .map_err(err)?;
-            let paths = diff
-                .deltas()
-                .filter_map(|d| d.new_file().path().or(d.old_file().path()))
-                .map(|p| p.to_string_lossy().into_owned())
-                .filter(|p| p != "_river/river.json")
-                .collect();
-            (source, paths)
-        }
+    let tree = c.tree().map_err(err)?;
+    let source = if blob_at(&tree, path)?.is_some() {
+        tree
+    } else {
+        (c.parent_count() > 0)
+            .then(|| c.parent(0).and_then(|p| p.tree()))
+            .transpose()
+            .map_err(err)?
+            .filter(|t| matches!(blob_at(t, path), Ok(Some(_))))
+            .ok_or_else(|| format!("{path} is not part of this commit."))?
+    };
+    let paths = if blob_at(&before, path)? == blob_at(&source, path)? {
+        vec![]
+    } else {
+        vec![path.to_owned()]
     };
     if paths.is_empty() {
         return Err("Nothing to restore: it already matches this commit.".into());
@@ -931,7 +913,7 @@ mod tests {
         fs::remove_dir_all(root).unwrap();
     }
     #[test]
-    fn restores_files_and_projects_and_undoes_them() {
+    fn restores_single_files_and_undoes_them() {
         let root = folder();
         init(&root).unwrap();
         identity(&root, "Writer", "writer@example.invalid").unwrap();
@@ -944,20 +926,20 @@ mod tests {
         let second = save(&root, "Second");
         fs::write(root.join("New.md"), "uncommitted new chapter").unwrap();
         // Bring back a file deleted by a commit, from that commit's parent.
-        let r = restore(&root, &second, Some("Deleted.md")).unwrap();
+        let r = restore(&root, &second, "Deleted.md").unwrap();
         assert_eq!(
             fs::read_to_string(root.join("Deleted.md")).unwrap(),
             "a scene worth keeping"
         );
         undo_restore(&root, &r).unwrap();
         assert!(!root.join("Deleted.md").exists());
-        // Whole project: overwrites, recreates and removes newer files.
-        let r = restore(&root, &first, None).unwrap();
+        // Restoring one file leaves newer project files untouched.
+        let r = restore(&root, &first, "acts/One.fountain").unwrap();
         assert_eq!(
             fs::read_to_string(root.join("acts/One.fountain")).unwrap(),
             "INT. CAFÉ - DAY\n"
         );
-        assert!(root.join("Deleted.md").exists() && !root.join("New.md").exists());
+        assert!(!root.join("Deleted.md").exists() && root.join("New.md").exists());
         undo_restore(&root, &r).unwrap();
         assert_eq!(
             fs::read_to_string(root.join("acts/One.fountain")).unwrap(),
@@ -969,12 +951,12 @@ mod tests {
         );
         assert!(!root.join("Deleted.md").exists());
         assert!(
-            restore(&root, &second, Some("acts/One.fountain"))
+            restore(&root, &second, "acts/One.fountain")
                 .unwrap_err()
                 .contains("already matches")
         );
         // Undo never overwrites writing done after the restore.
-        let r = restore(&root, &first, Some("acts/One.fountain")).unwrap();
+        let r = restore(&root, &first, "acts/One.fountain").unwrap();
         fs::write(root.join("acts/One.fountain"), "newer writing").unwrap();
         assert!(
             undo_restore(&root, &r)
@@ -997,7 +979,7 @@ mod tests {
         fs::write(root.join("Story.md"), "one").unwrap();
         save(&root, "First");
         fs::write(root.join("Story.md"), "two").unwrap();
-        assert!(restore(&root, &"0".repeat(40), None).is_err());
+        assert!(restore(&root, &"0".repeat(40), "Story.md").is_err());
         #[cfg(unix)]
         {
             let outside = folder();
@@ -1007,7 +989,7 @@ mod tests {
             fs::remove_dir_all(root.join("real")).unwrap();
             std::os::unix::fs::symlink(&outside, root.join("real")).unwrap();
             assert!(
-                restore(&root, &linked, Some("real/Linked.md"))
+                restore(&root, &linked, "real/Linked.md")
                     .unwrap_err()
                     .contains("symbolic link")
             );

@@ -175,7 +175,9 @@ try {
   await nameField.fill("Scene Notes");
   await nameField.press("Enter");
   await page.getByRole("tab", { name: /Scene Notes.md/ }).waitFor();
-  await page.getByRole("button", { name: "Scene Notes.md", exact: true }).waitFor();
+  await page
+    .getByRole("button", { name: "Scene Notes.md", exact: true })
+    .waitFor();
   assert.equal(await readFile(`${folder}/Scene Notes.md`, "utf8"), "");
   assert.equal(await nameField.count(), 0);
   await newFile();
@@ -221,12 +223,31 @@ try {
       .textContent.includes("Stage Play"),
   );
   assert.equal(await page.locator(".cm-content").innerText(), before);
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Toggle Light / Dark", exact: true })
+      .count(),
+    0,
+  );
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Command Palette", exact: true })
+      .count(),
+    0,
+  );
+  const themeBefore = await page.locator("html").getAttribute("data-theme");
+  await page.keyboard.press("ControlOrMeta+Shift+p");
   await page
-    .getByRole("button", { name: "Toggle Light / Dark", exact: true })
-    .click();
+    .getByRole("textbox", { name: "Search commands" })
+    .fill("Toggle Light");
   await page
-    .getByRole("button", { name: "Command Palette", exact: true })
+    .getByRole("button", { name: "View: Toggle Light / Dark", exact: true })
     .click();
+  assert.notEqual(
+    await page.locator("html").getAttribute("data-theme"),
+    themeBefore,
+  );
+  await page.keyboard.press("ControlOrMeta+Shift+p");
   await page.getByRole("textbox", { name: "Search commands" }).fill("Find");
   await page.getByRole("button", { name: /Edit: Find/ }).click();
   await page.locator(".cm-search").waitFor();

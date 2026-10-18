@@ -14,7 +14,7 @@ gate development or release. Linux: later or never.
 * Templates: Screenplay (+ multi-cam), Stage Play, Novel/Manuscript
 * Extras: Scratchpad (#48) and Todos (#46) as sidebar views (plain files in `_river/`)
 * Git, built in (no installed `git`): on by default with a starting snapshot (#62),
-  review and commit everything (#51), history and commit diffs, file/project restore
+  review and commit everything (#51), history and commit diffs, single-file restore
   with Undo (#53), branch create/switch (#55), Mac-account identity (#63)
 * Draft protection: one-second autosave and crash recovery (#42). Versions are Git
   commits; no private local history or Timeline (#66). No off-machine copy in v1;

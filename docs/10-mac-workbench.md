@@ -537,3 +537,5 @@ by `verify` (create, open, duplicate-name error, Escape cancel). Screenshot: ign
 Activity-bar global Palette/theme icons and the status-bar format label were removed (#69). Palette and theme actions remain in the native View menu and command palette.
 
 Crash recovery now journals untitled drafts and blocked saves (including later edits) only (#71). Named files and Scratchpad otherwise rely on one-second autosave; a crash before that save can lose recent edits. Existing journals remain recoverable.
+
+Whole-project Git restore was removed (#72). Restore now requires a single file; its Undo still refuses to overwrite newer edits. Branch creation starts at the current commit.

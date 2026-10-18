@@ -14,15 +14,6 @@ export function GitDiffPane(props: {
         <section class="git-diff" aria-label="Git diff">
           <header>
             <strong>{diff().title}</strong>
-            <Show when={diff().commit}>
-              <button
-                class="git-restore"
-                disabled={git.busy()}
-                onClick={() => git.setAsk(null)}
-              >
-                Restore project…
-              </button>
-            </Show>
             <Action
               label="Close Git diff"
               icon="close"
@@ -36,14 +27,15 @@ export function GitDiffPane(props: {
               aria-label="Confirm restore"
             >
               <p>
-                {git.ask() === null
-                  ? "Make the whole project match this commit? Files added since will be removed. You can undo this."
-                  : `Replace ${git.ask()} with its version in this commit? You can undo this.`}
+                {`Replace ${git.ask()} with its version in this commit? You can undo this.`}
               </p>
               <button
                 class="primary"
                 disabled={git.busy()}
-                onClick={props.run(() => git.restore(git.ask() ?? null))}
+                onClick={props.run(() => {
+                  const path = git.ask();
+                  if (path !== undefined) return git.restore(path);
+                })}
               >
                 Restore
               </button>
