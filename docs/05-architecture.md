@@ -520,8 +520,8 @@ No grammar or spelling beyond the system spellchecker in the editor.
   that no other networking crates are linked (dependency audit) and that the app makes
   no connections at startup or while idle.
 * No telemetry, no crash upload. Crash logs are written locally (opt-in "Reveal log").
-* Updates: manual (download from the website / app store). An optional, explicit
-  "Check for updates" button could be added later; never automatic.
+* Updates: **manual only** (decision #30). "Check for Updates…" and "Subscribe to
+  Updates…" open the website in the default browser; River itself never connects. See doc 08.
 
 ---
 
