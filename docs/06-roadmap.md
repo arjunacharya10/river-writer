@@ -1,6 +1,7 @@
 # 06 — Roadmap
 
 ## Version 1 — "write, see the page, keep every version"
+Ships on **macOS, Windows and Linux** simultaneously (principle 7: multiplatform, slow features).
 * VS Code workbench: activity bar, Explorer, Search, Source Control, Outline, editor groups/tabs,
   command palette, quick open, breadcrumbs, minimap, status bar, settings.json, VS Code keymap, Zen mode
 * Live paginated preview; PDF export; title page
@@ -28,9 +29,8 @@ Cloud sync, accounts, AI, subscriptions, analytics, extensions/plugins, comments
 services, non-creative templates.
 
 ## Open decisions
-1. Platforms: Mac first, or Mac/Windows/Linux from day one?
-2. One unified syntax for screen and prose, or Fountain + Markdown kept separate?
+1. One unified syntax for screen and prose, or Fountain + Markdown kept separate?
    (Current lean: separate.)
-3. Open Highland `.highland` files as a migration path? (ZIP → TextBundle → `text.fountain`/`text.md`)
-4. Pricing: one-time purchase (assumed), price point TBD.
-5. Exact autosave interval and retention.
+2. Open Highland `.highland` files as a migration path? (ZIP → TextBundle → `text.fountain`/`text.md`)
+3. Pricing: one-time purchase (assumed), price point TBD.
+4. Exact autosave interval and retention.

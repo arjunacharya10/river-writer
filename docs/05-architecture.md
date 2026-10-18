@@ -563,11 +563,27 @@ sample documents.
 
 * macOS: universal binary, hardened runtime, notarized; `.dmg`; file associations for
   `.fountain` (and optionally `.md`, without claiming ownership).
-* Windows (if in scope): MSI/NSIS, WebView2 runtime; code-signed.
-* Linux (if in scope): AppImage/deb; WebKitGTK version requirements documented.
+* Windows: MSI/NSIS installer, WebView2 runtime (evergreen; bootstrapper included),
+  Authenticode code-signed; file association for `.fountain`.
+* Linux: AppImage + `.deb` (+ `.rpm`; Flatpak later); WebKitGTK minimum version
+  documented; `.desktop` file and MIME type for `.fountain`.
 * Bundled fonts ship with their license files (OFL text) in the app and the About panel.
-* Decision pending (doc 06): Mac-first vs all three at v1. The architecture is
-  cross-platform; the cost is font/raster/print QA and webview differences per OS.
+* **Decided (#29): Mac, Windows and Linux at v1**, same features and behaviour on all three.
+  * **CI matrix:** build, unit tests, golden pagination, visual-regression renders and
+    E2E smoke tests on macOS, Windows and Linux for every change. A feature isn't done
+    until it passes on all three.
+  * **Rendering parity:** pages are rasterized in Rust from bundled fonts, so preview and PDF
+    are identical across OSes by construction. Only the workbench UI depends on the webview.
+  * **Webview differences** (WKWebView / WebView2 / WebKitGTK): conservative CSS, no
+    bleeding-edge web APIs, per-OS E2E runs, and a minimum WebKitGTK version on Linux.
+  * **Per-OS integration points**, each behind one Rust abstraction: credential store
+    (Keychain / Credential Manager / libsecret), printing (native print dialog with the
+    generated PDF), file associations, menus (macOS app menu vs in-window menu bar on
+    Windows/Linux, mirroring VS Code), keybindings (`⌘` ↔ `Ctrl` mapping as in VS Code),
+    window chrome (VS Code-style custom title bar on Windows/Linux, native traffic lights on macOS).
+  * **Paths and line endings:** the project uses `/`-normalized relative paths in
+    `river.json`; text is saved with the line endings it was opened with (default LF for
+    new files); git `core.autocrlf` is left to the user's config.
 
 ---
 
@@ -599,4 +615,4 @@ sample documents.
    any push (even `--mirror`), invisible to other git tools, moves with the project,
    self-contained pruning. Lone-file mode: app data dir keyed by file path. Supersedes
    the private-refs plan in §12.3.
-5. Platform scope at v1: **open** (doc 06).
+5. **Platforms: Mac, Windows, Linux at v1** (decision #29).
