@@ -231,11 +231,47 @@ try {
     "Newer writing after the restore.\n",
   );
   assert.equal((await invoke("git_log", { root: folder })).length, 2);
+  // Branches: create with uncommitted work, commit on it, switch back and forth.
+  const statusBranch = page.locator(".status-branch");
+  await until(async () => (await statusBranch.innerText()).includes("main"));
+  await panel.getByLabel("New branch name", { exact: true }).fill("draft-2");
+  await panel
+    .getByRole("button", { name: "Create and switch", exact: true })
+    .click();
+  await until(async () => (await statusBranch.innerText()).includes("draft-2"));
+  assert.equal(
+    await readFile(story, "utf8"),
+    "Newer writing after the restore.\n",
+  );
+  await panel.getByRole("button", { name: "✓ draft-2", exact: true }).waitFor();
+  await panel
+    .getByLabel("Commit message", { exact: true })
+    .fill("Draft two ending");
+  await panel
+    .getByRole("button", { name: "Commit all changes", exact: true })
+    .click();
+  await panel.getByText("No changes to commit.", { exact: true }).waitFor();
+  await panel.getByRole("button", { name: "main", exact: true }).click();
+  await until(async () => (await statusBranch.innerText()).includes("main"));
+  await until(async () => /Later ending/.test(await readFile(story, "utf8")));
+  await until(async () => /Later ending/.test(await editorText()));
+  assert.equal((await invoke("git_log", { root: folder })).length, 2);
+  await page.screenshot({ path: `${root}/app/output/git-branches.png` });
+  // Uncommitted writing blocks switching to a diverged branch, and stays put.
+  await writeFile(story, "Unfinished thought on main.\n");
+  await panel.getByRole("button", { name: "Refresh Git", exact: true }).click();
+  await panel.getByRole("button", { name: "draft-2", exact: true }).click();
+  await page
+    .getByRole("alert")
+    .filter({ hasText: "Commit your changes before switching" })
+    .waitFor();
+  assert.equal(await readFile(story, "utf8"), "Unfinished thought on main.\n");
+  assert.match(await statusBranch.innerText(), /main/);
   await mkdir(`${root}/app/output`, { recursive: true });
   await page.screenshot({ path: `${root}/app/output/source-control.png` });
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: initialize, local identity, ignored files, ordinary commits, notes/tasks, side-pane diff, stale-review rejection, commit history, file/project restore, undo and edit-after-restore protection.",
+    "PASS: initialize, local identity, ignored files, ordinary commits, notes/tasks, side-pane diff, stale-review rejection, commit history, file/project restore, undo and edit-after-restore protection, branch create/switch/status bar and dirty-switch refusal.",
   );
 } catch (e) {
   console.error(await page.locator("body").innerText());

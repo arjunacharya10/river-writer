@@ -177,6 +177,9 @@ impl Documents {
             self.checkpoint_replaced(p, b)
         })
     }
+    pub fn git_switch_branch(&self, root: &Path, name: &str) -> Result<Vec<String>, String> {
+        git::switch_branch(root, name, &mut |p, b| self.checkpoint_replaced(p, b))
+    }
     pub fn git_undo_restore(&self, root: &Path, restored: &git::Restored) -> Result<(), String> {
         git::undo_restore(root, restored, &mut |p, b| self.checkpoint_replaced(p, b))
     }

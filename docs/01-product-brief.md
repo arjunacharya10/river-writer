@@ -39,7 +39,7 @@ Out: comics/graphic novels, essays, academic/MLA, wikis, bulletins, speeches, ar
 * Templates: **Screenplay** (with a multi-cam option), **Stage Play**, **Novel/Manuscript**
 * Navigator: scenes, sections, synopses, notes
 * Notes `[[ ]]`, boneyard `/* */`, synopses `=`
-* Final Draft (FDX) import and export
+* Final Draft (FDX) import and export (v1.1, #54)
 * Includes (`{{INCLUDE: …}}`) for chapter-per-file projects
 * Characters list (names, counts, rename)
 * Two themes only: **Light** and **Dark** (modelled on VS Code's Light/Dark Modern), following the system appearance (more can come later)

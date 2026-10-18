@@ -1246,3 +1246,30 @@ kbd {
   border: 1px solid var(--border);
   border-radius: 3px;
 }
+
+.git-branch.current {
+  font-weight: 600;
+  opacity: 1 !important;
+  cursor: default;
+}
+.git-new-branch {
+  margin: 8px 0 0 !important;
+  gap: 6px !important;
+}
+.git-new-branch button {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+.status-branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  padding: 0 4px;
+  color: inherit;
+}
+.status-branch .codicon {
+  font-size: 13px;
+}

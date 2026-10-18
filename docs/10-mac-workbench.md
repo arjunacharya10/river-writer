@@ -351,3 +351,20 @@ commits, failed checkpoints and symbolic links. `pnpm --dir app verify:git` now
 restores a file and the whole project through the UI with an open tab, undoes both,
 checks ignored files survive and that undo refuses after an external edit. Screenshot:
 ignored `app/output/git-restore.png`. Branches and reverting commits remain.
+
+## Git branches (2026-10-18, #54/#55)
+
+`river_vcs::project::{branches, create_branch, switch_branch}` add the branch slice.
+`switch_branch` refuses during merges/conflicts, compares the working tree with HEAD
+(a separate repository handle, since status installs an in-memory index), checkpoints
+replaced story files, runs a safe checkout and sets HEAD. Same-commit switches only
+move HEAD. The UI's `switchBranch` reuses the restore path: autosave, refuse unsaved
+tabs, call the backend, reload rewritten tabs and extras. The detached-HEAD message
+now points to switching to a branch in River.
+
+Verification: a new VCS test covers listing (including an unborn branch), invalid and
+duplicate names, carrying uncommitted work to a new branch, refusing a diverged switch
+with uncommitted work, file rewrite/removal and checkpoint callbacks. `verify:git`
+creates a branch through the UI with uncommitted text, commits on it, switches back
+with an open tab, checks the status bar and refuses a dirty switch. Screenshot:
+ignored `app/output/git-branches.png`. FDX moved to v1.1 (#54).

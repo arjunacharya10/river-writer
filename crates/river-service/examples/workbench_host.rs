@@ -55,6 +55,22 @@ fn main() {
                     args["message"].as_str().ok_or("Missing message")?,
                 )?)
                 .unwrap(),
+                "git_branches" => serde_json::to_value(git::branches(Path::new(
+                    args["root"].as_str().ok_or("Missing root")?,
+                ))?)
+                .unwrap(),
+                "git_create_branch" => {
+                    git::create_branch(
+                        Path::new(args["root"].as_str().ok_or("Missing root")?),
+                        args["name"].as_str().ok_or("Missing name")?,
+                    )?;
+                    Value::Null
+                }
+                "git_switch_branch" => serde_json::to_value(docs.git_switch_branch(
+                    Path::new(args["root"].as_str().ok_or("Missing root")?),
+                    args["name"].as_str().ok_or("Missing name")?,
+                )?)
+                .unwrap(),
                 "git_restore" => serde_json::to_value(docs.git_restore(
                     Path::new(args["root"].as_str().ok_or("Missing root")?),
                     args["commit"].as_str().ok_or("Missing commit")?,

@@ -142,7 +142,7 @@ pub fn status(root: &Path) -> Result<Status, String> {
     {
         Some("Resolve the current Git operation or conflicts before committing in River.".into())
     } else if repo.head_detached().map_err(err)? {
-        Some("Check out a branch in Git before committing in River.".into())
+        Some("Switch to a branch below before committing.".into())
     } else {
         None
     };
@@ -556,6 +556,119 @@ pub fn undo_restore(
     apply(&repo, root, &before, &restored.paths, &now, before_replace)
 }
 
+#[derive(Serialize)]
+pub struct Branch {
+    pub name: String,
+    pub current: bool,
+}
+pub fn branches(root: &Path) -> Result<Vec<Branch>, String> {
+    let repo = open(root)?;
+    let current = repo
+        .find_reference("HEAD")
+        .ok()
+        .and_then(|h| h.symbolic_target().map(str::to_owned));
+    let mut list = Vec::new();
+    for branch in repo.branches(Some(git2::BranchType::Local)).map_err(err)? {
+        let (branch, _) = branch.map_err(err)?;
+        let Some(name) = branch.name().map_err(err)? else {
+            continue;
+        };
+        let reference = format!("refs/heads/{name}");
+        // An unborn current branch has no ref yet, so it is listed below.
+        list.push(Branch {
+            current: current.as_deref() == Some(reference.as_str()),
+            name: name.to_owned(),
+        });
+    }
+    if let Some(unborn) = current
+        .as_deref()
+        .and_then(|r| r.strip_prefix("refs/heads/"))
+        .filter(|n| !list.iter().any(|b| b.name == *n))
+    {
+        list.push(Branch {
+            name: unborn.to_owned(),
+            current: true,
+        });
+    }
+    list.sort_by_key(|a| a.name.to_lowercase());
+    Ok(list)
+}
+/// Create a branch at the current commit. It does not switch to it.
+pub fn create_branch(root: &Path, name: &str) -> Result<(), String> {
+    let name = name.trim();
+    if name.is_empty() || !git2::Branch::name_is_valid(name).map_err(err)? {
+        return Err("Use a branch name without spaces or special characters, like draft-2.".into());
+    }
+    let repo = open(root)?;
+    let tip = head(&repo)?.ok_or("Commit once before creating branches.")?;
+    if repo.find_branch(name, git2::BranchType::Local).is_ok() {
+        return Err(format!("A branch named {name} already exists."));
+    }
+    repo.branch(name, &tip, false).map_err(err)?;
+    Ok(())
+}
+/// Switch to a local branch. Uncommitted changes must be committed first, so a
+/// switch never loses or carries writing between drafts. Returns rewritten paths.
+pub fn switch_branch(
+    root: &Path,
+    name: &str,
+    before_replace: &mut Checkpoint<'_>,
+) -> Result<Vec<String>, String> {
+    let repo = open(root)?;
+    if repo.state() != RepositoryState::Clean || repo.index().map_err(err)?.has_conflicts() {
+        return Err("Finish the current Git operation or conflicts before switching.".into());
+    }
+    let reference = format!("refs/heads/{name}");
+    let target = repo
+        .find_branch(name, git2::BranchType::Local)
+        .map_err(|_| format!("There is no branch named {name}."))?
+        .get()
+        .peel_to_commit()
+        .map_err(err)?;
+    let attached = repo
+        .find_reference("HEAD")
+        .ok()
+        .and_then(|h| h.symbolic_target().map(str::to_owned));
+    if attached.as_deref() == Some(reference.as_str()) {
+        return Ok(vec![]);
+    }
+    let tip = head(&repo)?.ok_or("Commit once before switching branches.")?;
+    if tip.id() == target.id() {
+        // Same commit (e.g. a branch just created here): keep uncommitted work, like `git switch -c`.
+        repo.set_head(&reference).map_err(err)?;
+        return Ok(vec![]);
+    }
+    // A separate handle: `candidate` installs an in-memory index on its repository.
+    let working = current_tree(&open(root)?)?;
+    if working != tip.tree_id() {
+        return Err("Commit your changes before switching branches.".into());
+    }
+    let old = tip.tree().map_err(err)?;
+    let new = target.tree().map_err(err)?;
+    let diff = repo
+        .diff_tree_to_tree(Some(&old), Some(&new), None)
+        .map_err(err)?;
+    let paths: Vec<String> = diff
+        .deltas()
+        .filter_map(|d| d.new_file().path().or(d.old_file().path()))
+        .map(|p| p.to_string_lossy().into_owned())
+        .collect();
+    for path in &paths {
+        let disk = root.join(path);
+        if !disk.is_symlink()
+            && let Ok(bytes) = fs::read(&disk)
+        {
+            before_replace(&disk, &bytes)?;
+        }
+    }
+    let mut checkout = git2::build::CheckoutBuilder::new();
+    checkout.safe();
+    repo.checkout_tree(new.as_object(), Some(&mut checkout))
+        .map_err(err)?;
+    repo.set_head(&reference).map_err(err)?;
+    Ok(paths)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -796,6 +909,80 @@ mod tests {
             assert!(!outside.join("Linked.md").exists());
             fs::remove_dir_all(outside).unwrap();
         }
+        fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn branches_create_switch_and_protect_uncommitted_writing() {
+        let root = folder();
+        init(&root).unwrap();
+        identity(&root, "Writer", "writer@example.invalid").unwrap();
+        assert_eq!(branches(&root).unwrap()[0].name, "main");
+        assert!(create_branch(&root, "draft-2").is_err());
+        fs::write(root.join("Story.md"), "main draft").unwrap();
+        fs::write(root.join("Shared.md"), "same everywhere").unwrap();
+        save(&root, "Main");
+        assert!(create_branch(&root, "bad name").is_err());
+        create_branch(&root, "draft-2").unwrap();
+        assert!(
+            create_branch(&root, "draft-2")
+                .unwrap_err()
+                .contains("already exists")
+        );
+        let names: Vec<_> = branches(&root)
+            .unwrap()
+            .into_iter()
+            .map(|b| (b.name, b.current))
+            .collect();
+        assert_eq!(
+            names,
+            vec![("draft-2".into(), false), ("main".into(), true)]
+        );
+        fs::write(root.join("Story.md"), "alternate ending").unwrap();
+        // Same commit: uncommitted writing comes along to the new branch.
+        assert!(
+            switch_branch(&root, "draft-2", &mut none)
+                .unwrap()
+                .is_empty()
+        );
+        assert_eq!(status(&root).unwrap().branch, "draft-2");
+        fs::write(root.join("Extra.md"), "only on draft-2").unwrap();
+        save(&root, "Alternate");
+        // Once branches diverge, uncommitted writing blocks a switch and stays on disk.
+        fs::write(root.join("Unsaved.md"), "not committed").unwrap();
+        assert!(
+            switch_branch(&root, "main", &mut none)
+                .unwrap_err()
+                .contains("Commit your changes")
+        );
+        assert_eq!(
+            fs::read_to_string(root.join("Unsaved.md")).unwrap(),
+            "not committed"
+        );
+        fs::remove_file(root.join("Unsaved.md")).unwrap();
+        let mut seen = Vec::new();
+        let mut paths = switch_branch(&root, "main", &mut |p, _| {
+            seen.push(p.file_name().unwrap().to_string_lossy().into_owned());
+            Ok(())
+        })
+        .unwrap();
+        paths.sort();
+        assert_eq!(paths, vec!["Extra.md", "Story.md"]);
+        seen.sort();
+        assert_eq!(seen, vec!["Extra.md", "Story.md"]);
+        assert_eq!(
+            fs::read_to_string(root.join("Story.md")).unwrap(),
+            "main draft"
+        );
+        assert!(!root.join("Extra.md").exists());
+        assert!(status(&root).unwrap().review.files.is_empty());
+        assert_eq!(status(&root).unwrap().branch, "main");
+        switch_branch(&root, "draft-2", &mut none).unwrap();
+        assert_eq!(
+            fs::read_to_string(root.join("Extra.md")).unwrap(),
+            "only on draft-2"
+        );
+        assert_eq!(log(&root, None).unwrap()[0].message, "Alternate");
+        assert!(switch_branch(&root, "missing", &mut none).is_err());
         fs::remove_dir_all(root).unwrap();
     }
 }

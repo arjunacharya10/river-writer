@@ -130,3 +130,13 @@ paths back as they were unless one was edited after the restore. The pre-restore
 is unreferenced, so Undo belongs to the current session; Timeline still holds the
 replaced story text. Ignored files, `.git` and `_river/river.json` are never touched;
 symbolic-link paths, links and submodules in the commit are refused.
+
+### Branches (2026-10-18, #55)
+Source Control lists local branches; the current one is checked and also appears in
+the status bar (click it to open Source Control). Clicking another branch switches to
+it. **Create and switch** makes a branch at the current commit and moves to it,
+keeping any uncommitted writing. Switching to a branch on a different commit first
+requires committing, so writing is never lost or silently carried between drafts.
+Switching uses libgit2's safe checkout. Unsaved tabs block it; changed tabs, Scratchpad
+and Todos reload afterwards; private autosave history follows the active branch.
+Deleting, renaming and merging branches are not in River yet.

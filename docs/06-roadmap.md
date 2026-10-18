@@ -9,7 +9,6 @@ gate development or release. Linux: later or never.
   and times, scoped capitalization implemented (#43); broader editor polish remains.
 * Live paginated preview; PDF export; title page
 * Templates: Screenplay (+ multi-cam), Stage Play, Novel/Manuscript
-* FDX import/export
 * Extras: Scratchpad and Todos as activity-bar sidebar views (plain files in `_river/`).
   Bin removed (#47).
   * Todos implemented (#46): quick entry/edit, completion/reopening, collapsed completed
@@ -19,8 +18,9 @@ gate development or release. Linux: later or never.
 * Git: commit (no staging), log, diff (scene/paragraph/word), restore/revert, branch +
   checkout, remote + push/pull/fetch, clone
   * Implemented (#51): Source Control view with init, project identity, review all
-    changes, commit everything, commit history and diff. File/project restore with Undo implemented (#53).
-    Remaining: branches/checkout, revert commits, scene-level diff. Remotes/push/pull/fetch/clone parked (#52);
+    changes, commit everything, commit history and diff. File/project restore with Undo (#53) and branch
+    list/create/switch (#55) implemented. Remaining: revert commits, branch delete/merge,
+    scene-level diff. Remotes/push/pull/fetch/clone parked (#52);
     when built they run in-process, with no installed `git` required.
 * Local autosave history (never pushed). Separate automatic backups dropped (#50);
   off-machine safety comes from the writer's Git remote
@@ -30,6 +30,7 @@ gate development or release. Linux: later or never.
 * Themes: Light and Dark only, following the system appearance
 
 ## Version 1.1
+* Final Draft (FDX) import and export (moved from v1, #54)
 * Scene-level merge + conflict resolution; cherry-pick scene/paragraph
 * Tags → revision marks (colored pages + asterisks since a tag); page diff
 * Problems panel (script check); rename character (F2); Characters view; Stats panel

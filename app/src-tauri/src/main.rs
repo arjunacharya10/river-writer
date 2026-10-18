@@ -74,6 +74,36 @@ async fn git_commit(
     .await
 }
 #[tauri::command]
+async fn git_branches(root: PathBuf) -> Result<Vec<river_service::git::Branch>, String> {
+    work(move || river_service::git::branches(&root)).await
+}
+#[tauri::command]
+async fn git_create_branch(
+    app: tauri::AppHandle,
+    root: PathBuf,
+    name: String,
+) -> Result<(), String> {
+    work(move || {
+        let state = app.state::<Desktop>();
+        let _guard = lock(&state.documents)?;
+        river_service::git::create_branch(&root, &name)
+    })
+    .await
+}
+#[tauri::command]
+async fn git_switch_branch(
+    app: tauri::AppHandle,
+    root: PathBuf,
+    name: String,
+) -> Result<Vec<String>, String> {
+    work(move || {
+        let state = app.state::<Desktop>();
+        let docs = lock(&state.documents)?;
+        docs.git_switch_branch(&root, &name)
+    })
+    .await
+}
+#[tauri::command]
 async fn git_restore(
     app: tauri::AppHandle,
     root: PathBuf,
@@ -737,6 +767,9 @@ fn main() {
             git_log,
             git_diff,
             git_commit,
+            git_branches,
+            git_create_branch,
+            git_switch_branch,
             git_restore,
             git_undo_restore,
             new_document,

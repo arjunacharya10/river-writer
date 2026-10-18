@@ -77,6 +77,24 @@ function App() {
     label: string;
   } | null>(null);
   const [extrasEpoch, setExtrasEpoch] = createSignal(0);
+  const [gitBranch, setGitBranch] = createSignal("");
+  async function switchBranch(name: string) {
+    const root = folder();
+    if (!root || restoreBusy()) return;
+    setRestoreBusy(true);
+    try {
+      await prepareGitWrite(root);
+      const paths = await call<string[]>("git_switch_branch", { root, name });
+      // Restore undo and commit diffs belong to the branch being left.
+      setRestoreUndo(null);
+      setGitDiff(null);
+      setGitBranch(name);
+      await afterGitWrite(root, paths);
+      setNotice(`Switched to ${name}.`);
+    } finally {
+      setRestoreBusy(false);
+    }
+  }
   /** Bring open tabs and extras in line with files Git just rewrote on disk. */
   async function afterGitWrite(root: string, paths: string[]) {
     const changed = new Set(paths.map((p) => `${root}/${p}`));
@@ -944,6 +962,18 @@ function App() {
     if (previewOpen() && !restoring) void updatePreview();
     if (!restoring) queueMicrotask(() => view?.focus());
   }
+  createEffect(
+    on(folder, (root) => {
+      setGitBranch("");
+      if (!root) return;
+      void call<{ name: string; current: boolean }[]>("git_branches", { root })
+        .then((list) => {
+          if (folder() === root)
+            setGitBranch(list.find((b) => b.current)?.name ?? "");
+        })
+        .catch(() => {}); // Not a Git project yet.
+    }),
+  );
   createEffect(() => {
     active();
     loadEditor();
@@ -1179,6 +1209,8 @@ function App() {
                     active={sidebar() && sideView() === "source-control"}
                     beforeCommit={beforeCommit}
                     onReview={showGitDiff}
+                    switchBranch={switchBranch}
+                    onBranch={setGitBranch}
                   />
                 )}
               </Show>
@@ -1652,6 +1684,19 @@ function App() {
           </Split>
         </div>
         <footer class="status-bar">
+          <Show when={folder() && gitBranch()}>
+            <button
+              class="status-branch"
+              title="Source Control"
+              onClick={() => {
+                setSideView("source-control");
+                setSidebar(true);
+              }}
+            >
+              <Icon name="git-branch" />
+              {gitBranch()}
+            </button>
+          </Show>
           <span>{notice() || "River Writer"}</span>
           <div class="status-spacer" />
           <Show when={current()}>
