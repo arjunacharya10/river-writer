@@ -67,3 +67,28 @@ export const templateNames: Record<TemplateId, string> = {
 };
 export const nameOf = (doc: Story) =>
   doc.path?.split("/").pop() ?? "Untitled.md";
+
+export interface ProjectSession {
+  sidebarSizes: [number, number];
+  editorSizes: [number, number];
+  openFiles: string[];
+  activeFile: string | null;
+  cursors: Record<string, number>;
+  scrolls: Record<string, number>;
+  sidebar: boolean;
+  sideView: string;
+  preview: boolean;
+  theme: string | null;
+}
+export interface Project {
+  path: string;
+  name: string;
+  files: FileEntry[];
+  session: ProjectSession;
+}
+export interface RecentProject {
+  path: string;
+  name: string;
+  lastOpened: number;
+  available: boolean;
+}

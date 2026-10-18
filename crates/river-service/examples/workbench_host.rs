@@ -28,11 +28,38 @@ fn main() {
                     ))?,
                 )
                 .unwrap(),
+                "recent_projects" => serde_json::to_value(projects::recents(
+                    &Path::new(&folder).join(".test-config"),
+                )?)
+                .unwrap(),
+                "open_project" => {
+                    let path = args["path"].as_str().unwrap_or(&folder);
+                    let project = projects::open(Path::new(path))?;
+                    projects::remember(&Path::new(&folder).join(".test-config"), &project)?;
+                    docs.set_project(&project.path)?;
+                    serde_json::to_value(project).unwrap()
+                }
+                "create_project" => {
+                    let project = projects::create(&Path::new(&folder).join("New Story"))?;
+                    projects::remember(&Path::new(&folder).join(".test-config"), &project)?;
+                    docs.set_project(&project.path)?;
+                    serde_json::to_value(project).unwrap()
+                }
+                "save_project_session" => {
+                    projects::save_session(
+                        Path::new(args["path"].as_str().unwrap()),
+                        serde_json::from_value(args["session"].clone()).unwrap(),
+                    )?;
+                    Value::Null
+                }
                 "open_folder" => {
                     docs.set_project(Path::new(&folder))?;
                     json!([folder, list_files(Path::new(&folder))?])
                 }
-                "refresh_folder" => serde_json::to_value(list_files(Path::new(&folder))?).unwrap(),
+                "refresh_folder" => serde_json::to_value(list_files(Path::new(
+                    args["path"].as_str().unwrap_or(&folder),
+                ))?)
+                .unwrap(),
                 "sync_document" => {
                     let d = docs.update(
                         id,

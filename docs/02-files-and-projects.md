@@ -62,3 +62,25 @@ which the Explorer hides.
   "theme": "light"
 }
 ```
+
+## Opening River (decision #39)
+
+River launches into a project welcome screen, with **New Project…**, **Open Project…**
+and **Recent Projects**. No editor chrome or template selection appears before a project
+opens. New Project uses a native Mac name/location dialog and creates a plain folder
+containing `<project name>.md`, ready to type. It never replaces an existing folder.
+Open Project selects an existing folder; no special project extension is required.
+
+Opening a project restores its story tabs, active file, cursor/scroll positions,
+sidebar/preview visibility, split sizes and Light/Dark choice. UI-only session metadata
+is saved under `"session"` in `_river/river.json`; this can create the project sidecar
+before any extras are used. Existing template settings and unknown JSON keys are kept.
+Recent locations are stored in the app's local configuration as `projects.json` (up to
+12 projects). Missing folders stay listed as unavailable; failure to open leaves the
+welcome screen/current workspace intact. No story content is stored in recents.
+
+File → New Project, Open Project and Close Project also work from the workspace.
+Changing/closing projects checks unsaved text, and cancelling leaves it in place.
+File → Open remains available for individual story files inside the workspace.
+Session restoration reloads **saved files**, not unsaved text: content autosave,
+crash recovery, backups and git remain separate work.

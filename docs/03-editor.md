@@ -142,3 +142,10 @@ has a **170 px minimum**, matching VS Code's defaults. Visible panes do not coll
 when dragged below these limits. Explicit hiding returns the space to the remaining
 pane; reopening restores the prior split. If minimums cannot fit, the split scrolls
 instead of squeezing a pane away.
+
+## Project welcome (decision #39)
+Startup is a calm project welcome screen, inspired by Mac creative tools: River name,
+New Project, Open Project and recent folders. The writing workbench appears after a
+project is selected. The welcome screen follows the same Light/Dark tokens and uses
+Kobalte controls; native Mac dialogs handle name/location and folder selection.
+Closing a project returns here, preserving its saved tabs/layout for the next open.

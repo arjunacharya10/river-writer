@@ -71,6 +71,80 @@ async fn open_folder(
     .await
 }
 #[tauri::command]
+async fn recent_projects(
+    app: tauri::AppHandle,
+) -> Result<Vec<river_service::projects::RecentProject>, String> {
+    work(move || {
+        river_service::projects::recents(&app.path().app_config_dir().map_err(|e| e.to_string())?)
+    })
+    .await
+}
+#[tauri::command]
+async fn open_project(
+    app: tauri::AppHandle,
+    path: Option<PathBuf>,
+) -> Result<Option<river_service::projects::Project>, String> {
+    work(move || {
+        let path = match path {
+            Some(p) => p,
+            None => match app
+                .dialog()
+                .file()
+                .set_title("Open Project")
+                .blocking_pick_folder()
+            {
+                Some(p) => p.into_path().map_err(|e| e.to_string())?,
+                None => return Ok(None),
+            },
+        };
+        let project = river_service::projects::open(&path)?;
+        if let Ok(config) = app.path().app_config_dir() {
+            let _ = river_service::projects::remember(&config, &project);
+        }
+        lock(&app.state::<Desktop>().documents)?.set_project(&project.path)?;
+        Ok(Some(project))
+    })
+    .await
+}
+#[tauri::command]
+async fn create_project(
+    app: tauri::AppHandle,
+) -> Result<Option<river_service::projects::Project>, String> {
+    work(move || {
+        let Some(path) = app
+            .dialog()
+            .file()
+            .set_title("New Project")
+            .set_file_name("Untitled")
+            .blocking_save_file()
+        else {
+            return Ok(None);
+        };
+        let project =
+            river_service::projects::create(&path.into_path().map_err(|e| e.to_string())?)?;
+        // Recent-location persistence is not allowed to turn successful creation into an error.
+        if let Ok(config) = app.path().app_config_dir() {
+            let _ = river_service::projects::remember(&config, &project);
+        }
+        lock(&app.state::<Desktop>().documents)?.set_project(&project.path)?;
+        Ok(Some(project))
+    })
+    .await
+}
+#[tauri::command]
+async fn save_project_session(
+    app: tauri::AppHandle,
+    path: PathBuf,
+    session: river_service::projects::Session,
+) -> Result<(), String> {
+    work(move || {
+        let state = app.state::<Desktop>();
+        let _documents = lock(&state.documents)?;
+        river_service::projects::save_session(&path, session)
+    })
+    .await
+}
+#[tauri::command]
 async fn refresh_folder(path: PathBuf) -> Result<Vec<river_service::FileEntry>, String> {
     work(move || river_service::list_files(&path)).await
 }
@@ -124,7 +198,14 @@ async fn save_document(
             let dialog = if let Some(parent) = doc.path.as_ref().and_then(|p| p.parent()) {
                 dialog.set_directory(parent)
             } else {
-                dialog
+                let project = lock(&state.documents)?
+                    .project_dir()
+                    .map(|p| p.to_path_buf());
+                if let Some(path) = project {
+                    dialog.set_directory(path)
+                } else {
+                    dialog
+                }
             };
             let Some(p) = dialog.blocking_save_file() else {
                 return Ok(None);
@@ -330,9 +411,12 @@ fn main() {
                 "File",
                 true,
                 &[
+                    &item("new-project", "New Project…", "CmdOrCtrl+Shift+N")?,
+                    &item("folder", "Open Project…", "CmdOrCtrl+Shift+O")?,
+                    &item("close-project", "Close Project", "CmdOrCtrl+Shift+W")?,
+                    &Native::separator(app)?,
                     &item("new", "New File", "CmdOrCtrl+N")?,
                     &item("open", "Open…", "CmdOrCtrl+O")?,
-                    &item("folder", "Open Folder…", "CmdOrCtrl+Shift+O")?,
                     &Native::separator(app)?,
                     &item("save", "Save", "CmdOrCtrl+S")?,
                     &item("save-as", "Save As…", "CmdOrCtrl+Shift+S")?,
@@ -395,6 +479,10 @@ fn main() {
             open_document,
             open_folder,
             refresh_folder,
+            recent_projects,
+            create_project,
+            open_project,
+            save_project_session,
             sync_document,
             analyze_document,
             save_document,

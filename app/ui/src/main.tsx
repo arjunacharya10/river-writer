@@ -21,6 +21,7 @@ import {
   SplitVisibility,
   type Command,
 } from "./components/controls";
+import { ProjectWelcome } from "./components/welcome";
 import { PagePreview } from "./components/preview";
 import {
   nameOf,
@@ -29,10 +30,39 @@ import {
   type Preview,
   type FileEntry,
   type TemplateId,
+  type Project,
+  type RecentProject,
+  type ProjectSession,
 } from "./types";
 import "@vscode/codicons/dist/codicon.css";
 import "./style.css";
 function App() {
+  const [welcome, setWelcome] = createSignal(true),
+    [recent, setRecent] = createSignal<RecentProject[]>([]),
+    [projectBusy, setProjectBusy] = createSignal(false);
+  let sessionTimer: ReturnType<typeof setTimeout> | undefined;
+  let restoring = false;
+  const [sidebarSizes, setSidebarSizes] = createSignal<[number, number]>([
+      0.19, 0.81,
+    ]),
+    [editorSizes, setEditorSizes] = createSignal<[number, number]>([0.5, 0.5]),
+    [layoutVersion, setLayoutVersion] = createSignal(0);
+  function rememberSizes(sizes: number[], editor: boolean) {
+    if (
+      projectBusy() ||
+      welcome() ||
+      sizes.length !== 2 ||
+      sizes.some((size) => !Number.isFinite(size) || size <= 0)
+    )
+      return;
+    if ((editor && !previewOpen()) || (!editor && !sidebar())) return;
+    const total = sizes[0] + sizes[1];
+    (editor ? setEditorSizes : setSidebarSizes)([
+      sizes[0] / total,
+      sizes[1] / total,
+    ]);
+  }
+
   const [tabs, setTabs] = createSignal<Story[]>([]),
     [active, setActive] = createSignal<number | null>(null),
     [analysis, setAnalysis] = createSignal<Analysis | null>(null);
@@ -59,7 +89,8 @@ function App() {
     previewRequest = 0,
     refreshTimer: ReturnType<typeof setTimeout> | undefined,
     checking = false,
-    quitting = false;
+    quitting = false,
+    openIntent = 0;
   const states = new Map<number, EditorState>(),
     scrolls = new Map<number, number>(),
     sent = new Map<number, number>(),
@@ -138,6 +169,7 @@ function App() {
     schedule(id);
   }
   function select(id: number) {
+    openIntent++;
     if (view && loaded !== null) {
       states.set(loaded, view.state);
       scrolls.set(loaded, view.scrollDOM.scrollTop);
@@ -154,19 +186,176 @@ function App() {
     await add(await call<Story>("new_document"));
   }
   async function open(path?: string) {
+    // Selecting an already-open story is immediate; a delayed open response must
+    // not steal focus back after the writer switches to another tab.
+    const existing = path ? tabs().find((doc) => doc.path === path) : undefined;
+    if (existing) {
+      select(existing.id);
+      return;
+    }
+    const intent = ++openIntent;
     const doc = await call<Story | null>("open_document", {
       path: path ?? null,
     });
-    if (doc) await add(doc);
+    if (doc) {
+      if (intent !== openIntent) {
+        if (!tabs().some((tab) => tab.id === doc.id)) {
+          setTabs((ds) => [...ds, doc]);
+          sent.set(doc.id, doc.revision);
+        }
+        return;
+      }
+      setWelcome(false);
+      await add(doc);
+      view?.requestMeasure();
+    }
+  }
+  async function refreshRecent() {
+    setRecent(await call<RecentProject[]>("recent_projects"));
+  }
+  function sessionSnapshot(): ProjectSession {
+    if (view && loaded !== null) {
+      states.set(loaded, view.state);
+      scrolls.set(loaded, view.scrollDOM.scrollTop);
+    }
+    const relative = (path: string | null) =>
+      path?.startsWith(folder() + "/") ? path.slice(folder().length + 1) : null;
+    const openFiles: string[] = [],
+      cursors: Record<string, number> = {},
+      positions: Record<string, number> = {};
+    for (const doc of tabs()) {
+      const name = relative(doc.path);
+      if (name) {
+        openFiles.push(name);
+        cursors[name] = states.get(doc.id)?.selection.main.head ?? 0;
+        positions[name] = scrolls.get(doc.id) ?? 0;
+      }
+    }
+    return {
+      openFiles,
+      sidebarSizes: sidebarSizes(),
+      editorSizes: editorSizes(),
+      activeFile: relative(current()?.path ?? null),
+      cursors,
+      scrolls: positions,
+      sidebar: sidebar(),
+      sideView: sideView(),
+      preview: previewOpen(),
+      theme: manualTheme ? (dark() ? "dark" : "light") : null,
+    };
+  }
+  async function rememberSession() {
+    clearTimeout(sessionTimer);
+    if (folder())
+      await call("save_project_session", {
+        path: folder(),
+        session: sessionSnapshot(),
+      });
+  }
+  async function mayLeave() {
+    for (const d of tabs()) {
+      if (
+        d.dirty &&
+        !(await call<boolean>("confirm_discard", { name: nameOf(d) }))
+      )
+        return false;
+    }
+    return true;
+  }
+  async function clearWorkspace() {
+    clearTimeout(refreshTimer);
+    previewRequest++;
+    await Promise.all([...queues.values()].map((p) => p.catch(() => {})));
+    await Promise.all(tabs().map((d) => call("close_document", { id: d.id })));
+    loaded = null;
+    setActive(null);
+    setTabs([]);
+    states.clear();
+    scrolls.clear();
+    sent.clear();
+    queues.clear();
+    setAnalysis(null);
+    setPreview(null);
+    setExternal(false);
+    setNotice("");
+  }
+  async function closeProject() {
+    if (projectBusy() || !(await mayLeave())) return;
+    await rememberSession();
+    await clearWorkspace();
+    setFolder("");
+    setWelcome(true);
+    setPalette(false);
+    setError("");
+    await refreshRecent();
+  }
+  async function loadProject(create = false, path?: string) {
+    if (projectBusy()) return;
+    setProjectBusy(true);
+    setError("");
+    restoring = true;
+    try {
+      if (!(await mayLeave())) return;
+      await rememberSession();
+      const project = await call<Project | null>(
+        create ? "create_project" : "open_project",
+        create ? undefined : { path: path ?? null },
+      );
+      if (!project) return;
+      await clearWorkspace();
+      setFolder(project.path);
+      setFiles(project.files);
+      setWelcome(false);
+      const saved = project.session;
+      setSidebar(saved.sidebar);
+      setSideView(saved.sideView === "outline" ? "outline" : "explorer");
+      setPreviewOpen(saved.preview);
+      setSidebarSizes(saved.sidebarSizes);
+      setEditorSizes(saved.editorSizes);
+      setLayoutVersion((v) => v + 1);
+      manualTheme = !!saved.theme;
+      setDark(saved.theme ? saved.theme === "dark" : system.matches);
+      const names = saved.openFiles.length
+        ? saved.openFiles
+        : project.files
+            .slice(0, 1)
+            .map((f) => f.path.slice(project.path.length + 1));
+      for (const name of names) {
+        const doc = await call<Story | null>("open_document", {
+          path: project.path + "/" + name,
+        });
+        if (!doc) continue;
+        await add(doc);
+        const state = stateFor(doc, (text) => changed(doc.id, text));
+        const anchor = Math.min(saved.cursors[name] ?? 0, state.doc.length);
+        const restored = state.update({ selection: { anchor } }).state;
+        states.set(doc.id, restored);
+        scrolls.set(doc.id, saved.scrolls[name] ?? 0);
+        if (view && loaded === doc.id) {
+          view.setState(restored);
+          view.scrollDOM.scrollTop = saved.scrolls[name] ?? 0;
+        }
+      }
+      if (!tabs().length) await newFile();
+      const selected =
+        tabs().find((d) => d.path === project.path + "/" + saved.activeFile) ??
+        tabs()[0];
+      // Force the restored EditorState to replace the initial state made by add().
+      loaded = null;
+      setActive(selected.id);
+      loadEditor();
+      await refreshRecent();
+      queueMicrotask(() => {
+        view?.requestMeasure();
+        if (saved.preview) void updatePreview();
+      });
+    } finally {
+      restoring = false;
+      setProjectBusy(false);
+    }
   }
   async function openFolder() {
-    const result = await call<[string, FileEntry[]] | null>("open_folder");
-    if (result) {
-      setFolder(result[0]);
-      setFiles(result[1]);
-      setSidebar(true);
-      setSideView("explorer");
-    }
+    await loadProject();
   }
   async function save(saveAs = false) {
     const doc = current();
@@ -228,6 +417,7 @@ function App() {
         )
           return;
       }
+      await rememberSession();
       await call("quit_confirmed");
     } finally {
       quitting = false;
@@ -301,11 +491,23 @@ function App() {
     }
   };
   const allCommands: Command[] = [
+    {
+      id: "new-project",
+      label: "Project: New Project…",
+      key: "⇧⌘N",
+      run: run(() => loadProject(true)),
+    },
+    {
+      id: "close-project",
+      label: "Project: Close Project",
+      key: "⇧⌘W",
+      run: run(closeProject),
+    },
     { id: "new", label: "File: New File", key: "⌘N", run: run(newFile) },
     { id: "open", label: "File: Open…", key: "⌘O", run: run(() => open()) },
     {
       id: "folder",
-      label: "File: Open Folder…",
+      label: "Project: Open Project…",
       key: "⇧⌘O",
       run: run(openFolder),
     },
@@ -352,6 +554,16 @@ function App() {
     },
   ];
   function dispatch(id: string) {
+    if (projectBusy()) return;
+    if (welcome() && (id === "new" || id === "new-project")) {
+      run(() => loadProject(true))();
+      return;
+    }
+    if (welcome() && (id === "open" || id === "folder")) {
+      run(() => loadProject())();
+      return;
+    }
+    if (welcome() && id !== "quit") return;
     if (id === "quit") {
       run(quit)();
       return;
@@ -382,8 +594,8 @@ function App() {
       .then(() => call<Analysis>("analyze_document", { id }))
       .then((a) => applyAnalysis(a, id))
       .catch(fail);
-    if (previewOpen()) void updatePreview();
-    queueMicrotask(() => view?.focus());
+    if (previewOpen() && !restoring) void updatePreview();
+    if (!restoring) queueMicrotask(() => view?.focus());
   }
   createEffect(() => {
     active();
@@ -392,7 +604,24 @@ function App() {
   createEffect(() => {
     document.documentElement.dataset.theme = dark() ? "dark" : "light";
   });
+  createEffect(() => {
+    folder();
+    tabs();
+    active();
+    sidebar();
+    sideView();
+    previewOpen();
+    sidebarSizes();
+    editorSizes();
+    dark();
+    welcome();
+    projectBusy();
+    clearTimeout(sessionTimer);
+    if (folder() && !welcome() && !projectBusy())
+      sessionTimer = setTimeout(() => void rememberSession().catch(fail), 600);
+  });
   onMount(() => {
+    void refreshRecent().catch(fail);
     view = new EditorView({
       parent: host,
       state: stateFor(
@@ -417,10 +646,10 @@ function App() {
       if (!(e.metaKey || e.ctrlKey)) return;
       const k = e.key.toLowerCase();
       let id = "";
-      if (k === "n") id = "new";
+      if (k === "n") id = e.shiftKey ? "new-project" : "new";
       else if (k === "o") id = e.shiftKey ? "folder" : "open";
       else if (k === "s") id = e.shiftKey ? "save-as" : "save";
-      else if (k === "w") id = "close";
+      else if (k === "w") id = e.shiftKey ? "close-project" : "close";
       else if (k === "p" && e.shiftKey) id = "palette";
       else if (k === "v" && e.shiftKey) id = "preview";
       else if (k === "b") id = "sidebar";
@@ -454,6 +683,7 @@ function App() {
       disposed = true;
       clearInterval(interval);
       clearTimeout(refreshTimer);
+      clearTimeout(sessionTimer);
       window.removeEventListener("keydown", key);
       window.removeEventListener("focus", poll);
       system.removeEventListener("change", theme);
@@ -461,303 +691,333 @@ function App() {
     });
   });
   return (
-    <main class="workbench">
-      <div class="workbench-body">
-        <nav class="activity-bar" aria-label="Activity">
-          <Action
-            label="Explorer"
-            icon="files"
-            active={sidebar() && sideView() === "explorer"}
-            onClick={() => {
-              setSidebar(true);
-              setSideView("explorer");
-            }}
-          />
-          <Action label="Find in file" icon="search" onClick={find} />
-          <Action
-            label="Outline"
-            icon="list-tree"
-            active={sidebar() && sideView() === "outline"}
-            onClick={() => {
-              setSidebar(true);
-              setSideView("outline");
-            }}
-          />
-          <div class="activity-spacer" />
-          <Action
-            label="Command Palette"
-            icon="terminal"
-            onClick={() => dispatch("palette")}
-          />
-          <Action
-            label="Toggle Light / Dark"
-            icon="color-mode"
-            onClick={toggleTheme}
-          />
-        </nav>
-        <Split class="workbench-split" initialSizes={[0.19, 0.81]}>
-          <Split.Panel
-            aria-hidden={!sidebar()}
-            inert={!sidebar()}
-            minSize="170px"
-            maxSize="420px"
-            initialSize="230px"
-            class="sidebar"
+    <>
+      <Show when={welcome()}>
+        <ProjectWelcome
+          recent={recent()}
+          busy={projectBusy()}
+          error={error()}
+          onNew={run(() => loadProject(true))}
+          onOpen={(path) => run(() => loadProject(false, path))()}
+          onDismiss={() => setError("")}
+        />
+      </Show>
+      <main
+        class="workbench"
+        style={{ display: welcome() ? "none" : undefined }}
+        inert={welcome() || projectBusy()}
+        aria-hidden={welcome()}
+      >
+        <div class="workbench-body">
+          <nav class="activity-bar" aria-label="Activity">
+            <Action
+              label="Explorer"
+              icon="files"
+              active={sidebar() && sideView() === "explorer"}
+              onClick={() => {
+                setSidebar(true);
+                setSideView("explorer");
+              }}
+            />
+            <Action label="Find in file" icon="search" onClick={find} />
+            <Action
+              label="Outline"
+              icon="list-tree"
+              active={sidebar() && sideView() === "outline"}
+              onClick={() => {
+                setSidebar(true);
+                setSideView("outline");
+              }}
+            />
+            <div class="activity-spacer" />
+            <Action
+              label="Command Palette"
+              icon="terminal"
+              onClick={() => dispatch("palette")}
+            />
+            <Action
+              label="Toggle Light / Dark"
+              icon="color-mode"
+              onClick={toggleTheme}
+            />
+          </nav>
+          <Split
+            class="workbench-split"
+            initialSizes={[0.19, 0.81]}
+            onSizesChange={(sizes) => rememberSizes(sizes, false)}
           >
-            <header>
-              {sideView() === "outline" ? "OUTLINE" : "EXPLORER"}
-              <Action
-                label="Open Folder"
-                icon="folder-opened"
-                onClick={run(openFolder)}
-              />
-            </header>
-            <Show
-              when={sideView() === "explorer"}
-              fallback={
-                <div class="outline">
-                  <For each={analysis()?.outline}>
-                    {(item) => (
-                      <button onClick={() => jump(item.source.bytes.start)}>
-                        <Icon
-                          name={
-                            item.kind === "scene"
-                              ? "symbol-event"
-                              : "symbol-namespace"
-                          }
-                        />
-                        <span>{item.text}</span>
-                      </button>
-                    )}
-                  </For>
-                  <Show when={!analysis()?.outline.length}>
-                    <p class="muted">Scenes and headings appear here.</p>
-                  </Show>
-                </div>
-              }
+            <Split.Panel
+              aria-hidden={!sidebar()}
+              inert={!sidebar()}
+              minSize="170px"
+              maxSize="420px"
+              class="sidebar"
             >
+              <header>
+                {sideView() === "outline" ? "OUTLINE" : "EXPLORER"}
+                <Action
+                  label="Open Project"
+                  icon="folder-opened"
+                  onClick={run(openFolder)}
+                />
+              </header>
               <Show
-                when={folder()}
+                when={sideView() === "explorer"}
                 fallback={
-                  <div class="sidebar-welcome">
-                    <p>Open a folder to explore your story files.</p>
-                    <button class="primary" onClick={run(openFolder)}>
-                      Open Folder
-                    </button>
+                  <div class="outline">
+                    <For each={analysis()?.outline}>
+                      {(item) => (
+                        <button onClick={() => jump(item.source.bytes.start)}>
+                          <Icon
+                            name={
+                              item.kind === "scene"
+                                ? "symbol-event"
+                                : "symbol-namespace"
+                            }
+                          />
+                          <span>{item.text}</span>
+                        </button>
+                      )}
+                    </For>
+                    <Show when={!analysis()?.outline.length}>
+                      <p class="muted">Scenes and headings appear here.</p>
+                    </Show>
                   </div>
                 }
               >
-                <div class="folder-title" title={folder()}>
-                  {folder().split("/").pop()}
-                </div>
-                <For each={files()}>
-                  {(file) => (
-                    <button
-                      class={`file ${current()?.path === file.path ? "selected" : ""}`}
-                      title={file.path}
-                      onClick={run(() => open(file.path))}
-                    >
-                      <Icon name="file-text" />
-                      <span>{file.name}</span>
-                    </button>
-                  )}
-                </For>
-                <Show when={!files().length}>
-                  <p class="muted">No .md or .fountain files in this folder.</p>
-                </Show>
-              </Show>
-            </Show>
-          </Split.Panel>
-          <Split.Handle
-            class="split-handle"
-            aria-label="Resize sidebar"
-            style={{ display: sidebar() ? undefined : "none" }}
-          />
-          <Split.Panel
-            minSize={previewOpen() && current() ? "444px" : "220px"}
-            class="main-area"
-            style={{
-              "min-width": previewOpen() && current() ? "444px" : "220px",
-            }}
-          >
-            <header class="editor-title">
-              <div class="tabs" role="tablist" aria-label="Open stories">
-                <For each={tabs()}>
-                  {(doc) => (
-                    <div class={`tab ${active() === doc.id ? "selected" : ""}`}>
-                      <button
-                        role="tab"
-                        aria-selected={active() === doc.id}
-                        onClick={() => select(doc.id)}
-                        title={doc.path ?? "Unsaved file"}
-                      >
-                        <Icon name="file-text" />
-                        {nameOf(doc)}
-                        <span
-                          class="dirty"
-                          aria-label={doc.dirty ? "Unsaved changes" : "Saved"}
-                        >
-                          {doc.dirty ? "●" : ""}
-                        </span>
-                      </button>
-                      <button
-                        class="tab-close"
-                        aria-label={`Close ${nameOf(doc)}`}
-                        onClick={run(() => close(doc.id))}
-                      >
-                        <Icon name="close" />
+                <Show
+                  when={folder()}
+                  fallback={
+                    <div class="sidebar-welcome">
+                      <p>Open a folder to explore your story files.</p>
+                      <button class="primary" onClick={run(openFolder)}>
+                        Open Project
                       </button>
                     </div>
-                  )}
-                </For>
-              </div>
-              <Show when={current()}>
-                {(doc) => (
-                  <div class="editor-actions">
-                    <TemplatePicker
-                      value={doc().template}
-                      onChange={(runTemplate) =>
-                        run(() => changeTemplate(runTemplate))()
-                      }
-                    />
-                    <Action
-                      label="Toggle page preview"
-                      icon="open-preview"
-                      active={previewOpen()}
-                      onClick={togglePreview}
-                    />
-                    <Action
-                      label="Export PDF"
-                      icon="export"
-                      onClick={run(exportPdf)}
-                    />
-                  </div>
-                )}
-              </Show>
-            </header>
-            <Show when={error()}>
-              <div class="message error" role="alert">
-                <span>{error()}</span>
-                <Action
-                  label="Dismiss error"
-                  icon="close"
-                  onClick={() => setError("")}
-                />
-              </div>
-            </Show>
-            <Show when={external()}>
-              <div class="message">
-                <span>
-                  This file changed outside River. Reload it, or Save As to keep
-                  your edits.
-                </span>
-                <button onClick={run(reload)}>Reload</button>
-                <button onClick={run(() => save(true))}>Save As…</button>
-              </div>
-            </Show>
-            <div class="content">
-              <Split class="editor-split" initialSizes={[0.5, 0.5]}>
-                <Split.Panel minSize="220px" class="editor-pane">
-                  <Show
-                    when={current()}
-                    fallback={
-                      <section class="welcome">
-                        <h1>River Writer</h1>
-                        <p>Your story starts with a few words.</p>
-                        <button onClick={run(newFile)}>
-                          New File <kbd>⌘N</kbd>
-                        </button>
-                        <button onClick={run(() => open())}>
-                          Open File… <kbd>⌘O</kbd>
-                        </button>
-                        <button onClick={run(openFolder)}>
-                          Open Folder… <kbd>⇧⌘O</kbd>
-                        </button>
-                      </section>
-                    }
-                  >
-                    {null}
-                  </Show>
-                  <div
-                    ref={host}
-                    class={`editor-host ${current() ? "" : "hidden"} ${current()?.template === "manuscript" ? "manuscript" : "script"}`}
-                  />
-                </Split.Panel>
-                <Split.Handle
-                  style={{
-                    display: previewOpen() && current() ? undefined : "none",
-                  }}
-                  class="split-handle"
-                  aria-label="Resize page preview"
-                />
-                <Split.Panel
-                  minSize="220px"
-                  class="preview-pane"
-                  aria-hidden={!(previewOpen() && current())}
-                  inert={!(previewOpen() && current())}
+                  }
                 >
-                  <Show when={previewOpen() && current()}>
-                    <PagePreview
-                      id={active()!}
-                      preview={preview()}
-                      busy={previewBusy()}
-                      error={previewError()}
-                      onClose={togglePreview}
-                      onExport={run(exportPdf)}
-                    />
+                  <div class="folder-title" title={folder()}>
+                    {folder().split("/").pop()}
+                  </div>
+                  <For each={files()}>
+                    {(file) => (
+                      <button
+                        class={`file ${current()?.path === file.path ? "selected" : ""}`}
+                        title={file.path}
+                        onClick={run(() => open(file.path))}
+                      >
+                        <Icon name="file-text" />
+                        <span>{file.name}</span>
+                      </button>
+                    )}
+                  </For>
+                  <Show when={!files().length}>
+                    <p class="muted">
+                      No .md or .fountain files in this folder.
+                    </p>
                   </Show>
-                </Split.Panel>
-                <SplitVisibility
-                  open={!!(previewOpen() && current())}
-                  panel={1}
-                  defaultSizes={[0.5, 0.5]}
-                />
-              </Split>
-            </div>
-            <Show when={analysis()?.diagnostics.length}>
-              <div class="problems" aria-label="Problems">
-                <For each={analysis()?.diagnostics}>
-                  {(d) => (
-                    <button onClick={() => jump(d.source.bytes.start)}>
-                      <Icon
-                        name={d.severity === "Error" ? "error" : "warning"}
+                </Show>
+              </Show>
+            </Split.Panel>
+            <Split.Handle
+              class="split-handle"
+              aria-label="Resize sidebar"
+              style={{ display: sidebar() ? undefined : "none" }}
+            />
+            <Split.Panel
+              minSize={previewOpen() && current() ? "444px" : "220px"}
+              class="main-area"
+              style={{
+                "min-width": previewOpen() && current() ? "444px" : "220px",
+              }}
+            >
+              <header class="editor-title">
+                <div class="tabs" role="tablist" aria-label="Open stories">
+                  <For each={tabs()}>
+                    {(doc) => (
+                      <div
+                        class={`tab ${active() === doc.id ? "selected" : ""}`}
+                      >
+                        <button
+                          role="tab"
+                          aria-selected={active() === doc.id}
+                          onClick={() => select(doc.id)}
+                          title={doc.path ?? "Unsaved file"}
+                        >
+                          <Icon name="file-text" />
+                          {nameOf(doc)}
+                          <span
+                            class="dirty"
+                            aria-label={doc.dirty ? "Unsaved changes" : "Saved"}
+                          >
+                            {doc.dirty ? "●" : ""}
+                          </span>
+                        </button>
+                        <button
+                          class="tab-close"
+                          aria-label={`Close ${nameOf(doc)}`}
+                          onClick={run(() => close(doc.id))}
+                        >
+                          <Icon name="close" />
+                        </button>
+                      </div>
+                    )}
+                  </For>
+                </div>
+                <Show when={current()}>
+                  {(doc) => (
+                    <div class="editor-actions">
+                      <TemplatePicker
+                        value={doc().template}
+                        onChange={(runTemplate) =>
+                          run(() => changeTemplate(runTemplate))()
+                        }
                       />
-                      {d.message}
-                    </button>
+                      <Action
+                        label="Toggle page preview"
+                        icon="open-preview"
+                        active={previewOpen()}
+                        onClick={togglePreview}
+                      />
+                      <Action
+                        label="Export PDF"
+                        icon="export"
+                        onClick={run(exportPdf)}
+                      />
+                    </div>
                   )}
-                </For>
+                </Show>
+              </header>
+              <Show when={error()}>
+                <div class="message error" role="alert">
+                  <span>{error()}</span>
+                  <Action
+                    label="Dismiss error"
+                    icon="close"
+                    onClick={() => setError("")}
+                  />
+                </div>
+              </Show>
+              <Show when={external()}>
+                <div class="message">
+                  <span>
+                    This file changed outside River. Reload it, or Save As to
+                    keep your edits.
+                  </span>
+                  <button onClick={run(reload)}>Reload</button>
+                  <button onClick={run(() => save(true))}>Save As…</button>
+                </div>
+              </Show>
+              <div class="content">
+                <Split
+                  class="editor-split"
+                  initialSizes={[0.5, 0.5]}
+                  onSizesChange={(sizes) => rememberSizes(sizes, true)}
+                >
+                  <Split.Panel minSize="220px" class="editor-pane">
+                    <Show
+                      when={current()}
+                      fallback={
+                        <section class="welcome">
+                          <h1>River Writer</h1>
+                          <p>Your story starts with a few words.</p>
+                          <button onClick={run(newFile)}>
+                            New File <kbd>⌘N</kbd>
+                          </button>
+                          <button onClick={run(() => open())}>
+                            Open File… <kbd>⌘O</kbd>
+                          </button>
+                          <button onClick={run(openFolder)}>
+                            Open Project… <kbd>⇧⌘O</kbd>
+                          </button>
+                        </section>
+                      }
+                    >
+                      {null}
+                    </Show>
+                    <div
+                      ref={host}
+                      class={`editor-host ${current() ? "" : "hidden"} ${current()?.template === "manuscript" ? "manuscript" : "script"}`}
+                    />
+                  </Split.Panel>
+                  <Split.Handle
+                    style={{
+                      display: previewOpen() && current() ? undefined : "none",
+                    }}
+                    class="split-handle"
+                    aria-label="Resize page preview"
+                  />
+                  <Split.Panel
+                    minSize="220px"
+                    class="preview-pane"
+                    aria-hidden={!(previewOpen() && current())}
+                    inert={!(previewOpen() && current())}
+                  >
+                    <Show when={previewOpen() && current()}>
+                      <PagePreview
+                        id={active()!}
+                        preview={preview()}
+                        busy={previewBusy()}
+                        error={previewError()}
+                        onClose={togglePreview}
+                        onExport={run(exportPdf)}
+                      />
+                    </Show>
+                  </Split.Panel>
+                  <SplitVisibility
+                    open={!!(previewOpen() && current())}
+                    panel={1}
+                    defaultSizes={editorSizes()}
+                    restoreKey={layoutVersion()}
+                  />
+                </Split>
               </div>
-            </Show>
-          </Split.Panel>
-          <SplitVisibility
-            open={sidebar()}
-            panel={0}
-            defaultSizes={[0.19, 0.81]}
-          />
-        </Split>
-      </div>
-      <footer class="status-bar">
-        <span>{notice() || "River Writer"}</span>
-        <div class="status-spacer" />
-        <Show when={current()}>
-          <span>{analysis()?.words ?? "—"} words</span>
-          <span>{analysis()?.scenes ?? "—"} scenes</span>
-          <span>UTF-8</span>
-          <span>
-            {current()?.path?.endsWith(".fountain") ? "Fountain" : "Markdown"}
-          </span>
-        </Show>
-      </footer>
-      <Palette
-        open={palette()}
-        onClose={() => setPalette(false)}
-        query={query()}
-        setQuery={setQuery}
-        items={allCommands.filter((c) =>
-          c.label.toLowerCase().includes(query().toLowerCase()),
-        )}
-      />
-    </main>
+              <Show when={analysis()?.diagnostics.length}>
+                <div class="problems" aria-label="Problems">
+                  <For each={analysis()?.diagnostics}>
+                    {(d) => (
+                      <button onClick={() => jump(d.source.bytes.start)}>
+                        <Icon
+                          name={d.severity === "Error" ? "error" : "warning"}
+                        />
+                        {d.message}
+                      </button>
+                    )}
+                  </For>
+                </div>
+              </Show>
+            </Split.Panel>
+            <SplitVisibility
+              open={sidebar()}
+              panel={0}
+              defaultSizes={sidebarSizes()}
+              restoreKey={layoutVersion()}
+            />
+          </Split>
+        </div>
+        <footer class="status-bar">
+          <span>{notice() || "River Writer"}</span>
+          <div class="status-spacer" />
+          <Show when={current()}>
+            <span>{analysis()?.words ?? "—"} words</span>
+            <span>{analysis()?.scenes ?? "—"} scenes</span>
+            <span>UTF-8</span>
+            <span>
+              {current()?.path?.endsWith(".fountain") ? "Fountain" : "Markdown"}
+            </span>
+          </Show>
+        </footer>
+        <Palette
+          open={palette()}
+          onClose={() => setPalette(false)}
+          query={query()}
+          setQuery={setQuery}
+          items={allCommands.filter((c) =>
+            c.label.toLowerCase().includes(query().toLowerCase()),
+          )}
+        />
+      </main>
+    </>
   );
 }
 render(() => <App />, document.getElementById("root")!);

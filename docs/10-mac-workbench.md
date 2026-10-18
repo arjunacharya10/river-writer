@@ -96,7 +96,7 @@ complete automated Mac interaction suite.
   CLI baseline. Project-root include resolution and unsaved new include files need
   a later resolver pass. Includes not open in tabs are read from disk.
 * Explorer is a flat list of relative story paths, not the final expandable tree.
-  Session/window state and split sizes are not persisted yet. The palette supports
+  Project tabs/layout/split sizes are restored via the project welcome flow below; window geometry is not persisted yet. The palette supports
   filtering, Enter and tab navigation; arrow-key result selection is pending.
 * Save As does not replace an existing file. Mixed-newline files normalize to their
   detected convention. Save protection compares contents before replacement;
@@ -118,3 +118,24 @@ Regression coverage checks real pane bounds and visible text across repeated tog
 Native WKWebView also rechecked the reported open → preview → close → preview
 sequence: source and rendered pages remain visible side by side. Informational
 tooltips no longer intercept neighbouring toolbar buttons.
+
+## Project welcome (2026-10-18)
+
+The app now starts with New Project / Open Project / Recent Projects (#39).
+`river-service::projects` owns safe plain-folder creation, recent locations and UI-only
+session persistence; native Tauri commands own name/location/folder dialogs. New projects
+contain one empty named `.md` file. Existing folders open their saved story tabs/active
+file, cursors, scroll positions, sidebar/preview, splits and theme. `_river/river.json`
+keeps this UI state without replacing existing template/unknown keys. No story text is
+autosaved. Unsaved text can cancel closing/switching projects.
+
+Recent folders live in the local app configuration's `projects.json`. Only paths,
+names and last-opened timestamps are recorded. Missing locations remain visible, and
+cancelled/failed choices keep the current screen. Close Project returns to the welcome
+screen. The old empty-editor startup is superseded; the workspace remains VS Code-style.
+
+The verification adapter now exercises real project creation, cancelled creation,
+existing-folder open, recents, tab/active-file/layout restoration and dirty-project
+protection alongside the writing checks. Eight service tests cover document safety,
+project creation and state/recents boundaries. Native WKWebView launch and cancellation
+of the New Project dialog were checked. Screenshots are in ignored `app/output/`.

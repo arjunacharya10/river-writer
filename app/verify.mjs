@@ -23,6 +23,7 @@ const backend = spawn(
 const requests = new Map();
 let request = 0;
 const failures = [];
+const calls = [];
 createInterface({ input: backend.stdout }).on("line", (line) => {
   const reply = JSON.parse(line),
     pending = requests.get(reply.request);
@@ -36,15 +37,18 @@ backend.on("exit", (code) => {
 });
 const invoke = (name, args = {}) =>
   new Promise((resolve, reject) => {
+    calls.push({ name, id: args.id, revision: args.revision });
     const id = ++request;
     requests.set(id, { resolve, reject });
     backend.stdin.write(JSON.stringify({ request: id, name, args }) + "\n");
   });
 const browser = await chromium.launch({ headless: true, channel: "chrome" });
+let page;
 try {
-  const page = await browser.newPage({
+  page = await browser.newPage({
     viewport: { width: 1280, height: 840 },
   });
+  page.setDefaultTimeout(10000);
   page.on("pageerror", (e) => failures.push(String(e)));
   page.on("response", (r) => {
     if (r.status() >= 400) failures.push(`${r.status()} ${r.url()}`);
@@ -55,6 +59,10 @@ try {
   await page.addInitScript(() => {
     window.__RIVER_TEST__ = {
       invoke: async (name, args) => {
+        if (window.__cancelNext === name) {
+          window.__cancelNext = null;
+          return null;
+        }
         const result = await window.riverInvoke(name, args);
         return name === "render_page" ? new Uint8Array(result).buffer : result;
       },
@@ -62,7 +70,31 @@ try {
   });
   await page.goto("http://127.0.0.1:1421/");
   await page.getByRole("heading", { name: "River Writer" }).waitFor();
-  await page.getByRole("button", { name: "Open File… ⌘O" }).click();
+  await page.getByText("Your projects will appear here.").waitFor();
+  assert.equal(
+    await page.getByRole("navigation", { name: "Activity" }).isVisible(),
+    false,
+  );
+  await page.screenshot({
+    path: `${root}/app/output/project-welcome-empty.png`,
+  });
+  await page.evaluate(() => {
+    window.__cancelNext = "create_project";
+  });
+  await page.getByRole("button", { name: "New Project…", exact: true }).click();
+  await page.getByRole("main", { name: "Project welcome" }).waitFor();
+  await page.getByRole("button", { name: "New Project…", exact: true }).click();
+  await page.getByRole("tab", { name: /New Story.md/ }).waitFor();
+  assert.equal((await page.locator(".cm-content").innerText()).trim(), "");
+  assert.equal(await readFile(`${folder}/New Story/New Story.md`, "utf8"), "");
+  await page.keyboard.press("ControlOrMeta+Shift+w");
+  await page.getByRole("main", { name: "Project welcome" }).waitFor();
+  await page
+    .getByRole("button", { name: "Open Project…", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Script.fountain", exact: true })
+    .click();
   await page.getByRole("tab", { name: /Script.fountain/ }).waitFor();
   await page.locator(".story-cue").waitFor();
   assert.match(await page.locator(".cm-content").innerText(), /CAFÉ/);
@@ -183,13 +215,16 @@ try {
   await page.getByRole("button", { name: "Outline", exact: true }).click();
   await page.getByRole("button", { name: "INT. BOAT - NIGHT" }).waitFor();
   await page.getByRole("button", { name: "Explorer", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Open Folder", exact: true })
-    .first()
-    .click();
+
   await page.getByRole("button", { name: "Chapter.md", exact: true }).click();
   await page.getByRole("tab", { name: /Chapter.md/ }).waitFor();
   await page.getByRole("tab", { name: /Script.fountain/ }).click();
+  await page.waitForFunction(() =>
+    document
+      .querySelector('[role="tab"][aria-selected="true"]')
+      .textContent.includes("Script.fountain"),
+  );
+  assert.match(await page.locator(".cm-content").innerText(), /CAFÉ/);
   await editor.click();
   await page.keyboard.press("ControlOrMeta+z");
   assert.doesNotMatch(
@@ -242,6 +277,53 @@ try {
     (await readFile(`${folder}/Export.pdf`)).subarray(0, 5).toString(),
     /%PDF-/,
   );
+  // A dirty project cannot be replaced when the discard dialog is cancelled.
+  await page.keyboard.press("ControlOrMeta+Shift+w");
+  await page.getByRole("tab", { name: /Script.fountain/ }).waitFor();
+  await page.keyboard.press("ControlOrMeta+s");
+  await page.waitForFunction(() =>
+    document.querySelector(".status-bar").textContent.includes("Saved"),
+  );
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector('[role="tab"][aria-selected="true"]')
+        .textContent.includes("Script.fountain") &&
+      !document
+        .querySelector('[role="tab"][aria-selected="true"]')
+        .textContent.includes("●"),
+  );
+  const theme = await page.locator("html").getAttribute("data-theme");
+  const editorWidthBefore = (await page.locator(".editor-pane").boundingBox())
+    .width;
+  await page.keyboard.press("ControlOrMeta+Shift+w");
+  await page.getByRole("main", { name: "Project welcome" }).waitFor();
+  await page.locator(".recent-project").first().waitFor();
+  await page.screenshot({
+    path: `${root}/app/output/project-welcome-recents.png`,
+  });
+  await page.locator(".recent-project").first().click();
+  await page.getByRole("tab", { name: /Script.fountain/ }).waitFor();
+  assert.equal(await page.getByRole("tab").count(), 2);
+  assert.equal(
+    await page
+      .getByRole("tab", { name: /Script.fountain/ })
+      .getAttribute("aria-selected"),
+    "true",
+  );
+  assert.equal(await page.locator("html").getAttribute("data-theme"), theme);
+  await page
+    .getByRole("button", { name: "Page template" })
+    .filter({ hasText: "Stage Play" })
+    .waitFor();
+  await page.getByRole("region", { name: "Page preview" }).waitFor();
+  assert.equal(await page.locator(".cm-content").innerText(), before);
+  assert.ok(
+    Math.abs(
+      (await page.locator(".editor-pane").boundingBox()).width -
+        editorWidthBefore,
+    ) < 4,
+  );
   // External changes remain intact when Save is attempted.
   await writeFile(`${folder}/Script.fountain`, "!Changed in another editor.\n");
   await page
@@ -272,10 +354,23 @@ try {
   console.log(
     JSON.stringify({
       checks:
-        "open, edit, save, Rust preview, repeated pane toggles, minimum widths, window resizing, tooltips, outline, tabs, undo, templates, themes, palette, find, keyboard resize, dirty close, PDF, external changes, fonts",
+        "project welcome, cancelled creation, project open, recents, session restore, open, edit, save, Rust preview, repeated pane toggles, minimum widths, window resizing, tooltips, outline, tabs, undo, templates, themes, palette, find, keyboard resize, dirty close, PDF, external changes, fonts",
       result: "passed",
     }),
   );
+} catch (error) {
+  if (page) {
+    await page.screenshot({ path: `${root}/app/output/verify-failure.png` });
+    await writeFile(
+      `${root}/app/output/verify-failure.txt`,
+      JSON.stringify(
+        { body: await page.locator("body").innerText(), failures, calls },
+        null,
+        2,
+      ),
+    );
+  }
+  throw error;
 } finally {
   await browser.close();
   backend.stdin.end();

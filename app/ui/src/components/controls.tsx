@@ -12,15 +12,17 @@ export function SplitVisibility(props: {
   open: boolean;
   panel: 0 | 1;
   defaultSizes: [number, number];
+  restoreKey?: number;
 }) {
   const context = Resizable.useContext();
   let expanded = props.defaultSizes;
   createEffect(
     on(
-      () => props.open,
-      (open, previous) =>
+      () => [props.open, props.restoreKey] as const,
+      ([open, key], previous) =>
         untrack(() => {
-          if (!open && previous) {
+          if (key !== previous?.[1]) expanded = props.defaultSizes;
+          if (!open && previous?.[0] && key === previous?.[1]) {
             const sizes = context.sizes();
             if (
               sizes.length === 2 &&

@@ -1,4 +1,5 @@
 //! Desktop orchestration without a Tauri dependency. Editor text uses LF/UTF-8.
+pub mod projects;
 use river_model::{Diagnostic, Kind, Publication, Script, SourceRange};
 use river_templates::{Template, TemplateId};
 use serde::Serialize;
@@ -74,6 +75,10 @@ fn template_for(path: &Path, root: &Path) -> TemplateId {
         .unwrap_or_else(|| TemplateId::default_for(path))
 }
 impl Documents {
+    pub fn project_dir(&self) -> Option<&Path> {
+        self.project.as_deref()
+    }
+
     pub fn set_project(&mut self, path: &Path) -> Result<(), String> {
         let root = path.canonicalize().map_err(|e| e.to_string())?;
         if !root.is_dir() {
