@@ -19,14 +19,14 @@ gate development or release. Linux: later or never.
 * Draft protection: one-second autosave, crash recovery, private per-branch history and
   Timeline with restore/Undo (#42). No off-machine copy in v1; writers use their own
   Mac backups (#50, #64)
-* Mac release: `app.riverwriter.mac` identity, icon, file associations, signed and
-  notarized DMG via `scripts/release-mac.sh` (#56–#58)
+* Mac release: `app.riverwriter.mac` identity, icon and file associations (#56, #58).
+  Distributed as source: writers clone and build it themselves (#65)
 * Themes: Light and Dark only, following the system appearance
 
 ### Left before releasing v1
 * Native checks in the Mac app after the refactor (#61): open, edit/save, preview, PDF,
   Timeline, Git review/commit/restore/branch, Finder double-click
-* First real signed + notarized build (writer's `river-notary` profile, x86_64 target)
+* Build-from-source steps checked on a clean clone
 * Doc and bug fixes found along the way
 
 ## Version 1.1

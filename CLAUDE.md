@@ -6,7 +6,7 @@ formatted pages. It's a focused, anti-bloat take on Highland Pro: craft first, n
 no accounts, no AI, no plugins.
 
 ## Read first
-1. `docs/decision-log.md` — every decision (64 so far) with reasoning and reversals.
+1. `docs/decision-log.md` — every decision (65 so far) with reasoning and reversals.
    **Locked decisions are not to be relitigated** unless the user raises them.
 2. `docs/01-product-brief.md` (principles), then `02`–`10` as relevant.
 3. Formatting-engine behaviour (parser rules, template values, pagination,
@@ -34,7 +34,7 @@ no accounts, no AI, no plugins.
   checks (but keep the door open; doc 08).
 
 ## Current status and next step
-Product definition complete (64 decisions). Engine CLI and the first production Mac
+Product definition complete (65 decisions). Engine CLI and the first production Mac
 workbench are implemented. `app/` uses Kobalte/Corvu/CodeMirror with native menus,
 a project welcome screen (New/Open/Recent), saved project tab/layout restoration,
 real story-file IO, Rust-driven outline and page preview/PDF. `river-service` stays
@@ -42,7 +42,7 @@ independent of Tauri. See `docs/09-engine-cli.md` and `docs/10-mac-workbench.md`
 commands, verification and boundaries.
 
 Next: v1 scope is frozen (#64): release what is built. Remaining for v1 are native checks
-in the Mac app, the first signed and notarized build, and fixes. Remotes, settings,
+in the Mac app and fixes. v1 ships as source: writers clone and build it (#65). Remotes, settings,
 Quick Open, search, Explorer tree, print, A4, retention, revert/branch delete/merge,
 CI release and FDX are v1.1 (`docs/06-roadmap.md`). River must never require installed tools. Autosave, crash recovery, private Timeline, Todos and
 Scratchpad are implemented; separate backups dropped in favour of a Git remote (#50).

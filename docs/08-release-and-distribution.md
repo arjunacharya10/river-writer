@@ -7,6 +7,10 @@ updates.
 Current release target: **macOS only** (decision #36). Windows distribution and
 signing are deferred; they do not block release.
 
+**v1 ships as source only (#65):** writers clone and build it themselves. No paid Apple
+account, no signed downloads. The CI/signing sections below are for a possible later
+channel.
+
 ## License and distribution (#40)
 River Writer is **MIT-licensed**, with **no business model or monetization planned**.
 Include River's `LICENSE` in distributed builds alongside the bundled font licenses
@@ -101,11 +105,20 @@ flowchart LR
 | GitHub repository secrets | Apple ID/app-specific password or API key, team ID, certificates | — |
 | Website + newsletter service | Download page, changelog, sign-up (any static site + a newsletter provider) | provider-dependent |
 
-## Local release build (implemented, #56/#57)
-Identity: bundle ID **`app.riverwriter.mac`**, product name River Writer, category
-Productivity, macOS 13+, hardened runtime, the River icon from `app/assets/river-writer-icon.png` (#58)
-(`pnpm --dir app tauri icon assets/river-writer-icon.png -o src-tauri/icons`, keeping only the
-macOS sizes). Bundles: `.app` and `.dmg`. The MIT license and Courier Prime OFL ship inside.
+## v1 distribution: build from source (#65)
+River v1 is released as source only. Writers clone the repository and build the app on
+their own Mac; there are no downloadable builds, no Apple Developer Program membership,
+no Developer ID signing and no notarization. The build is ad-hoc signed
+(`signingIdentity: "-"`, hardened runtime) so the bundle is sealed, and a locally built
+app carries no quarantine flag, so Gatekeeper opens it without warnings. The build tools (Xcode Command Line
+Tools, Rust, Node, pnpm) are needed only to build; the built app still needs nothing
+installed (#52). Steps are in the README.
+
+Identity is unchanged: bundle ID **`app.riverwriter.mac`**, product name River Writer,
+category Productivity, macOS 13+, the River icon from `app/assets/river-writer-icon.png`
+(#58) (`pnpm --dir app tauri icon assets/river-writer-icon.png -o src-tauri/icons`,
+keeping only the macOS sizes). The bundle is the `.app` only. The MIT license and
+Courier Prime OFL ship inside.
 
 File types: `.fountain` by extension (Default rank; the writer can still choose another
 app), `.md`/`.markdown` via `net.daringfireball.markdown` at Alternate rank (River is
@@ -113,16 +126,9 @@ offered in Open With, never forced as the Markdown default). Do not add a MIME t
 the Fountain entry: Tauri turns `text/plain` into `public.plain-text`, which would
 register River for every text file.
 
-One-time setup, done by the writer, not River:
-```sh
-rustup target add x86_64-apple-darwin
-xcrun notarytool store-credentials river-notary --apple-id YOU@EXAMPLE.COM --team-id TEAMID
-```
-Then `scripts/release-mac.sh` builds a universal app and DMG, signs with the first
-Developer ID Application identity (override with `APPLE_SIGNING_IDENTITY`), verifies the
-signature, notarizes with the `river-notary` profile (`RIVER_NOTARY_PROFILE` to change),
-staples both, runs `spctl` and writes `<dmg>.sha256`. `--arm64-only` and `--no-notarize`
-help local trials. The CI release workflow above is still to be written.
+The signing/notarizing script from #57 was removed; it is in Git history (`45f1b41`) if
+downloadable builds return. The CI pipeline, DMG, Developer ID and notarization above
+describe that possible future, not v1.
 
 ## Versioning
 * **Semantic versioning:** `MAJOR.MINOR.PATCH`. Patch = fixes; minor = features (slow,

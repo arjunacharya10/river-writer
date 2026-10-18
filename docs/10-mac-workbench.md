@@ -15,8 +15,8 @@ pnpm --dir app tauri build --debug --bundles app
 ```
 
 The development bundle is `app/src-tauri/target/debug/bundle/macos/River Writer.app`.
-Its identifier is `app.riverwriter.mac` (#56); signing and notarization are covered
-below under Mac release polish. The engine stays in the root Cargo workspace;
+Its identifier is `app.riverwriter.mac` (#56). v1 is distributed as source and built
+locally, unsigned by a Developer ID (#65). The engine stays in the root Cargo workspace;
 the desktop package has its own workspace/lockfile.
 
 ## Implemented
@@ -377,12 +377,11 @@ a `text/plain` MIME type produced `public.plain-text` and was corrected before c
 
 macOS `RunEvent::Opened` (Finder double-click, Dock drop, Open With) queues paths in the
 backend; the UI drains the queue on start-up and on a `river:open-files` event, opening
-each file as a story tab one at a time. `scripts/release-mac.sh` covers signing,
-notarization, stapling and Gatekeeper checks (doc 08).
+each file as a story tab one at a time. v1 is distributed as source; writers build the
+app themselves (#65, doc 08).
 
 Verified: bundle builds, Info.plist identity/category/minimum OS/document types, icon set,
-script syntax, and all browser suites. Not yet verified: a real Developer ID signed and
-notarized build (needs the writer's notary profile and the x86_64 Rust target), and the
+script syntax, and all browser suites. Not yet verified: the
 Finder open flow in the native app (a manual check: double-click a `.fountain` file with
 River closed and with it open).
 
