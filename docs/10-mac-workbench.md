@@ -10,13 +10,16 @@ Prerequisites: the existing Rust/Xcode toolchain, pnpm, and Node 26 (use
 
 ```sh
 pnpm --dir app install
-pnpm --dir app tauri dev
-pnpm --dir app tauri build --debug --bundles app
+pnpm --dir app dev:app      # live reload
+pnpm --dir app build:dev    # debug bundle
 ```
 
-The development bundle is `app/src-tauri/target/debug/bundle/macos/River Writer.app`.
-Its identifier is `app.riverwriter.mac` (#56). v1 is distributed as source and built
-locally, unsigned by a Developer ID (#65). The engine stays in the root Cargo workspace;
+Development runs and debug builds use `src-tauri/tauri.dev.conf.json` (#75): identifier
+`app.riverwriter.mac.dev`, name "River Writer Dev", no file associations and their own
+app-data folder, so they never collide with an installed River. The debug bundle is
+`app/src-tauri/target/debug/bundle/macos/River Writer Dev.app`. Release builds
+(`pnpm --dir app tauri build --bundles app`) keep `app.riverwriter.mac` (#56). v1 is
+distributed as source and built locally, unsigned by a Developer ID (#65). The engine stays in the root Cargo workspace;
 the desktop package has its own workspace/lockfile.
 
 ## Implemented

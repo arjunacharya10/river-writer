@@ -1,20 +1,36 @@
 # River Writer
 
-An offline writing app for screenwriters, playwrights and novelists. You write plain
-text, and River turns it into perfectly formatted pages. No cloud, no accounts, no
-subscription.
+A quiet Mac app for screenplays, stage plays and novels. You write plain text, and River
+shows the formatted pages beside it.
 
-Status: **engine CLI and first Mac workbench slice implemented** (74 decisions).
-River now starts with New Project, Open Project and Recent Projects, restores saved
-project tabs/layout, and opens/edits/saves story files, shows Rust page previews and exports
-PDF, using the approved Kobalte/Corvu foundation. macOS is the sole current/v1 target.
-See [workbench usage and boundaries](docs/10-mac-workbench.md) and
-[engine validation](docs/09-engine-cli.md).
+![A screenplay in River Writer, with the scene outline and the formatted page](docs/images/screenplay.png)
+
+## What it does
+
+* **Plain-text files you own.** Screenplays and stage plays are `.fountain`, novels are
+  `.md`. A project is just a folder, so your writing opens in any other editor too.
+* **The page beside the words.** A live preview shows how each page will print, using
+  Screenplay, Multi-cam, Stage Play or Manuscript formatting. Export to PDF.
+* **A writing surface that knows the form.** Scene headings, character names and dialogue
+  sit where they belong as you type, with suggestions for characters and locations.
+* **Outline, Scratchpad and Todos** in the sidebar, kept as plain files in the project.
+* **Versions with Git, built in.** Commit a draft, browse earlier ones, restore a file, and
+  try an alternate ending on a branch. Nothing else to install.
+* **Autosave and crash recovery.** Work is saved a second after you stop typing.
+
+![A manuscript chapter with the Scratchpad and the formatted page](docs/images/manuscript.png)
+
+![Trying an alternate ending on a branch, with the commit and its changes](docs/images/branches.png)
+
+## What it doesn't do
+
+No accounts, cloud sync, subscriptions, telemetry or AI features. River makes no network
+connections. It runs on macOS 13 or later; there is no Windows or Linux version.
 
 ## Install (build it yourself)
 
-River is distributed as source (#65). Building takes a few minutes the first time and
-needs these free tools on a Mac running macOS 13 or later:
+River is distributed as source. Building takes a few minutes the first time and needs
+these free tools:
 
 1. Xcode Command Line Tools: `xcode-select --install`
 2. Rust 1.96 or newer: install from [rustup.rs](https://rustup.rs)
@@ -24,26 +40,31 @@ needs these free tools on a Mac running macOS 13 or later:
 Then:
 
 ```sh
-git clone <repository URL> river-writer
+git clone https://github.com/arjunacharya10/river-writer.git
 cd river-writer
 pnpm --dir app install --frozen-lockfile
 pnpm --dir app tauri build --bundles app
 cp -R "app/src-tauri/target/release/bundle/macos/River Writer.app" /Applications/
 ```
 
-The tools are only needed to build. River itself needs nothing else installed, makes
-no network connections, and opens without Gatekeeper warnings because you built it.
-To update, pull and run the last two commands again; your projects and settings are
-untouched.
+The tools are only needed to build. River itself needs nothing else installed and opens
+without Gatekeeper warnings because you built it. To update, pull and run the last two
+commands again; your projects are untouched.
+
+To make River open `.fountain` files, use Get Info on one, choose River Writer under
+"Open with" and click Change All.
 
 ## Develop
 
 ```sh
-pnpm --dir app tauri dev
+pnpm --dir app dev:app                   # run with live reload, as "River Writer Dev"
+pnpm --dir app build:dev                 # a debug app ("River Writer Dev") that won't clash with an installed copy
 cargo test --workspace
 ```
 
-See [workbench usage, checks and boundaries](docs/10-mac-workbench.md).
+Checks, architecture and every product decision are in [docs/](docs/); start with
+[docs/10-mac-workbench.md](docs/10-mac-workbench.md) and the
+[decision log](docs/decision-log.md).
 
 ## Documents
 

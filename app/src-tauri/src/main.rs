@@ -175,7 +175,7 @@ fn main() {
                         None,
                         Some(tauri::menu::AboutMetadata {
                             name: Some("River Writer".into()),
-                            version: Some("0.1.0 · Development".into()),
+                            version: Some(app.package_info().version.to_string()),
                             license: Some(
                                 "River Writer: MIT. Courier Prime: SIL Open Font License 1.1."
                                     .into(),

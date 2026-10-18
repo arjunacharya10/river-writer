@@ -1,12 +1,14 @@
 {
   "name": "river-writer",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite --config ui/vite.config.ts --host 127.0.0.1",
     "build": "tsc --noEmit -p ui && vite build --config ui/vite.config.ts",
     "tauri": "tauri",
+    "dev:app": "tauri dev --config src-tauri/tauri.dev.conf.json",
+    "build:dev": "tauri build --debug --bundles app --config src-tauri/tauri.dev.conf.json",
     "verify": "node verify.mjs",
     "verify:recovery": "node verify-recovery.mjs",
     "test:writing": "node test-writing.mjs",

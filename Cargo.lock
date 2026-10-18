@@ -875,7 +875,7 @@ dependencies = [
 
 [[package]]
 name = "river-cli"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "river-layout",
  "river-model",
@@ -890,7 +890,7 @@ dependencies = [
 
 [[package]]
 name = "river-layout"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "river-model",
  "river-templates",
@@ -900,14 +900,14 @@ dependencies = [
 
 [[package]]
 name = "river-model"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "river-paginate"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "river-layout",
  "river-model",
@@ -917,7 +917,7 @@ dependencies = [
 
 [[package]]
 name = "river-parse"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "pulldown-cmark",
  "river-model",
@@ -925,7 +925,7 @@ dependencies = [
 
 [[package]]
 name = "river-pdf"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "krilla",
  "river-model",
@@ -934,7 +934,7 @@ dependencies = [
 
 [[package]]
 name = "river-render"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "river-model",
  "river-text",
@@ -944,7 +944,7 @@ dependencies = [
 
 [[package]]
 name = "river-service"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "river-model",
  "river-paginate",
@@ -960,7 +960,7 @@ dependencies = [
 
 [[package]]
 name = "river-templates"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "river-model",
  "serde",
@@ -969,7 +969,7 @@ dependencies = [
 
 [[package]]
 name = "river-text"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "parley",
  "river-model",
@@ -978,7 +978,7 @@ dependencies = [
 
 [[package]]
 name = "river-vcs"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "git2",
  "serde",
