@@ -8,15 +8,21 @@ declare global {
     };
   }
 }
+/** App-shell commands handled by Tauri itself rather than the shared table. */
+const shell = new Set(["take_opened_files", "quit_confirmed"]);
+/** Commands whose reply is raw bytes (an ArrayBuffer), not JSON. */
+const binary = new Set(["render_page"]);
+/** Call a workbench command by name; see `river_service::commands`. */
 export function call<T>(
   name: string,
-  args?: Record<string, unknown>,
+  args: Record<string, unknown> = {},
 ): Promise<T> {
-  return (
-    (import.meta.env.DEV
-      ? window.__RIVER_TEST__?.invoke<T>(name, args)
-      : undefined) ?? invoke<T>(name, args)
-  );
+  const test = import.meta.env.DEV
+    ? window.__RIVER_TEST__?.invoke<T>(name, args)
+    : undefined;
+  if (test) return test;
+  if (shell.has(name)) return invoke<T>(name, args);
+  return invoke<T>(binary.has(name) ? "river_bytes" : "river", { name, args });
 }
 export async function commands(handler: (id: string) => void) {
   if (import.meta.env.DEV && window.__RIVER_TEST__) return () => {};

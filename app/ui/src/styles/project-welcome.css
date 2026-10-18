@@ -1,0 +1,200 @@
+/* Project welcome screen and crash-recovery notice. */
+.project-welcome {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  background: var(--sidebar);
+  padding: 32px;
+  color: var(--text);
+}
+.welcome-window {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  max-width: 920px;
+  width: 100%;
+  min-height: 480px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 18px 60px #0001;
+  background: var(--editor);
+}
+.welcome-intro {
+  padding: 66px 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  border-right: 1px solid var(--border);
+}
+.river-mark {
+  width: 76px;
+  height: 76px;
+  margin-bottom: 24px;
+}
+.welcome-intro h1 {
+  font-weight: 500;
+  font-size: 30px;
+  letter-spacing: -0.6px;
+  margin: 0 0 8px;
+}
+.welcome-intro > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.project-start-actions {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-top: 42px;
+  gap: 8px;
+}
+.project-start-actions button {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--sidebar);
+  text-align: left;
+}
+.project-start-actions button:hover {
+  background: var(--hover);
+}
+.project-start-actions span {
+  flex: 1;
+}
+.project-opening {
+  margin-top: 18px !important;
+  font-size: 12px !important;
+}
+.recent-projects {
+  padding: 28px 16px;
+  min-width: 0;
+  background: var(--sidebar);
+}
+.recent-projects h2 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 4px 12px 22px;
+}
+.recent-projects ul {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  max-height: 420px;
+  overflow: auto;
+}
+.recent-project {
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 12px;
+  text-align: left;
+  border-radius: 6px;
+}
+.recent-project > .codicon {
+  font-size: 27px;
+  color: var(--muted);
+}
+.recent-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+.recent-details strong {
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.recent-path {
+  font-size: 11px;
+  color: var(--muted);
+  direction: rtl;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.recent-project small {
+  font-size: 10px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.no-recent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  color: var(--muted);
+  font-size: 13px;
+  gap: 12px;
+}
+.no-recent .codicon {
+  font-size: 36px;
+  opacity: 0.5;
+}
+.welcome-error {
+  margin-top: 18px;
+  width: min(920px, 100%);
+  padding: 12px 16px;
+  color: var(--error);
+  display: flex;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+}
+.welcome-error span {
+  flex: 1;
+}
+@media (max-width: 820px) {
+  .welcome-intro {
+    padding: 48px 24px;
+  }
+  .welcome-window {
+    min-height: 440px;
+  }
+  .recent-projects {
+    padding: 24px 8px;
+  }
+  .project-welcome {
+    padding: 20px;
+  }
+}
+.recovery-notice {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  max-width: min(720px, 90vw);
+  max-height: 35vh;
+  overflow: auto;
+  padding: 12px 16px;
+  background: var(--panel, #252526);
+  color: var(--text, #eee);
+  border: 1px solid var(--border, #666);
+  border-radius: 6px;
+  box-shadow: 0 4px 20px #0004;
+}
+.recovery-notice button {
+  padding: 6px 10px;
+  cursor: pointer;
+}

@@ -1,282 +1,61 @@
-//! Local test adapter: real service/engine, deterministic replacements for OS dialogs.
-use river_service::*;
+//! Local test adapter: the real command table over stdin/stdout JSON, with
+//! deterministic stand-ins for native dialogs.
+use river_service::commands::{Reply, Service, Shell};
 use serde_json::{Value, json};
 use std::{
-    collections::HashMap,
     io::{self, BufRead},
-    path::Path,
+    path::{Path, PathBuf},
 };
+
+/// Fixed answers in place of Mac dialogs. Cancellation is simulated in the page.
+struct TestShell {
+    folder: PathBuf,
+}
+impl Shell for TestShell {
+    fn pick_story(&self) -> Option<PathBuf> {
+        Some(self.folder.join("Script.fountain"))
+    }
+    fn pick_project(&self) -> Option<PathBuf> {
+        Some(self.folder.clone())
+    }
+    fn new_project_location(&self) -> Option<PathBuf> {
+        Some(self.folder.join("New Story"))
+    }
+    fn save_story(&self, _name: &str, _folder: Option<&Path>) -> Option<PathBuf> {
+        Some(self.folder.join("Saved.md"))
+    }
+    fn save_pdf(&self, _name: &str, _folder: Option<&Path>) -> Option<PathBuf> {
+        Some(self.folder.join("Export.pdf"))
+    }
+    fn save_scratchpad_copy(&self, folder: &Path) -> Option<PathBuf> {
+        Some(folder.join("Scratchpad copy.md"))
+    }
+    fn confirm_discard(&self, _name: &str) -> bool {
+        false
+    }
+    fn config_dir(&self) -> Option<PathBuf> {
+        Some(self.folder.join(".test-config"))
+    }
+}
+
 fn main() {
-    let folder = std::env::args().nth(1).expect("test folder");
-    let mut docs = Documents::default();
-    docs.enable_history(Path::new(&folder).join(".test-config"));
-    let recovery =
-        recovery::Recovery::new(Path::new(&folder).join(".test-config/recovery")).unwrap();
-    let mut engine = river_text::TextEngine::new();
-    let mut previews = HashMap::<u64, (u64, river_model::Publication)>::new();
-    let mut serial = 0;
+    let folder = PathBuf::from(std::env::args().nth(1).expect("test folder"));
+    let service = Service::new(
+        folder.join(".test-config"),
+        Box::new(TestShell {
+            folder: folder.clone(),
+        }),
+    )
+    .expect("service");
     for line in io::stdin().lock().lines() {
-        let line = line.unwrap();
-        let req: Value = serde_json::from_str(&line).unwrap();
-        let args = &req["args"];
-        let id = args["id"].as_u64().unwrap_or(0);
-        let result = (|| -> Result<Value, String> {
-            Ok(match req["name"].as_str().unwrap() {
-                "git_status" => serde_json::to_value(git::status(Path::new(
-                    args["root"].as_str().ok_or("Missing root")?,
-                ))?)
-                .unwrap(),
-                "git_init" => {
-                    initialize_git(Path::new(args["root"].as_str().ok_or("Missing root")?))?;
-                    Value::Null
-                }
-                "git_identity" => {
-                    git::identity(
-                        Path::new(args["root"].as_str().ok_or("Missing root")?),
-                        args["name"].as_str().ok_or("Missing name")?,
-                        args["email"].as_str().ok_or("Missing email")?,
-                    )?;
-                    Value::Null
-                }
-                "git_log" => serde_json::to_value(git::log(
-                    Path::new(args["root"].as_str().ok_or("Missing root")?),
-                    args["before"].as_str(),
-                )?)
-                .unwrap(),
-                "git_diff" => serde_json::to_value(git::commit_diff(
-                    Path::new(args["root"].as_str().ok_or("Missing root")?),
-                    args["id"].as_str().ok_or("Missing commit")?,
-                )?)
-                .unwrap(),
-                "git_commit" => serde_json::to_value(git::commit(
-                    Path::new(args["root"].as_str().ok_or("Missing root")?),
-                    args["head"].as_str(),
-                    args["tree"].as_str().ok_or("Missing tree")?,
-                    args["message"].as_str().ok_or("Missing message")?,
-                )?)
-                .unwrap(),
-                "git_review" => serde_json::to_value(git::review_changes(Path::new(
-                    args["root"].as_str().ok_or("Missing root")?,
-                ))?)
-                .unwrap(),
-                "git_branches" => serde_json::to_value(git::branches(Path::new(
-                    args["root"].as_str().ok_or("Missing root")?,
-                ))?)
-                .unwrap(),
-                "git_create_branch" => {
-                    git::create_branch(
-                        Path::new(args["root"].as_str().ok_or("Missing root")?),
-                        args["name"].as_str().ok_or("Missing name")?,
-                    )?;
-                    Value::Null
-                }
-                "git_switch_branch" => serde_json::to_value(docs.git_switch_branch(
-                    Path::new(args["root"].as_str().ok_or("Missing root")?),
-                    args["name"].as_str().ok_or("Missing name")?,
-                )?)
-                .unwrap(),
-                "git_restore" => serde_json::to_value(docs.git_restore(
-                    Path::new(args["root"].as_str().ok_or("Missing root")?),
-                    args["commit"].as_str().ok_or("Missing commit")?,
-                    args["path"].as_str(),
-                )?)
-                .unwrap(),
-                "git_undo_restore" => {
-                    docs.git_undo_restore(
-                        Path::new(args["root"].as_str().ok_or("Missing root")?),
-                        &serde_json::from_value(args["restored"].clone())
-                            .map_err(|e| e.to_string())?,
-                    )?;
-                    Value::Null
-                }
-                "recovery_drafts" => serde_json::to_value(recovery.pending()?).unwrap(),
-                "recover_draft" => serde_json::to_value(
-                    recovery.restore(&mut docs, args["key"].as_str().ok_or("Missing key")?)?,
-                )
-                .unwrap(),
-                "settle_scratchpad" => {
-                    let root = Path::new(args["root"].as_str().ok_or("Missing root")?);
-                    if extras::scratchpad(root)?.revision.as_deref() != args["expected"].as_str() {
-                        return Err("Scratchpad changed again".into());
-                    }
-                    recovery.forget_note(&extras::scratch_path(root)?)?;
-                    Value::Null
-                }
-                "load_scratchpad" => serde_json::to_value(extras::scratchpad(Path::new(
-                    args["root"].as_str().ok_or("Missing root")?,
-                ))?)
-                .unwrap(),
-                "protect_scratchpad" => {
-                    let root = Path::new(args["root"].as_str().ok_or("Missing root")?);
-                    let path = extras::scratch_path(root)?;
-                    let text = args["text"].as_str().ok_or("Missing text")?;
-                    if extras::scratchpad(root)?.text == text {
-                        recovery.forget_note(&path)?;
-                    } else {
-                        recovery.protect_note(&path, text)?;
-                    }
-                    Value::Null
-                }
-                "save_scratchpad" => {
-                    let root = Path::new(args["root"].as_str().ok_or("Missing root")?);
-                    let text = args["text"].as_str().ok_or("Missing text")?;
-                    recovery.protect_note(&extras::scratch_path(root)?, text)?;
-                    let saved = extras::save_scratchpad(root, args["expected"].as_str(), text)?;
-                    recovery.forget_note(&extras::scratch_path(root)?)?;
-                    serde_json::to_value(saved).unwrap()
-                }
-                "copy_scratchpad" => {
-                    let target = Path::new(args["root"].as_str().ok_or("Missing root")?)
-                        .join("Scratchpad copy.md");
-                    extras::save_copy(&target, args["text"].as_str().ok_or("Missing text")?)?;
-                    json!(true)
-                }
-                "load_todos" => serde_json::to_value(todos::load(Path::new(
-                    args["root"].as_str().ok_or("Missing root")?,
-                ))?)
-                .unwrap(),
-                "update_todos" => serde_json::to_value(todos::update(
-                    Path::new(args["root"].as_str().ok_or("Missing root")?),
-                    args["expected"].as_str(),
-                    serde_json::from_value(args["change"].clone()).map_err(|e| e.to_string())?,
-                )?)
-                .unwrap(),
-                "new_document" => serde_json::to_value(docs.new_document()).unwrap(),
-                "open_document" => serde_json::to_value(
-                    docs.open(Path::new(
-                        args["path"]
-                            .as_str()
-                            .unwrap_or(&format!("{folder}/Script.fountain")),
-                    ))?,
-                )
-                .unwrap(),
-                "recent_projects" => serde_json::to_value(projects::recents(
-                    &Path::new(&folder).join(".test-config"),
-                )?)
-                .unwrap(),
-                "open_project" => {
-                    let path = args["path"].as_str().unwrap_or(&folder);
-                    let project = projects::open(Path::new(path))?;
-                    projects::remember(&Path::new(&folder).join(".test-config"), &project)?;
-                    docs.set_project(&project.path)?;
-                    serde_json::to_value(project).unwrap()
-                }
-                "create_project" => {
-                    let project = projects::create(&Path::new(&folder).join("New Story"))?;
-                    projects::remember(&Path::new(&folder).join(".test-config"), &project)?;
-                    docs.set_project(&project.path)?;
-                    serde_json::to_value(project).unwrap()
-                }
-                "save_project_session" => {
-                    projects::save_session(
-                        Path::new(args["path"].as_str().unwrap()),
-                        serde_json::from_value(args["session"].clone()).unwrap(),
-                    )?;
-                    Value::Null
-                }
-                "refresh_folder" => serde_json::to_value(list_files(Path::new(
-                    args["path"].as_str().unwrap_or(&folder),
-                ))?)
-                .unwrap(),
-                "sync_document" => {
-                    let d = docs.update(
-                        id,
-                        args["revision"].as_u64().unwrap(),
-                        args["text"].as_str().unwrap().into(),
-                        serde_json::from_value(args["template"].clone()).unwrap(),
-                    )?;
-                    recovery.protect(&d)?;
-                    serde_json::to_value(analyze(&d)).unwrap()
-                }
-                "autosave_document" => {
-                    let doc =
-                        docs.autosave(id, args["revision"].as_u64().ok_or("Missing revision")?)?;
-                    if let Some(doc) = &doc {
-                        recovery.protect(doc)?;
-                        docs.persist_saved_template(id)?;
-                    }
-                    serde_json::to_value(doc).unwrap()
-                }
-                "local_history" => {
-                    serde_json::to_value(docs.local_history_before(id, args["before"].as_str())?)
-                        .unwrap()
-                }
-                "history_text" => json!(
-                    docs.history_text(id, args["version"].as_str().ok_or("Missing version")?)?
-                ),
-                "prepare_restore" => {
-                    docs.before_restore(id, args["revision"].as_u64().ok_or("Missing revision")?)?;
-                    json!(
-                        docs.history_text(id, args["version"].as_str().ok_or("Missing version")?)?
-                    )
-                }
-                "analyze_document" => serde_json::to_value(analyze(docs.get(id)?)).unwrap(),
-                "persist_saved_template" => {
-                    docs.persist_saved_template(id)?;
-                    Value::Null
-                }
-                "persist_template" => {
-                    docs.persist_template(id)?;
-                    Value::Null
-                }
-                "save_document" => {
-                    let target = format!("{folder}/Saved.md");
-                    let save_as =
-                        args["saveAs"].as_bool().unwrap_or(false) || docs.get(id)?.path.is_none();
-                    let doc = docs.save(id, save_as.then(|| Path::new(&target)))?;
-                    recovery.protect(&doc)?;
-                    serde_json::to_value(doc).unwrap()
-                }
-                "external_change" => json!(docs.external_change(id)?),
-                "reload_document" => {
-                    let doc = docs.reload(id)?;
-                    recovery.protect(&doc)?;
-                    serde_json::to_value(doc).unwrap()
-                }
-                "close_document" => {
-                    recovery.forget(id)?;
-                    docs.close(id);
-                    previews.remove(&id);
-                    Value::Null
-                }
-                "confirm_discard" => json!(false),
-                "paginate" => {
-                    let d = docs.get(id)?.clone();
-                    let p = publication(&mut engine, &d, &docs.buffers())?;
-                    serial += 1;
-                    let result =
-                        json!({"token":serial,"revision":d.revision,"pages":p.pages.len()});
-                    previews.insert(id, (serial, p));
-                    result
-                }
-                "render_page" => {
-                    let (token, p) = previews.get(&id).ok_or("No preview")?;
-                    if Some(*token) != args["token"].as_u64() {
-                        return Err("Preview expired".into());
-                    }
-                    let bytes = river_render::page(
-                        &p.pages[args["page"].as_u64().unwrap() as usize],
-                        144.0,
-                    )?
-                    .encode_png()
-                    .map_err(|e| e.to_string())?;
-                    json!(bytes)
-                }
-                "export_pdf" => {
-                    let path = std::path::PathBuf::from(format!("{folder}/Export.pdf"));
-                    let p = publication(&mut engine, docs.get(id)?, &docs.buffers())?;
-                    atomic_write(&path, &river_pdf::encode(&p)?, None)?;
-                    json!(path)
-                }
-                command => return Err(format!("Unknown test command {command}")),
-            })
-        })();
-        println!(
-            "{}",
-            match result {
-                Ok(value) => json!({"request":req["request"],"value":value}),
-                Err(e) => json!({"request":req["request"],"error":e}),
-            }
-        );
+        let request: Value = serde_json::from_str(&line.expect("stdin")).expect("JSON request");
+        let name = request["name"].as_str().unwrap_or_default();
+        let reply = match service.call(name, &request["args"]) {
+            Ok(Reply::Json(value)) => json!({ "request": request["request"], "value": value }),
+            // The page converts this byte array back into an ArrayBuffer.
+            Ok(Reply::Bytes(bytes)) => json!({ "request": request["request"], "value": bytes }),
+            Err(error) => json!({ "request": request["request"], "error": error }),
+        };
+        println!("{reply}");
     }
 }

@@ -2967,13 +2967,7 @@ dependencies = [
 name = "river-desktop"
 version = "0.1.0"
 dependencies = [
- "river-model",
- "river-pdf",
- "river-render",
  "river-service",
- "river-templates",
- "river-text",
- "serde",
  "serde_json",
  "tauri",
  "tauri-build",

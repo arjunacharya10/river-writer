@@ -417,3 +417,27 @@ for the 3 s poll. `app/test-harness.mjs` holds the shared service/page/`until` s
 Still open from the review: split `main.tsx` and `style.css` by area, one shared command
 table for Tauri and the test host, caching the private-history repository per file, and
 history retention.
+
+## Structure after the refactor (2026-10-18, #61)
+
+**Commands.** `crates/river-service/src/commands.rs` is the single command table:
+`Service::call(name, args)` covers documents, preview/PDF, recovery, history, projects,
+extras and Git, with the same locking as before. A `Shell` trait supplies dialogs and the
+config folder: `MacShell` in `app/src-tauri/src/main.rs` (native dialogs) and `TestShell`
+in `workbench_host.rs` (fixed paths). Tauri registers `river`, `river_bytes`,
+`take_opened_files` and `quit_confirmed`; `ui/src/bridge.ts` routes names accordingly.
+The Tauri shell went from 840 to 285 lines and no longer depends on the engine crates.
+
+**UI.** `main.tsx` keeps workspace state (tabs, editor, sync, preview, autosave, project
+session) and the split layout. Logic with its own state is in `ui/src/features/`:
+`timeline.ts`, `git-workflow.ts` (diff pane, restore/undo, branch switch),
+`extras-flush.ts`, `commands.ts` (palette list and ⌘ shortcuts). Presentational pieces
+are in `ui/src/components/`: activity bar, sidebar views, editor title/tabs, banners,
+Git diff pane, Timeline pane, status bar/problems.
+
+**Styles.** `ui/src/styles/` holds `base`, `workbench`, `editor`, `preview`, `history`,
+`project-welcome`, `extras` and `git` CSS, imported in that order from `main.tsx`.
+
+Verified by all browser suites plus a pixel comparison of their screenshots against a
+pre-refactor baseline. Not covered automatically: Tauri IPC itself; open a project,
+preview and export once in the Mac app to confirm.

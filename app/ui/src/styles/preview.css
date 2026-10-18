@@ -1,0 +1,55 @@
+/* Page preview pane. */
+.page-preview {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--preview);
+}
+.preview-toolbar {
+  height: 35px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--sidebar);
+  font-size: 11px;
+}
+.preview-toolbar > span {
+  flex: 1;
+}
+.preview-scroll {
+  overflow: auto;
+  flex: 1;
+  padding: 20px;
+  scroll-padding-top: 20px;
+  min-height: 0;
+}
+.paper {
+  background: white;
+  aspect-ratio: 612/792;
+  width: 100%;
+  box-shadow: 0 2px 7px #0003;
+  margin: 0 auto 20px;
+  position: relative;
+  color: #444;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+.paper img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  align-self: stretch;
+}
+.paper-loading {
+  font-size: 12px;
+}
+.preview-error {
+  color: var(--error);
+  padding: 10px;
+  font-size: 12px;
+}

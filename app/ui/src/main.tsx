@@ -1,6 +1,5 @@
 import { render } from "solid-js/web";
 import {
-  For,
   Show,
   createSignal,
   createEffect,
@@ -11,23 +10,30 @@ import {
 import { EditorView } from "@codemirror/view";
 import type { EditorState } from "@codemirror/state";
 import { openSearchPanel } from "@codemirror/search";
-import { isolateHistory } from "@codemirror/commands";
 import { call, commands, openedFiles } from "./bridge";
 import { stateFor, semantic } from "./editor";
 import { writingContext } from "./writing";
+import { Palette, Split, SplitVisibility } from "./components/controls";
+import { ActivityBar } from "./components/activity-bar";
+import { SidebarTitle, ExplorerView, OutlineView } from "./components/sidebar";
+import { EditorTitle, EmptyEditor } from "./components/editor-title";
 import {
-  Action,
-  Icon,
-  TemplatePicker,
-  Palette,
-  Split,
-  SplitVisibility,
-  type Command,
-} from "./components/controls";
+  RecoveryNotice,
+  ErrorBanner,
+  RestoreBanner,
+  ExternalChangeBanner,
+} from "./components/banners";
+import { GitDiffPane } from "./components/git-diff";
+import { TimelinePane } from "./components/timeline";
+import { StatusBar, Problems } from "./components/status-bar";
+import { createExtrasFlush } from "./features/extras-flush";
+import { createTimeline } from "./features/timeline";
+import { createGitWorkflow } from "./features/git-workflow";
+import { shortcut, workbenchCommands } from "./features/commands";
 import { ProjectWelcome } from "./components/welcome";
 import { PagePreview } from "./components/preview";
 import { TodosPanel } from "./components/todos";
-import { SourceControl, type GitReview } from "./components/source-control";
+import { SourceControl } from "./components/source-control";
 import { ScratchpadPanel } from "./components/scratchpad";
 import {
   nameOf,
@@ -41,61 +47,16 @@ import {
   type ProjectSession,
 } from "./types";
 import "@vscode/codicons/dist/codicon.css";
-import "./style.css";
+// Order matters: later areas build on the base tokens and workbench chrome.
+import "./styles/base.css";
+import "./styles/workbench.css";
+import "./styles/editor.css";
+import "./styles/preview.css";
+import "./styles/history.css";
+import "./styles/project-welcome.css";
+import "./styles/extras.css";
+import "./styles/git.css";
 function App() {
-  const extraFlushers = new Set<() => Promise<void>>();
-  async function flushExtras() {
-    await Promise.all([...extraFlushers].map((flush) => flush()));
-  }
-  function registerExtrasFlush(flush: () => Promise<void>) {
-    extraFlushers.add(flush);
-    return () => {
-      queueMicrotask(() => {
-        void flush().then(
-          () => extraFlushers.delete(flush),
-          (error) => {
-            extraFlushers.delete(flush);
-            fail(error);
-          },
-        );
-      });
-    };
-  }
-  const [gitDiff, setGitDiff] = createSignal<{
-    title: string;
-    review: GitReview;
-    commit?: string;
-  } | null>(null);
-  type Restored = { before: string; after: string; paths: string[] };
-  const [restoreAsk, setRestoreAsk] = createSignal<string | null | undefined>(
-    undefined,
-  );
-  const [restoreBusy, setRestoreBusy] = createSignal(false);
-  const [restoreUndo, setRestoreUndo] = createSignal<{
-    root: string;
-    restored: Restored;
-    label: string;
-  } | null>(null);
-  const [extrasEpoch, setExtrasEpoch] = createSignal(0);
-  const [gitEpoch, setGitEpoch] = createSignal(0);
-  const [gitBranch, setGitBranch] = createSignal("");
-  async function switchBranch(name: string) {
-    const root = folder();
-    if (!root || restoreBusy()) return;
-    setRestoreBusy(true);
-    try {
-      await prepareGitWrite(root);
-      const paths = await call<string[]>("git_switch_branch", { root, name });
-      // Restore undo and commit diffs belong to the branch being left.
-      setRestoreUndo(null);
-      setGitDiff(null);
-      setGitBranch(name);
-      await afterGitWrite(root, paths);
-      setNotice(`Switched to ${name}.`);
-    } finally {
-      setRestoreBusy(false);
-    }
-  }
   /** Bring open tabs and extras in line with files Git just rewrote on disk. */
   async function afterGitWrite(root: string, paths: string[]) {
     const changed = new Set(paths.map((p) => `${root}/${p}`));
@@ -129,7 +90,7 @@ function App() {
     }
     setExternal(false);
     setExtrasEpoch((n) => n + 1);
-    setGitEpoch((n) => n + 1);
+    git.bump();
     if (folder())
       setFiles(await call<FileEntry[]>("refresh_folder", { path: folder() }));
     if (previewOpen()) void updatePreview();
@@ -144,70 +105,10 @@ function App() {
         `${nameOf(unsaved)} has changes River could not save. Save or close it before restoring.`,
       );
   }
-  async function restoreFromGit(path: string | null) {
-    const diff = gitDiff(),
-      root = folder();
-    if (!diff?.commit || !root || restoreBusy()) return;
-    setRestoreBusy(true);
-    try {
-      await prepareGitWrite(root);
-      const restored = await call<Restored>("git_restore", {
-        root,
-        commit: diff.commit,
-        path,
-      });
-      setRestoreAsk(undefined);
-      await afterGitWrite(root, restored.paths);
-      const count = restored.paths.length;
-      setRestoreUndo({
-        root,
-        restored,
-        label: path
-          ? `Restored ${path} from “${diff.title}”.`
-          : `Restored ${count} file${count === 1 ? "" : "s"} from “${diff.title}”.`,
-      });
-    } finally {
-      setRestoreBusy(false);
-    }
-  }
-  async function undoRestore() {
-    const undo = restoreUndo();
-    if (!undo || restoreBusy()) return;
-    setRestoreBusy(true);
-    try {
-      await prepareGitWrite(undo.root);
-      await call("git_undo_restore", {
-        root: undo.root,
-        restored: undo.restored,
-      });
-      setRestoreUndo(null);
-      await afterGitWrite(undo.root, undo.restored.paths);
-      setNotice("Restore undone.");
-    } finally {
-      setRestoreBusy(false);
-    }
-  }
-  const sidePaneOpen = () =>
-    !!(((previewOpen() || historyOpen()) && current()) || gitDiff());
   async function beforeCommit() {
     await flushExtras();
     for (const doc of tabs()) if (doc.path) await autosave(doc.id);
   }
-  function showGitDiff(title: string, review: GitReview, commit?: string) {
-    if (previewOpen()) togglePreview();
-    setHistoryOpen(false);
-    setRestoreAsk(undefined);
-    setGitDiff({ title, review, commit });
-  }
-  type Version = { id: string; timestamp: number; bytes: number };
-  const [historyOpen, setHistoryOpen] = createSignal(false);
-  const [versions, setVersions] = createSignal<Version[]>([]);
-  const [historyVersion, setHistoryVersion] = createSignal("");
-  const [historyText, setHistoryText] = createSignal("");
-  const [historyBusy, setHistoryBusy] = createSignal(false);
-  const [historyMore, setHistoryMore] = createSignal(false);
-  let historyRequest = 0;
-  let historyRead = 0;
   const autosaveTimers = new Map<number, ReturnType<typeof setTimeout>>();
   const closing = new Set<number>();
   function cancelAutosave(id: number) {
@@ -249,62 +150,7 @@ function App() {
     if (!local) return;
     patch(id, { dirty: local.revision !== result.revision });
     if (active() === id) setNotice("Saved automatically");
-    if (historyOpen() && active() === id) await loadHistory();
-  }
-  async function loadHistory(older = false) {
-    const doc = current();
-    const ticket = ++historyRequest;
-    if (!doc?.path) {
-      setVersions([]);
-      setHistoryBusy(false);
-      setHistoryMore(false);
-      return;
-    }
-    setHistoryBusy(true);
-    try {
-      const items = await call<Version[]>("local_history", {
-        id: doc.id,
-        before: older ? versions().at(-1)?.id : null,
-      });
-      if (ticket === historyRequest && active() === doc.id) {
-        setVersions((previous) => (older ? [...previous, ...items] : items));
-        setHistoryMore(items.length === 200);
-      }
-    } finally {
-      if (ticket === historyRequest) setHistoryBusy(false);
-    }
-  }
-  async function inspectVersion(version: string) {
-    const doc = current();
-    if (!doc) return;
-    const ticket = ++historyRead;
-    setHistoryVersion("");
-    const text = await call<string>("history_text", { id: doc.id, version });
-    if (ticket !== historyRead || active() !== doc.id) return;
-    setHistoryText(text);
-    setHistoryVersion(version);
-  }
-  async function restoreVersion() {
-    const doc = current(),
-      version = historyVersion();
-    if (!doc || !version) return;
-    await sync(doc.id);
-    const text = await call<string>("prepare_restore", {
-      id: doc.id,
-      revision: doc.revision,
-      version,
-    });
-    if (active() !== doc.id || current()?.revision !== doc.revision)
-      throw Error("The story changed. Choose the version again.");
-    if (view && view.state.doc.toString() !== text) {
-      view.dispatch({
-        annotations: isolateHistory.of("full"),
-        changes: { from: 0, to: view.state.doc.length, insert: text },
-      });
-      view.focus();
-    }
-    setNotice("Version restored. Undo returns to your previous text.");
-    await loadHistory();
+    if (timeline.open() && active() === id) await timeline.load();
   }
   const [recoveries, setRecoveries] = createSignal<
     { key: string; path: string | null }[]
@@ -392,6 +238,29 @@ function App() {
   };
   const patch = (id: number, changes: Partial<Story>) =>
     setTabs((ds) => ds.map((d) => (d.id === id ? { ...d, ...changes } : d)));
+  const { flushExtras, registerExtrasFlush } = createExtrasFlush(fail);
+  const [extrasEpoch, setExtrasEpoch] = createSignal(0);
+  const timeline = createTimeline({
+    current,
+    active,
+    sync,
+    view: () => view,
+    notify: setNotice,
+    fail,
+  });
+  const git = createGitWorkflow({
+    folder,
+    prepare: prepareGitWrite,
+    afterWrite: afterGitWrite,
+    makeRoom: () => {
+      if (previewOpen()) togglePreview();
+      timeline.setOpen(false);
+    },
+    notify: setNotice,
+  });
+  /** Preview, Timeline and Git diff share one right-hand pane. */
+  const sidePaneOpen = () =>
+    !!(((previewOpen() || timeline.open()) && current()) || git.diff());
   function applyAnalysis(a: Analysis, id: number) {
     if (active() !== id || current()?.revision !== a.revision) return;
     patch(id, { dirty: a.dirty });
@@ -569,12 +438,8 @@ function App() {
   }
   async function clearWorkspace() {
     for (const id of autosaveTimers.keys()) cancelAutosave(id);
-    setHistoryVersion("");
-    setHistoryText("");
-    setVersions([]);
-    setGitDiff(null);
-    historyRequest++;
-    historyRead++;
+    timeline.reset();
+    git.setDiff(null);
     clearTimeout(refreshTimer);
     previewRequest++;
     await Promise.all([...queues.values()].map((p) => p.catch(() => {})));
@@ -799,8 +664,8 @@ function App() {
     view.focus();
   }
   function togglePreview() {
-    setGitDiff(null);
-    setHistoryOpen(false);
+    git.setDiff(null);
+    timeline.setOpen(false);
     setPreviewOpen((v) => !v);
     if (previewOpen()) void updatePreview();
     else {
@@ -825,93 +690,27 @@ function App() {
       fail(e);
     }
   };
-  const allCommands: Command[] = [
-    {
-      id: "source-control",
-      label: "View: Source Control",
-      run: () => {
-        setSideView("source-control");
-        setSidebar(true);
-      },
-    },
-    {
-      id: "scratchpad",
-      label: "View: Scratchpad",
-      run: () => {
-        setSideView("scratchpad");
-        setSidebar(true);
-      },
-    },
-    {
-      id: "new-project",
-      label: "Project: New Project…",
-      key: "⇧⌘N",
-      run: run(() => loadProject(true)),
-    },
-    {
-      id: "close-project",
-      label: "Project: Close Project",
-      key: "⇧⌘W",
-      run: run(closeProject),
-    },
-    { id: "new", label: "File: New File", key: "⌘N", run: run(newFile) },
-    { id: "open", label: "File: Open…", key: "⌘O", run: run(() => open()) },
-    {
-      id: "folder",
-      label: "Project: Open Project…",
-      key: "⇧⌘O",
-      run: run(openFolder),
-    },
-    { id: "save", label: "File: Save", key: "⌘S", run: run(() => save()) },
-    {
-      id: "save-as",
-      label: "File: Save As…",
-      key: "⇧⌘S",
-      run: run(() => save(true)),
-    },
-    {
-      id: "close",
-      label: "File: Close Tab",
-      key: "⌘W",
-      run: run(() => active() !== null && close(active()!)),
-    },
-    {
-      id: "export",
-      label: "File: Export PDF…",
-      key: "⌥⌘E",
-      run: run(exportPdf),
-    },
-    {
-      id: "preview",
-      label: "View: Toggle Page Preview",
-      key: "⇧⌘V",
-      run: togglePreview,
-    },
-    {
-      id: "sidebar",
-      label: "View: Toggle Sidebar",
-      key: "⌘B",
-      run: () => setSidebar((v) => !v),
-    },
-    { id: "theme", label: "View: Toggle Light / Dark", run: toggleTheme },
-    { id: "find", label: "Edit: Find", key: "⌘F", run: find },
-    {
-      id: "todos",
-      label: "View: Todos",
-      run: () => {
-        setSideView("todos");
-        setSidebar(true);
-      },
-    },
-    {
-      id: "outline",
-      label: "View: Outline",
-      run: () => {
-        setSideView("outline");
-        setSidebar(true);
-      },
-    },
-  ];
+  const showView = (view: string) => {
+    setSidebar(true);
+    setSideView(view);
+  };
+  const allCommands = workbenchCommands({
+    run,
+    showView,
+    newProject: () => loadProject(true),
+    openProject: openFolder,
+    closeProject,
+    newFile,
+    open: () => open(),
+    save: () => save(),
+    saveAs: () => save(true),
+    closeTab: () => active() !== null && close(active()!),
+    exportPdf,
+    togglePreview,
+    toggleSidebar: () => setSidebar((v) => !v),
+    toggleTheme,
+    find,
+  });
   function dispatch(id: string) {
     if (projectBusy()) return;
     if (welcome() && (id === "new" || id === "new-project")) {
@@ -971,18 +770,6 @@ function App() {
         if (notice() === text) setNotice("");
       }, 5000);
       onCleanup(() => clearTimeout(timer));
-    }),
-  );
-  createEffect(
-    on(folder, (root) => {
-      setGitBranch("");
-      if (!root) return;
-      void call<{ name: string; current: boolean }[]>("git_branches", { root })
-        .then((list) => {
-          if (folder() === root)
-            setGitBranch(list.find((b) => b.current)?.name ?? "");
-        })
-        .catch(() => {}); // Not a Git project yet.
     }),
   );
   createEffect(() => {
@@ -1047,16 +834,7 @@ function App() {
     onCleanup(() => void stopOpened.then((f) => f()));
     if (!window.__RIVER_TEST__) openRequested();
     const key = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey)) return;
-      const k = e.key.toLowerCase();
-      let id = "";
-      if (k === "n") id = e.shiftKey ? "new-project" : "new";
-      else if (k === "o") id = e.shiftKey ? "folder" : "open";
-      else if (k === "s") id = e.shiftKey ? "save-as" : "save";
-      else if (k === "w") id = e.shiftKey ? "close-project" : "close";
-      else if (k === "p" && e.shiftKey) id = "palette";
-      else if (k === "v" && e.shiftKey) id = "preview";
-      else if (k === "b") id = "sidebar";
+      const id = shortcut(e);
       if (id) {
         e.preventDefault();
         dispatch(id);
@@ -1095,33 +873,13 @@ function App() {
       view?.destroy();
     });
   });
-  createEffect(
-    on([active, historyOpen], ([, open]) => {
-      historyRead++;
-      setHistoryVersion("");
-      setHistoryText("");
-      setVersions([]);
-      setHistoryMore(false);
-      if (open) void loadHistory().catch(fail);
-    }),
-  );
   return (
     <>
-      <Show when={recoveries().length > 0}>
-        <aside class="recovery-notice" aria-label="Recovered drafts">
-          <span>River found writing from an interrupted session.</span>
-          <For each={recoveries()}>
-            {(draft) => (
-              <button
-                disabled={recovering() || projectBusy()}
-                onClick={() => void recoverDraft(draft.key)}
-              >
-                Recover {draft.path?.split("/").at(-1) ?? "Untitled"}
-              </button>
-            )}
-          </For>
-        </aside>
-      </Show>
+      <RecoveryNotice
+        drafts={recoveries()}
+        disabled={recovering() || projectBusy()}
+        onRecover={(key) => void recoverDraft(key)}
+      />
       <Show when={welcome()}>
         <ProjectWelcome
           recent={recent()}
@@ -1139,64 +897,13 @@ function App() {
         aria-hidden={welcome()}
       >
         <div class="workbench-body">
-          <nav class="activity-bar" aria-label="Activity">
-            <Action
-              label="Explorer"
-              icon="files"
-              active={sidebar() && sideView() === "explorer"}
-              onClick={() => {
-                setSidebar(true);
-                setSideView("explorer");
-              }}
-            />
-            <Action
-              label="Outline"
-              icon="list-tree"
-              active={sidebar() && sideView() === "outline"}
-              onClick={() => {
-                setSidebar(true);
-                setSideView("outline");
-              }}
-            />
-            <Action
-              label="Source Control"
-              icon="source-control"
-              active={sidebar() && sideView() === "source-control"}
-              onClick={() => {
-                setSideView("source-control");
-                setSidebar(true);
-              }}
-            />
-            <Action
-              label="Scratchpad"
-              icon="edit"
-              active={sidebar() && sideView() === "scratchpad"}
-              onClick={() => {
-                setSidebar(true);
-                setSideView("scratchpad");
-              }}
-            />
-            <Action
-              label="Todos"
-              icon="checklist"
-              active={sidebar() && sideView() === "todos"}
-              onClick={() => {
-                setSidebar(true);
-                setSideView("todos");
-              }}
-            />
-            <div class="activity-spacer" />
-            <Action
-              label="Command Palette"
-              icon="terminal"
-              onClick={() => dispatch("palette")}
-            />
-            <Action
-              label="Toggle Light / Dark"
-              icon="color-mode"
-              onClick={toggleTheme}
-            />
-          </nav>
+          <ActivityBar
+            view={sideView()}
+            sidebar={sidebar()}
+            onShow={showView}
+            onPalette={() => dispatch("palette")}
+            onTheme={toggleTheme}
+          />
           <Split
             class="workbench-split"
             initialSizes={[0.19, 0.81]}
@@ -1209,38 +916,24 @@ function App() {
               maxSize="420px"
               class="sidebar"
             >
-              <header>
-                {sideView() === "source-control"
-                  ? "SOURCE CONTROL"
-                  : sideView() === "scratchpad"
-                    ? "SCRATCHPAD"
-                    : sideView() === "todos"
-                      ? "TODOS"
-                      : sideView() === "outline"
-                        ? "OUTLINE"
-                        : "EXPLORER"}
-                <Action
-                  label="Open Project"
-                  icon="folder-opened"
-                  onClick={run(openFolder)}
-                />
-              </header>
+              <SidebarTitle view={sideView()} onOpenProject={run(openFolder)} />
               <Show when={folder()} keyed>
                 {(root) => (
                   <SourceControl
                     root={root}
                     active={sidebar() && sideView() === "source-control"}
                     beforeCommit={beforeCommit}
-                    onReview={showGitDiff}
-                    switchBranch={switchBranch}
-                    refreshKey={gitEpoch()}
-                    onBranch={setGitBranch}
+                    onReview={git.show}
+                    switchBranch={git.switchBranch}
+                    refreshKey={git.epoch()}
+                    onBranch={git.setBranch}
                   />
                 )}
               </Show>
               <Show when={sideView() === "source-control" && !folder()}>
                 <p class="muted">Open a project folder to use Git.</p>
               </Show>
+              {/* Keyed on an epoch so extras remount (and reload) after Git rewrites files. */}
               <Show
                 when={
                   extrasRoot() ? `${extrasEpoch()}\u0000${extrasRoot()}` : ""
@@ -1277,70 +970,17 @@ function App() {
                   alongside it.
                 </p>
               </Show>
-              <Show
-                when={
-                  !["todos", "scratchpad", "source-control"].includes(
-                    sideView(),
-                  )
-                }
-              >
-                <Show
-                  when={sideView() === "explorer"}
-                  fallback={
-                    <div class="outline">
-                      <For each={analysis()?.outline}>
-                        {(item) => (
-                          <button onClick={() => jump(item.at)}>
-                            <Icon
-                              name={
-                                item.kind === "scene"
-                                  ? "symbol-event"
-                                  : "symbol-namespace"
-                              }
-                            />
-                            <span>{item.text}</span>
-                          </button>
-                        )}
-                      </For>
-                      <Show when={!analysis()?.outline.length}>
-                        <p class="muted">Scenes and headings appear here.</p>
-                      </Show>
-                    </div>
-                  }
-                >
-                  <Show
-                    when={folder()}
-                    fallback={
-                      <div class="sidebar-welcome">
-                        <p>Open a folder to explore your story files.</p>
-                        <button class="primary" onClick={run(openFolder)}>
-                          Open Project
-                        </button>
-                      </div>
-                    }
-                  >
-                    <div class="folder-title" title={folder()}>
-                      {folder().split("/").pop()}
-                    </div>
-                    <For each={files()}>
-                      {(file) => (
-                        <button
-                          class={`file ${current()?.path === file.path ? "selected" : ""}`}
-                          title={file.path}
-                          onClick={run(() => open(file.path))}
-                        >
-                          <Icon name="file-text" />
-                          <span>{file.name}</span>
-                        </button>
-                      )}
-                    </For>
-                    <Show when={!files().length}>
-                      <p class="muted">
-                        No .md or .fountain files in this folder.
-                      </p>
-                    </Show>
-                  </Show>
-                </Show>
+              <Show when={sideView() === "outline"}>
+                <OutlineView items={analysis()?.outline} onJump={jump} />
+              </Show>
+              <Show when={sideView() === "explorer"}>
+                <ExplorerView
+                  folder={folder()}
+                  files={files()}
+                  currentPath={current()?.path}
+                  onOpen={(path) => run(() => open(path))()}
+                  onOpenProject={run(openFolder)}
+                />
               </Show>
             </Split.Panel>
             <Split.Handle
@@ -1355,106 +995,35 @@ function App() {
                 "min-width": sidePaneOpen() ? "444px" : "220px",
               }}
             >
-              <header class="editor-title">
-                <div class="tabs" role="tablist" aria-label="Open stories">
-                  <For each={tabs()}>
-                    {(doc) => (
-                      <div
-                        class={`tab ${active() === doc.id ? "selected" : ""}`}
-                      >
-                        <button
-                          role="tab"
-                          aria-selected={active() === doc.id}
-                          onClick={() => select(doc.id)}
-                          title={doc.path ?? "Unsaved file"}
-                        >
-                          <Icon name="file-text" />
-                          {nameOf(doc)}
-                          <span
-                            class="dirty"
-                            aria-label={doc.dirty ? "Unsaved changes" : "Saved"}
-                          >
-                            {doc.dirty ? "●" : ""}
-                          </span>
-                        </button>
-                        <button
-                          class="tab-close"
-                          aria-label={`Close ${nameOf(doc)}`}
-                          onClick={run(() => close(doc.id))}
-                        >
-                          <Icon name="close" />
-                        </button>
-                      </div>
-                    )}
-                  </For>
-                </div>
-                <Show when={current()}>
-                  {(doc) => (
-                    <div class="editor-actions">
-                      <TemplatePicker
-                        value={doc().template}
-                        onChange={(runTemplate) =>
-                          run(() => changeTemplate(runTemplate))()
-                        }
-                      />
-                      <Action
-                        label="Toggle page preview"
-                        icon="open-preview"
-                        active={previewOpen()}
-                        onClick={togglePreview}
-                      />
-                      <Action
-                        label="Toggle local history"
-                        icon="history"
-                        active={historyOpen()}
-                        onClick={() => {
-                          if (!historyOpen() && previewOpen()) togglePreview();
-                          setGitDiff(null);
-                          setHistoryOpen(!historyOpen());
-                        }}
-                      />
-                      <Action
-                        label="Export PDF"
-                        icon="export"
-                        onClick={run(exportPdf)}
-                      />
-                    </div>
-                  )}
-                </Show>
-              </header>
-              <Show when={error()}>
-                <div class="message error" role="alert">
-                  <span>{error()}</span>
-                  <Action
-                    label="Dismiss error"
-                    icon="close"
-                    onClick={() => setError("")}
-                  />
-                </div>
-              </Show>
-              <Show when={restoreUndo()}>
-                {(undo) => (
-                  <div class="message" role="status">
-                    <span>{undo().label}</span>
-                    <button disabled={restoreBusy()} onClick={run(undoRestore)}>
-                      Undo restore
-                    </button>
-                    <button onClick={() => setRestoreUndo(null)}>
-                      Dismiss
-                    </button>
-                  </div>
-                )}
-              </Show>
-              <Show when={external()}>
-                <div class="message">
-                  <span>
-                    This file changed outside River. Reload it, or Save As to
-                    keep your edits.
-                  </span>
-                  <button onClick={run(reload)}>Reload</button>
-                  <button onClick={run(() => save(true))}>Save As…</button>
-                </div>
-              </Show>
+              <EditorTitle
+                tabs={tabs()}
+                active={active()}
+                current={current()}
+                onSelect={select}
+                onClose={(id) => run(() => close(id))()}
+                onTemplate={(template) => run(() => changeTemplate(template))()}
+                previewOpen={previewOpen()}
+                onPreview={togglePreview}
+                historyOpen={timeline.open()}
+                onHistory={() => {
+                  if (!timeline.open() && previewOpen()) togglePreview();
+                  git.setDiff(null);
+                  timeline.setOpen(!timeline.open());
+                }}
+                onExport={run(exportPdf)}
+              />
+              <ErrorBanner error={error()} onDismiss={() => setError("")} />
+              <RestoreBanner
+                label={git.undo()?.label}
+                busy={git.busy()}
+                onUndo={run(git.undoRestore)}
+                onDismiss={() => git.setUndo(null)}
+              />
+              <ExternalChangeBanner
+                show={external()}
+                onReload={run(reload)}
+                onSaveAs={run(() => save(true))}
+              />
               <div class="content">
                 <Split
                   class="editor-split"
@@ -1462,25 +1031,12 @@ function App() {
                   onSizesChange={(sizes) => rememberSizes(sizes, true)}
                 >
                   <Split.Panel minSize="220px" class="editor-pane">
-                    <Show
-                      when={current()}
-                      fallback={
-                        <section class="welcome">
-                          <h1>River Writer</h1>
-                          <p>Your story starts with a few words.</p>
-                          <button onClick={run(newFile)}>
-                            New File <kbd>⌘N</kbd>
-                          </button>
-                          <button onClick={run(() => open())}>
-                            Open File… <kbd>⌘O</kbd>
-                          </button>
-                          <button onClick={run(openFolder)}>
-                            Open Project… <kbd>⇧⌘O</kbd>
-                          </button>
-                        </section>
-                      }
-                    >
-                      {null}
+                    <Show when={!current()}>
+                      <EmptyEditor
+                        onNew={run(newFile)}
+                        onOpen={run(() => open())}
+                        onOpenProject={run(openFolder)}
+                      />
                     </Show>
                     <div
                       ref={host}
@@ -1500,173 +1056,12 @@ function App() {
                     aria-hidden={!sidePaneOpen()}
                     inert={!sidePaneOpen()}
                   >
-                    <Show when={gitDiff()}>
-                      {(diff) => (
-                        <section class="git-diff" aria-label="Git diff">
-                          <header>
-                            <strong>{diff().title}</strong>
-                            <Show when={diff().commit}>
-                              <button
-                                class="git-restore"
-                                disabled={restoreBusy()}
-                                onClick={() => setRestoreAsk(null)}
-                              >
-                                Restore project…
-                              </button>
-                            </Show>
-                            <Action
-                              label="Close Git diff"
-                              icon="close"
-                              onClick={() => setGitDiff(null)}
-                            />
-                          </header>
-                          <Show when={restoreAsk() !== undefined}>
-                            <div
-                              class="git-confirm"
-                              role="alertdialog"
-                              aria-label="Confirm restore"
-                            >
-                              <p>
-                                {restoreAsk() === null
-                                  ? "Make the whole project match this commit? Files added since will be removed. You can undo this."
-                                  : `Replace ${restoreAsk()} with its version in this commit? You can undo this.`}
-                              </p>
-                              <button
-                                class="primary"
-                                disabled={restoreBusy()}
-                                onClick={run(() =>
-                                  restoreFromGit(restoreAsk() ?? null),
-                                )}
-                              >
-                                Restore
-                              </button>
-                              <button
-                                disabled={restoreBusy()}
-                                onClick={() => setRestoreAsk(undefined)}
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </Show>
-                          <Show when={diff().commit}>
-                            <ul
-                              class="git-diff-files"
-                              aria-label="Files in this commit"
-                            >
-                              <For each={diff().review.files}>
-                                {(file) => (
-                                  <li>
-                                    <span title={file.path}>{file.path}</span>
-                                    <small>{file.kind}</small>
-                                    <button
-                                      disabled={restoreBusy()}
-                                      aria-label={`Restore ${file.path}`}
-                                      onClick={() => setRestoreAsk(file.path)}
-                                    >
-                                      Restore
-                                    </button>
-                                  </li>
-                                )}
-                              </For>
-                            </ul>
-                          </Show>
-                          <Show when={diff().review.truncated}>
-                            <p class="git-message">
-                              This diff is too large to show in full. Use
-                              another Git tool to review the remainder.
-                            </p>
-                          </Show>
-                          <pre aria-label="Git changes">
-                            <For each={diff().review.patch.split("\n")}>
-                              {(line) => (
-                                <span
-                                  class={
-                                    line.startsWith("+")
-                                      ? "added"
-                                      : line.startsWith("-")
-                                        ? "removed"
-                                        : ""
-                                  }
-                                >
-                                  {line}
-                                  {"\n"}
-                                </span>
-                              )}
-                            </For>
-                          </pre>
-                        </section>
-                      )}
-                    </Show>
-                    <Show when={historyOpen()}>
-                      <section class="timeline" aria-label="Local history">
-                        <header>
-                          <strong>TIMELINE · LOCAL HISTORY</strong>
-                          <Action
-                            label="Close local history"
-                            icon="close"
-                            onClick={() => setHistoryOpen(false)}
-                          />
-                        </header>
-                        <div class="timeline-body">
-                          <div class="timeline-list">
-                            <For each={versions()}>
-                              {(version) => (
-                                <button
-                                  class={
-                                    historyVersion() === version.id
-                                      ? "selected"
-                                      : ""
-                                  }
-                                  aria-pressed={historyVersion() === version.id}
-                                  onClick={run(() =>
-                                    inspectVersion(version.id),
-                                  )}
-                                >
-                                  {new Date(
-                                    version.timestamp * 1000,
-                                  ).toLocaleString()}{" "}
-                                  · {version.bytes} bytes
-                                </button>
-                              )}
-                            </For>
-                            <Show when={historyMore()}>
-                              <button
-                                disabled={historyBusy()}
-                                onClick={run(() => loadHistory(true))}
-                              >
-                                Load older versions
-                              </button>
-                            </Show>
-                            <Show when={!versions().length}>
-                              <p class="muted">
-                                {historyBusy()
-                                  ? "Loading…"
-                                  : current()?.path
-                                    ? "Saved versions will appear here."
-                                    : "Save this draft to start local history."}
-                              </p>
-                            </Show>
-                          </div>
-                          <div class="timeline-version">
-                            <Show
-                              when={historyVersion()}
-                              fallback={
-                                <p class="muted">
-                                  Choose a version to read its text.
-                                </p>
-                              }
-                            >
-                              <button onClick={run(restoreVersion)}>
-                                Restore this version
-                              </button>
-                              <pre aria-label="Version text">
-                                {historyText()}
-                              </pre>
-                            </Show>
-                          </div>
-                        </div>
-                      </section>
-                    </Show>
+                    <GitDiffPane git={git} run={run} />
+                    <TimelinePane
+                      timeline={timeline}
+                      saved={!!current()?.path}
+                      run={run}
+                    />
                     <Show when={previewOpen() && current()}>
                       <PagePreview
                         id={active()!}
@@ -1684,20 +1079,7 @@ function App() {
                   />
                 </Split>
               </div>
-              <Show when={analysis()?.diagnostics.length}>
-                <div class="problems" aria-label="Problems">
-                  <For each={analysis()?.diagnostics}>
-                    {(d) => (
-                      <button onClick={() => jump(d.at)}>
-                        <Icon
-                          name={d.severity === "Error" ? "error" : "warning"}
-                        />
-                        {d.message}
-                      </button>
-                    )}
-                  </For>
-                </div>
-              </Show>
+              <Problems items={analysis()?.diagnostics} onJump={jump} />
             </Split.Panel>
             <SplitVisibility
               open={sidebar()}
@@ -1707,30 +1089,19 @@ function App() {
             />
           </Split>
         </div>
-        <footer class="status-bar">
-          <Show when={folder() && gitBranch()}>
-            <button
-              class="status-branch"
-              title="Source Control"
-              onClick={() => {
-                setSideView("source-control");
-                setSidebar(true);
-              }}
-            >
-              <Icon name="git-branch" />
-              {gitBranch()}
-            </button>
-          </Show>
-          <span>{notice() || "River Writer"}</span>
-          <div class="status-spacer" />
-          <Show when={current()}>
-            <span>{analysis()?.words ?? "—"} words</span>
-            <span>{analysis()?.scenes ?? "—"} scenes</span>
-            <span>
-              {current()?.path?.endsWith(".fountain") ? "Fountain" : "Markdown"}
-            </span>
-          </Show>
-        </footer>
+        <StatusBar
+          branch={folder() ? git.branch() : ""}
+          onBranch={() => showView("source-control")}
+          notice={notice()}
+          story={
+            current()
+              ? {
+                  analysis: analysis(),
+                  fountain: !!current()?.path?.endsWith(".fountain"),
+                }
+              : null
+          }
+        />
         <Palette
           open={palette()}
           onClose={() => setPalette(false)}

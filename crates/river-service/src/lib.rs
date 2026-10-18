@@ -1,5 +1,6 @@
 //! Desktop orchestration without a Tauri dependency. Editor text uses LF/UTF-8.
 pub use river_vcs::project as git;
+pub mod commands;
 pub mod extras;
 pub mod projects;
 pub mod recovery;

@@ -1,0 +1,348 @@
+/* Workbench chrome: activity bar, splits and pane floors, sidebar, tabs, title bar, controls, status bar, messages, palette. */
+.workbench {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.workbench-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.activity-bar {
+  width: 48px;
+  flex-shrink: 0;
+  background: var(--activity);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 4px;
+}
+.activity-bar .action {
+  height: 48px;
+  width: 47px;
+  border-radius: 0;
+  color: var(--muted);
+  border-left: 2px solid transparent;
+}
+.activity-bar .action .codicon {
+  font-size: 24px;
+}
+.activity-bar .active {
+  border-left-color: var(--accent);
+  color: var(--text);
+}
+.activity-spacer {
+  flex: 1;
+}
+.action {
+  height: 28px;
+  min-width: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  padding: 3px;
+  gap: 4px;
+}
+.action.active {
+  color: var(--accent);
+}
+.tooltip {
+  z-index: 1000;
+  background: var(--sidebar);
+  border: 1px solid var(--border);
+  padding: 5px 8px;
+  box-shadow: 0 3px 10px #0003;
+  border-radius: 3px;
+  font-size: 12px;
+}
+.workbench-split,
+.editor-split {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.split-handle {
+  width: 4px;
+  flex-shrink: 0;
+  background: var(--border);
+  padding: 0;
+  border: 0;
+  z-index: 4;
+  cursor: col-resize;
+  transition: background 0.15s;
+}
+.split-handle:hover,
+.split-handle:focus-visible,
+.split-handle[data-active] {
+  background: var(--accent);
+}
+.sidebar {
+  background: var(--sidebar);
+  overflow: auto;
+  min-height: 0;
+}
+.sidebar > header {
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px 0 20px;
+  font-size: 11px;
+  letter-spacing: 0.6px;
+}
+.sidebar-welcome {
+  padding: 8px 20px;
+}
+.sidebar-welcome p {
+  line-height: 1.5;
+}
+.folder-title {
+  padding: 10px 12px 5px;
+  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 600;
+}
+.file {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 16px;
+  text-align: left;
+}
+.file span,
+.outline span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file.selected {
+  background: var(--selection);
+}
+.outline button {
+  width: 100%;
+  display: flex;
+  gap: 6px;
+  text-align: left;
+  padding: 7px 12px;
+}
+.main-area {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.editor-title {
+  height: 38px;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  background: var(--sidebar);
+  border-bottom: 1px solid var(--border);
+}
+.tabs {
+  display: flex;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.tab {
+  display: flex;
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+  border-top: 1px solid transparent;
+  align-items: center;
+  color: var(--muted);
+}
+.tab.selected {
+  background: var(--editor);
+  color: var(--text);
+  border-top-color: var(--accent);
+}
+.tab > button:first-child {
+  height: 36px;
+  padding: 0 5px 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.tab-close {
+  display: flex;
+  align-items: center;
+  padding: 3px;
+  margin-right: 6px;
+}
+.dirty {
+  font-size: 9px;
+  min-width: 8px;
+}
+.editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  background: var(--sidebar);
+}
+.template-picker {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  white-space: nowrap;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  font-size: 12px;
+  height: 28px;
+  padding: 3px 6px;
+}
+.select-content {
+  z-index: 100;
+  background: var(--sidebar);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 5px 20px #0003;
+  min-width: 150px;
+}
+.select-content ul {
+  margin: 4px;
+  padding: 0;
+  list-style: none;
+}
+.select-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 7px 9px;
+  cursor: pointer;
+  border-radius: 2px;
+}
+.select-item[data-highlighted] {
+  outline: none;
+  background: var(--selection);
+}
+.content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.editor-pane {
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+}
+.editor-host {
+  height: 100%;
+  width: 100%;
+}
+.status-bar {
+  height: 24px;
+  flex-shrink: 0;
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  border-top: 1px solid var(--border);
+  background: var(--sidebar);
+  padding: 0 12px;
+  font-size: 11px;
+}
+.status-spacer {
+  flex: 1;
+}
+.message {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 12px;
+  background: var(--sidebar);
+  border-bottom: 1px solid var(--border);
+  line-height: 1.5;
+}
+.message span {
+  flex: 1;
+}
+.message.error {
+  color: var(--error);
+}
+.message > button {
+  padding: 4px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.preview-pane {
+  min-width: 0;
+  overflow: hidden;
+}
+.palette-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: #0002;
+}
+.palette {
+  position: fixed;
+  z-index: 91;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(560px, 90vw);
+  background: var(--sidebar);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  box-shadow: 0 10px 40px #0005;
+  padding: 8px;
+}
+.palette input {
+  width: 100%;
+  padding: 9px;
+  background: var(--editor);
+  color: var(--text);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+}
+.command-list {
+  max-height: 350px;
+  overflow: auto;
+  margin-top: 7px;
+}
+.command {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  text-align: left;
+  padding: 8px;
+  border-radius: 3px;
+}
+/* VS Code-style floors: editor columns cannot collapse while visible. */
+.editor-pane {
+  min-width: 220px;
+}
+.preview-pane:not([aria-hidden="true"]) {
+  min-width: 220px;
+}
+.sidebar:not([aria-hidden="true"]) {
+  min-width: 170px;
+}
+[aria-hidden="true"].sidebar,
+[aria-hidden="true"].preview-pane {
+  visibility: hidden;
+  min-width: 0;
+  overflow: hidden;
+}
+.workbench-split,
+.editor-split {
+  overflow-x: auto;
+}
+/* Informational tooltips must not intercept neighbouring toolbar buttons. */
+.tooltip {
+  pointer-events: none !important;
+}
+[data-popper-positioner]:has(> .tooltip) {
+  pointer-events: none !important;
+}

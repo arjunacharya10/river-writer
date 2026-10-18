@@ -1,0 +1,197 @@
+/* Source Control sidebar, diff/restore pane and status-bar branch. */
+.source-control {
+  overflow: auto;
+  min-height: 0;
+  padding: 8px 12px;
+}
+.source-control > header,
+.git-diff > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.source-control form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0;
+}
+.source-control input,
+.source-control textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--editor);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 8px;
+  font: inherit;
+}
+.source-control textarea {
+  resize: vertical;
+}
+.source-control button {
+  cursor: pointer;
+}
+.source-control button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.source-control h3 {
+  font-size: 11px;
+  margin: 20px 0 8px;
+}
+.git-item {
+  display: block;
+  width: 100%;
+  padding: 8px 4px;
+  text-align: left;
+  background: transparent;
+  color: var(--text);
+  border: 0;
+  overflow-wrap: anywhere;
+}
+.git-item:hover {
+  background: var(--hover);
+}
+.git-item strong,
+.git-item small {
+  display: block;
+}
+.git-item small {
+  margin-top: 4px;
+  opacity: 0.7;
+}
+.git-file {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  padding: 5px 0;
+}
+.git-file span {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.git-file small {
+  opacity: 0.7;
+}
+.git-message {
+  padding: 8px;
+  overflow-wrap: anywhere;
+}
+.git-diff {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--editor);
+}
+.git-diff > header {
+  padding: 4px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.git-diff > header strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.git-diff pre {
+  flex: 1;
+  overflow: auto;
+  margin: 0;
+  padding: 12px;
+  font:
+    14px "Courier Prime",
+    monospace;
+  tab-size: 4;
+}
+.git-diff .added {
+  background: #379d4530;
+}
+.git-diff .removed {
+  background: #d9505030;
+}
+.git-restore {
+  margin-left: auto;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.git-confirm {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  background: var(--sidebar);
+}
+.git-confirm p {
+  flex-basis: 100%;
+  margin: 0;
+  line-height: 1.5;
+}
+.git-confirm button {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+.git-diff-files {
+  list-style: none;
+  margin: 0;
+  padding: 4px 12px;
+  max-height: 30%;
+  overflow: auto;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.git-diff-files li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+}
+.git-diff-files span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.git-diff-files small {
+  color: var(--muted);
+}
+.git-diff-files button {
+  padding: 2px 8px;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+.git-branch.current {
+  font-weight: 600;
+  opacity: 1 !important;
+  cursor: default;
+}
+.git-new-branch {
+  margin: 8px 0 0 !important;
+  gap: 6px !important;
+}
+.git-new-branch button {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+.status-branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  padding: 0 4px;
+  color: inherit;
+}
+.status-branch .codicon {
+  font-size: 13px;
+}

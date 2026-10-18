@@ -8,12 +8,6 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
-serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 river-service = { path = "../../crates/river-service" }
-river-model = { path = "../../crates/river-model" }
-river-templates = { path = "../../crates/river-templates" }
-river-text = { path = "../../crates/river-text" }
-river-render = { path = "../../crates/river-render" }
-river-pdf = { path = "../../crates/river-pdf" }
 [workspace]

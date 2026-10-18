@@ -1,0 +1,127 @@
+/* The CodeMirror writing surface, script look, inline styles, completions and the empty-editor welcome. */
+.cm-content {
+  padding: 36px 24px 100px !important;
+  max-width: calc(60ch + 48px);
+  margin: 0 auto !important;
+  flex: 1 1 auto !important;
+  width: 100%;
+  min-width: 0;
+}
+.manuscript .cm-content {
+  max-width: calc(72ch + 48px);
+}
+.cm-line {
+  padding: 0 !important;
+  min-height: 1.55em;
+}
+.cm-gutters {
+  background: var(--editor) !important;
+  border: 0 !important;
+}
+.cm-minimap-gutter {
+  margin-left: auto !important;
+  background: var(--editor) !important;
+}
+.cm-minimap-inner {
+  opacity: 0.6;
+}
+.story-scene,
+.story-section {
+  font-weight: 700;
+}
+.script .story-scene,
+.script .story-cue {
+  text-transform: uppercase;
+}
+.story-synopsis,
+.story-note,
+.story-boneyard {
+  color: var(--muted);
+}
+.text-bold {
+  font-weight: 700;
+}
+.text-italic,
+.story-lyric {
+  font-style: italic;
+}
+.text-underline {
+  text-decoration: underline;
+}
+.text-strike {
+  text-decoration: line-through;
+}
+.text-highlight {
+  background: #d5b43850;
+}
+.cm-search {
+  padding: 6px !important;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.cm-search input {
+  border: 1px solid var(--border);
+  padding: 3px;
+}
+.cm-search button {
+  border: 1px solid var(--border);
+}
+.welcome {
+  display: flex;
+  flex-direction: column;
+  max-width: 330px;
+  margin: 15vh auto;
+  padding: 20px;
+  gap: 6px;
+}
+.welcome h1 {
+  font-size: 27px;
+  font-weight: 400;
+  margin: 0 0 6px;
+  color: var(--muted);
+}
+.welcome p {
+  color: var(--muted);
+  margin: 0 0 25px;
+}
+.welcome button {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  color: var(--accent);
+}
+.problems {
+  max-height: 140px;
+  overflow: auto;
+  border-top: 1px solid var(--border);
+  padding: 6px;
+}
+.problems button {
+  display: flex;
+  gap: 8px;
+  padding: 5px;
+  text-align: left;
+}
+.cm-tooltip-autocomplete {
+  background: var(--sidebar) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 4px;
+  box-shadow: 0 4px 14px #0003;
+}
+.cm-tooltip-autocomplete ul {
+  max-width: min(420px, 85vw);
+}
+.cm-tooltip-autocomplete ul li {
+  padding: 5px 10px !important;
+}
+.cm-tooltip-autocomplete ul li[aria-selected="true"] {
+  background: var(--selection) !important;
+  color: var(--text) !important;
+}
+.cm-completionDetail {
+  color: var(--muted);
+  margin-left: 16px;
+  font-size: 11px;
+}
