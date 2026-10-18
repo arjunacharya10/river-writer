@@ -34,7 +34,10 @@ services, non-creative templates.
 1. One unified syntax for screen and prose, or Fountain + Markdown kept separate?
    (Current lean: separate.)
 2. Open Highland `.highland` files as a migration path? (ZIP → TextBundle → `text.fountain`/`text.md`)
-3. Pricing: depends on the open-source business model (item 6).
-4. Exact autosave interval and retention.
-5. **License** for the open-source release (e.g. MIT/Apache-2.0 vs GPL-3.0). Note: GPL would allow reusing code from GPL projects like Beat/Zettlr; MIT/Apache maximizes adoption.
-6. **Business model** with open source: e.g. free source + paid signed builds, donations/sponsorship, or fully free (replaces the "one-time purchase" assumption).
+3. Exact autosave interval and retention.
+
+## Closed decisions: license and business model (#40)
+* **License: MIT.** The repository's `LICENSE` contains the grant.
+* **Business model: none; no monetization planned.** Pricing is not an open product decision.
+* Earlier one-time-purchase and paid-build options are superseded.
+* Bundled fonts and third-party components retain their own licenses/notices.

@@ -4,7 +4,7 @@ An offline writing app for screenwriters, playwrights and novelists. You write p
 text, and River turns it into perfectly formatted pages. No cloud, no accounts, no
 subscription.
 
-Status: **engine CLI and first Mac workbench slice implemented** (39 decisions).
+Status: **engine CLI and first Mac workbench slice implemented** (40 decisions).
 River now starts with New Project, Open Project and Recent Projects, restores saved
 project tabs/layout, and opens/edits/saves story files, shows Rust page previews and exports
 PDF, using the approved Kobalte/Corvu foundation. macOS is the sole current/v1 target.
@@ -37,3 +37,8 @@ remains an experiment.
 | [docs/10-mac-workbench.md](docs/10-mac-workbench.md) | Native workbench, setup, verification and remaining shell/preview work |
 | [docs/decision-log.md](docs/decision-log.md) | Every product decision, with the reasoning and any reversals |
 
+## License
+
+[MIT](LICENSE). No business model or monetization planned. Bundled Courier Prime is
+licensed separately under the SIL Open Font License; third-party components retain
+their own licenses.

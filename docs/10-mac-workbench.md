@@ -55,7 +55,7 @@ the desktop package has its own workspace/lockfile.
 `river-service` owns documents, persistence, analysis and engine orchestration without
 Tauri. `app/src-tauri` owns OS integration and background execution. `app/ui` owns
 presentation and CodeMirror view state. Font OFL text is included in the bundle;
-the About panel identifies the font license. River's own license remains undecided.
+the About panel identifies the font license. River's own code is MIT-licensed (#40); the MIT text is also included in the app bundle.
 
 ## Verification
 
@@ -104,7 +104,7 @@ complete automated Mac interaction suite.
 * Extras, settings UI, Git/history/autosave/backups, FDX, print, Mac file associations,
   full font-license presentation, signed packaging and other v1 polish remain later
   phases. Until local history/backups land, unsaved text is in memory only.
-* Development icon/identity only. No public push or licensing decision was made.
+* Development icon/identity only. No public push has been made; the MIT license and no-business-model decision are now settled (#40).
 
 ## Preview toggle fix (2026-10-18)
 Repeated preview/sidebar unmounts exposed Corvu 0.2.5's remaining-panel size

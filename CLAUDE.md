@@ -6,7 +6,7 @@ formatted pages. It's a focused, anti-bloat take on Highland Pro: craft first, n
 no accounts, no AI, no plugins.
 
 ## Read first
-1. `docs/decision-log.md` — every decision (39 so far) with reasoning and reversals.
+1. `docs/decision-log.md` — every decision (40 so far) with reasoning and reversals.
    **Locked decisions are not to be relitigated** unless the user raises them.
 2. `docs/01-product-brief.md` (principles), then `02`–`10` as relevant.
 3. Formatting-engine behaviour (parser rules, template values, pagination,
@@ -34,7 +34,7 @@ no accounts, no AI, no plugins.
   checks (but keep the door open; doc 08).
 
 ## Current status and next step
-Product definition complete (39 decisions). Engine CLI and the first production Mac
+Product definition complete (40 decisions). Engine CLI and the first production Mac
 workbench are implemented. `app/` uses Kobalte/Corvu/CodeMirror with native menus,
 a project welcome screen (New/Open/Recent), saved project tab/layout restoration,
 real story-file IO, Rust-driven outline and page preview/PDF. `river-service` stays
@@ -44,8 +44,9 @@ commands, verification and boundaries. The editor spike remains disposable.
 Next: finish shell/preview phases (incremental updates, watchers, generated IPC types,
 preview tiles/zoom/sync scroll and navigation polish), then extras/settings and Git.
 Windows is deferred (#36). No autosave/history/backups yet; unsaved edits are in memory.
-Open (non-blocking) decisions: license and business model (before the first public push),
-unified syntax vs separate, `.highland` import, autosave timing (`docs/06-roadmap.md`).
+License: **MIT**; no business model or monetization planned (#40). These questions are closed.
+Open (non-blocking) decisions: unified syntax vs separate, `.highland` import and autosave
+timing/retention (`docs/06-roadmap.md`).
 
 ## Working with the user
 * Show the plan (paths, options, what changes) and **wait for approval** before system

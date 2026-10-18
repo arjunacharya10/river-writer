@@ -23,5 +23,6 @@
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
     "tauri": "tauri"
-  }
+  },
+  "license": "MIT"
 }

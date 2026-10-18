@@ -7,6 +7,12 @@ updates.
 Current release target: **macOS only** (decision #36). Windows distribution and
 signing are deferred; they do not block release.
 
+## License and distribution (#40)
+River Writer is **MIT-licensed**, with **no business model or monetization planned**.
+Include River's `LICENSE` in distributed builds alongside the bundled font licenses
+and third-party notices. The license/pricing/business-model decisions are closed;
+signing and release preparation remain implementation work.
+
 ## Update policy (decision #30)
 * **No auto-update and no update checks.** River makes **no network connections except
   git push/pull/fetch/clone** (the network promise stays strict).

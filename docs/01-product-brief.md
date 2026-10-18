@@ -30,7 +30,7 @@ Out: comics/graphic novels, essays, academic/MLA, wikis, bulletins, speeches, ar
    River excellent on the Mac: behaviour, performance and platform integration.
    Windows is deferred to later and does not gate features or releases. There is no
    simultaneous-platform requirement (decision #36). Linux remains later or never.
-8. **Open source.** River's source is public (license TBD, see doc 06).
+8. **Open source.** River is MIT-licensed, with no business model or monetization planned (decision #40).
 
 ## Keep (core)
 * Fountain for screen and stage; Markdown-style prose for novels
@@ -67,6 +67,6 @@ tables/checklists/code blocks/footnotes in story formats.
 | Backups | Automatic local backups to a chosen folder |
 
 ## Where it wins
-* **Against Final Draft / Fade In:** plain text, calmer, cheaper, beautiful typography.
-* **Against Highland Pro:** focused, private, one-time purchase, faster, no sign-in.
+* **Against Final Draft / Fade In:** plain text, calmer, open source, beautiful typography.
+* **Against Highland Pro:** focused, private, MIT-licensed, faster, no sign-in.
 * **Against Scrivener / Ulysses:** truly correct script formatting, simpler model.

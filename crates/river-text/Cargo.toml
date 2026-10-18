@@ -1,4 +1,5 @@
 [package]
+license.workspace = true
 name = "river-text"
 version.workspace = true
 edition.workspace = true

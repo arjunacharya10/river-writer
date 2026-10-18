@@ -27,6 +27,6 @@
     "active": true,
     "targets": ["app"],
     "icon": ["icons/icon.png"],
-    "resources": ["../../fonts/courier-prime/OFL.txt"]
+    "resources": ["../../fonts/courier-prime/OFL.txt", "../../LICENSE"]
   }
 }

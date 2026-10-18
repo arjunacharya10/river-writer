@@ -4,6 +4,7 @@ exclude = ["spikes/typeset", "spikes/editor/src-tauri"]
 resolver = "3"
 
 [workspace.package]
+license = "MIT"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.96"
