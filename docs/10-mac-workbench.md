@@ -519,7 +519,8 @@ button exists) and `test:writing`; Mac app rebuilt.
 
 ## Explorer New File (2026-10-18, #67)
 
-The Explorer header has a **New File…** button (shown when a project is open). It opens
+The Explorer header has a **New File…** button (shown when a project is open); Open
+Project is in the File menu, not the header (#68). It opens
 an inline name field at the top of the list, as in VS Code. Enter or clicking away creates
 the file; Escape, or an empty name, cancels. A name without `.md`/`.fountain` gets `.md`
 (so `.fountain` must be typed for a screenplay). The file is created empty at the

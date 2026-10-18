@@ -8,27 +8,20 @@ const titles: Record<string, string> = {
   todos: "TODOS",
   outline: "OUTLINE",
 };
+/** Open Project lives in the File menu (⇧⌘O), not here. */
 export function SidebarTitle(props: {
   view: string;
-  onOpenProject: () => void;
   /** Present when the Explorer can create a file in the open project. */
   onNewFile?: () => void;
 }) {
   return (
     <header>
       {titles[props.view] ?? "EXPLORER"}
-      <span class="sidebar-actions">
-        <Show when={props.onNewFile}>
-          {(onNewFile) => (
-            <Action label="New File…" icon="new-file" onClick={onNewFile()} />
-          )}
-        </Show>
-        <Action
-          label="Open Project"
-          icon="folder-opened"
-          onClick={props.onOpenProject}
-        />
-      </span>
+      <Show when={props.onNewFile}>
+        {(onNewFile) => (
+          <Action label="New File…" icon="new-file" onClick={onNewFile()} />
+        )}
+      </Show>
     </header>
   );
 }

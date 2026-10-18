@@ -910,7 +910,6 @@ function App() {
             >
               <SidebarTitle
                 view={sideView()}
-                onOpenProject={run(openFolder)}
                 onNewFile={
                   sideView() === "explorer" && folder()
                     ? () => setNaming(true)

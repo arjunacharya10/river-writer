@@ -124,10 +124,6 @@
 .file.selected {
   background: var(--selection);
 }
-.sidebar-actions {
-  display: flex;
-  gap: 2px;
-}
 .new-file input {
   flex: 1;
   min-width: 0;
