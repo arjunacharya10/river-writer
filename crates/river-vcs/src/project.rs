@@ -60,6 +60,35 @@ pub struct Commit {
     pub author: String,
     pub timestamp: i64,
 }
+/// The Mac account's full name and short user name (`id -F`, `id -un`), used
+/// when Git has no identity so writers are never asked for one up front.
+fn account_identity() -> Option<(String, String)> {
+    let id = |flag: &str| {
+        std::process::Command::new("/usr/bin/id")
+            .arg(flag)
+            .output()
+            .ok()
+            .filter(|out| out.status.success())
+            .and_then(|out| String::from_utf8(out.stdout).ok())
+            .map(|text| text.trim().to_owned())
+            .filter(|text| !text.is_empty())
+    };
+    let name = id("-F")?;
+    let user = id("-un")?;
+    Some((name, format!("{user}@localhost")))
+}
+/// Git's configured identity, else the given account identity.
+fn author_with(
+    repo: &Repository,
+    account: impl FnOnce() -> Option<(String, String)>,
+) -> Option<Signature<'static>> {
+    repo.signature()
+        .ok()
+        .or_else(|| account().and_then(|(name, email)| Signature::now(&name, &email).ok()))
+}
+fn author(repo: &Repository) -> Option<Signature<'static>> {
+    author_with(repo, account_identity)
+}
 fn head(repo: &Repository) -> Result<Option<git2::Commit<'_>>, String> {
     match repo.head() {
         Ok(h) => h.peel_to_commit().map(Some).map_err(err),
@@ -195,7 +224,7 @@ pub fn status(root: &Path) -> Result<Status, String> {
             })
         })
         .collect();
-    let identity = repo.signature().ok().map(|s| Identity {
+    let identity = author(&repo).map(|s| Identity {
         name: s.name().unwrap_or_default().into(),
         email: s.email().unwrap_or_default().into(),
     });
@@ -298,11 +327,11 @@ pub fn ensure_repository(root: &Path) -> Result<bool, String> {
     let tree = repo
         .find_tree(index.write_tree().map_err(err)?)
         .map_err(err)?;
-    // River made this commit, so it signs it unless the writer has a Git identity.
-    let signature = repo
-        .signature()
-        .or_else(|_| Signature::now("River Writer", "river@localhost"))
-        .map_err(err)?;
+    // The writer's identity (Git's, or their Mac account's); River's as a last resort.
+    let signature = match author(&repo) {
+        Some(signature) => signature,
+        None => Signature::now("River Writer", "river@localhost").map_err(err)?,
+    };
     repo.commit(
         Some("HEAD"),
         &signature,
@@ -383,9 +412,8 @@ pub fn commit(
         if parent.as_ref().is_some_and(|h| h.tree_id() == tree) {
             return Err("No changes to commit.".into());
         }
-        let signature = repo
-            .signature()
-            .map_err(|_| "Set your Git name and email for this project first.".to_owned())?;
+        let signature = author(&repo)
+            .ok_or_else(|| "Set your Git name and email for this project first.".to_owned())?;
         index.write().map_err(err)?;
         lock.write_all(&fs::read(&scratch).map_err(err)?)
             .map_err(err)?;
@@ -1226,6 +1254,27 @@ mod tests {
         assert_eq!(paths, vec!["Outer.md"]);
         review_changes(&root).unwrap();
         assert!(status(&root).unwrap().files.is_empty());
+        fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn missing_git_identity_falls_back_to_the_mac_account() {
+        let root = folder();
+        init(&root).unwrap();
+        let repo = open(&root).unwrap();
+        // An empty configured name is no identity, as for a new writer.
+        repo.config().unwrap().set_str("user.name", "").unwrap();
+        let account = || Some(("Nora Writer".to_owned(), "nora@localhost".to_owned()));
+        let signature = author_with(&repo, account).unwrap();
+        assert_eq!(signature.name(), Some("Nora Writer"));
+        assert_eq!(signature.email(), Some("nora@localhost"));
+        assert!(author_with(&repo, || None).is_none());
+        // A configured Git identity always wins.
+        identity(&root, "Git Name", "git@example.invalid").unwrap();
+        let signature = author_with(&open(&root).unwrap(), account).unwrap();
+        assert_eq!(signature.name(), Some("Git Name"));
+        if let Some((name, email)) = account_identity() {
+            assert!(!name.is_empty() && email.ends_with("@localhost"));
+        }
         fs::remove_dir_all(root).unwrap();
     }
 }

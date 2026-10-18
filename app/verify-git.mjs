@@ -8,6 +8,7 @@ import {
   mkdir,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { execFileSync } from "node:child_process";
 import { root, startBackend, openPage, until } from "./test-harness.mjs";
 import assert from "node:assert/strict";
 const folder = await mkdtemp(`${tmpdir()}/river-git-ui-`);
@@ -67,13 +68,9 @@ try {
   await panel.getByText("CHANGES · 1", { exact: true }).waitFor();
   await appendFile(`${folder}/.git/config`, "\n[user]\nname =\nemail =\n");
   await panel.getByRole("button", { name: "Refresh Git", exact: true }).click();
-  await panel.getByLabel("Git name", { exact: true }).fill("Test Writer");
-  await panel
-    .getByLabel("Git email", { exact: true })
-    .fill("writer@example.invalid");
-  await panel
-    .getByRole("button", { name: "Save Git identity", exact: true })
-    .click();
+  // No Git identity: River uses the Mac account's name and never asks.
+  await panel.getByText("CHANGES · 1", { exact: true }).waitFor();
+  assert.equal(await panel.getByLabel("Git name").count(), 0);
   await panel
     .getByRole("button", { name: "Review changes", exact: true })
     .click();
@@ -93,6 +90,10 @@ try {
     .click();
   await panel.getByText("No changes to commit.", { exact: true }).waitFor();
   assert.equal((await invoke("git_log", { root: folder })).length, 2);
+  assert.equal(
+    (await invoke("git_log", { root: folder }))[0].author,
+    execFileSync("/usr/bin/id", ["-F"], { encoding: "utf8" }).trim(),
+  );
   await mkdir(`${folder}/_river`, { recursive: true });
   await writeFile(`${folder}/_river/todos.md`, "- [ ] Rewrite ending\n");
   await writeFile(
@@ -253,7 +254,7 @@ try {
   await page.screenshot({ path: `${root}/app/output/source-control.png` });
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: Git on by default with a starting snapshot and untouched .gitignore, local identity, ignored files, ordinary commits, notes/tasks, side-pane diff, stale-review rejection, commit history, file/project restore, undo and edit-after-restore protection, branch create/switch/status bar and dirty-switch refusal.",
+    "PASS: Git on by default with a starting snapshot and untouched .gitignore, local identity, ignored files, ordinary commits, notes/tasks, side-pane diff, stale-review rejection, Mac-account identity without a form, commit history, file/project restore, undo and edit-after-restore protection, branch create/switch/status bar and dirty-switch refusal.",
   );
 } catch (e) {
   console.error(await page.locator("body").innerText());

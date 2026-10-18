@@ -461,3 +461,11 @@ Nested projects: a folder that is itself a Git repository inside the project (an
 River project, say) is skipped when snapshotting, reviewing or committing, and is not
 listed as a change. Previously libgit2 failed on it ("invalid path"), which broke autosave
 once River retried the snapshot for commit-less repositories.
+
+## Commit identity (2026-10-18, #63)
+
+`author()` in `river_vcs::project` uses Git's identity, else the Mac account (`/usr/bin/id
+-F` for the full name, `-un` for `<user>@localhost`). Status reports that identity, so the
+Source Control name/email form only appears when neither exists. Covered by a VCS test
+(fallback, no account, configured identity wins) and `verify:git`, which commits with no
+Git identity and checks the author is the account's full name and that no form appears.
