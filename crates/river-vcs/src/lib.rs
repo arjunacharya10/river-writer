@@ -1,4 +1,5 @@
-//! Private, local-only Git history. No transport features or network operations.
+pub mod project;
+// Private, local-only Git history. No transport features or network operations.
 use git2::{ErrorCode, ObjectType, Oid, Repository, Signature};
 use serde::Serialize;
 use std::{fs, path::Path};
@@ -32,7 +33,11 @@ impl History {
                 let main = if project.join(".git").exists() {
                     Repository::open(project).map_err(err)?
                 } else {
-                    Repository::init(project).map_err(err)?
+                    {
+                        let mut options = git2::RepositoryInitOptions::new();
+                        options.initial_head("main");
+                        Repository::init_opts(project, &options).map_err(err)?
+                    }
                 };
                 if main.is_bare() {
                     return Err(err("Choose a working project folder"));
@@ -349,6 +354,17 @@ mod tests {
         let history = History::open(Some(&project), &project.join("Story.md"), &folder).unwrap();
         history.checkpoint(b"PRIVATE UNPUBLISHED DRAFT").unwrap();
         let private = history.versions().unwrap()[0].id.clone();
+        fs::write(project.join("Story.md"), "Public draft").unwrap();
+        project::identity(&project, "Writer", "writer@example.invalid").unwrap();
+        let reviewed = project::status(&project).unwrap();
+        project::commit(
+            &project,
+            reviewed.head.as_deref(),
+            &reviewed.tree,
+            "Public commit from River",
+        )
+        .unwrap();
+
         let remote_path = folder.join("remote.git");
         Repository::init_bare(&remote_path).unwrap();
         // Independent regression proof of the exact CLI mirror case; the product

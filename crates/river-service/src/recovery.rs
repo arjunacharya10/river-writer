@@ -83,7 +83,7 @@ impl Recovery {
     }
     fn write(&self, draft: Draft) -> Result<(), String> {
         let key = &draft.key;
-        let path = self.path(&key)?;
+        let path = self.path(key)?;
         let previous = match fs::read(&path) {
             Ok(bytes) => Some(bytes),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,

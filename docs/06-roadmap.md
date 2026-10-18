@@ -18,11 +18,14 @@ gate development or release. Linux: later or never.
     handling. No extra editor tabs or toolbar.
 * Git: commit (no staging), log, diff (scene/paragraph/word), restore/revert, branch +
   checkout, remote + push/pull/fetch, clone
-* Local autosave history (never pushed); automatic local backups
+  * Implemented (#51): Source Control view with init, project identity, review all
+    changes, commit everything, commit history and diff. Remaining: remote + push/
+    pull/fetch, clone, branches/checkout, restore/revert, scene-level diff.
+* Local autosave history (never pushed). Separate automatic backups dropped (#50);
+  off-machine safety comes from the writer's Git remote
   * Implemented: crash recovery, one-second idle disk saves, private per-branch Git
     history, Timeline preview/restore with Undo (doc 10). Remaining: retention
-    compaction, real commits in Timeline,
-    independent backups.
+    compaction, real commits in Timeline.
 * Themes: Light and Dark only, following the system appearance
 
 ## Version 1.1

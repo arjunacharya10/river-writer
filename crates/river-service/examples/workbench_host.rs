@@ -22,6 +22,39 @@ fn main() {
         let id = args["id"].as_u64().unwrap_or(0);
         let result = (|| -> Result<Value, String> {
             Ok(match req["name"].as_str().unwrap() {
+                "git_status" => serde_json::to_value(git::status(Path::new(
+                    args["root"].as_str().ok_or("Missing root")?,
+                ))?)
+                .unwrap(),
+                "git_init" => {
+                    initialize_git(Path::new(args["root"].as_str().ok_or("Missing root")?))?;
+                    Value::Null
+                }
+                "git_identity" => {
+                    git::identity(
+                        Path::new(args["root"].as_str().ok_or("Missing root")?),
+                        args["name"].as_str().ok_or("Missing name")?,
+                        args["email"].as_str().ok_or("Missing email")?,
+                    )?;
+                    Value::Null
+                }
+                "git_log" => serde_json::to_value(git::log(
+                    Path::new(args["root"].as_str().ok_or("Missing root")?),
+                    args["before"].as_str(),
+                )?)
+                .unwrap(),
+                "git_diff" => serde_json::to_value(git::commit_diff(
+                    Path::new(args["root"].as_str().ok_or("Missing root")?),
+                    args["id"].as_str().ok_or("Missing commit")?,
+                )?)
+                .unwrap(),
+                "git_commit" => serde_json::to_value(git::commit(
+                    Path::new(args["root"].as_str().ok_or("Missing root")?),
+                    args["head"].as_str(),
+                    args["tree"].as_str().ok_or("Missing tree")?,
+                    args["message"].as_str().ok_or("Missing message")?,
+                )?)
+                .unwrap(),
                 "recovery_drafts" => serde_json::to_value(recovery.pending()?).unwrap(),
                 "recover_draft" => serde_json::to_value(
                     recovery.restore(&mut docs, args["key"].as_str().ok_or("Missing key")?)?,

@@ -31,6 +31,49 @@ async fn work<T: Send + 'static>(
         .map_err(|e| e.to_string())?
 }
 #[tauri::command]
+async fn git_status(root: PathBuf) -> Result<river_service::git::Status, String> {
+    work(move || river_service::git::status(&root)).await
+}
+#[tauri::command]
+async fn git_init(app: tauri::AppHandle, root: PathBuf) -> Result<(), String> {
+    work(move || {
+        let state = app.state::<Desktop>();
+        let _guard = lock(&state.documents)?;
+        river_service::initialize_git(&root)
+    })
+    .await
+}
+#[tauri::command]
+async fn git_identity(root: PathBuf, name: String, email: String) -> Result<(), String> {
+    work(move || river_service::git::identity(&root, &name, &email)).await
+}
+#[tauri::command]
+async fn git_log(
+    root: PathBuf,
+    before: Option<String>,
+) -> Result<Vec<river_service::git::Commit>, String> {
+    work(move || river_service::git::log(&root, before.as_deref())).await
+}
+#[tauri::command]
+async fn git_diff(root: PathBuf, id: String) -> Result<river_service::git::Review, String> {
+    work(move || river_service::git::commit_diff(&root, &id)).await
+}
+#[tauri::command]
+async fn git_commit(
+    app: tauri::AppHandle,
+    root: PathBuf,
+    head: Option<String>,
+    tree: String,
+    message: String,
+) -> Result<String, String> {
+    work(move || {
+        let state = app.state::<Desktop>();
+        let _guard = lock(&state.documents)?;
+        river_service::git::commit(&root, head.as_deref(), &tree, &message)
+    })
+    .await
+}
+#[tauri::command]
 async fn new_document(app: tauri::AppHandle) -> Result<Document, String> {
     work(move || Ok(lock(&app.state::<Desktop>().documents)?.new_document())).await
 }
@@ -661,6 +704,12 @@ fn main() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            git_status,
+            git_init,
+            git_identity,
+            git_log,
+            git_diff,
+            git_commit,
             new_document,
             open_document,
             open_folder,

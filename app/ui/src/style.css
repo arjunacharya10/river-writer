@@ -1074,3 +1074,116 @@ kbd {
   margin-top: 6px;
   text-decoration: underline;
 }
+
+.source-control {
+  overflow: auto;
+  min-height: 0;
+  padding: 8px 12px;
+}
+.source-control > header,
+.git-diff > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.source-control form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0;
+}
+.source-control input,
+.source-control textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--editor);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 8px;
+  font: inherit;
+}
+.source-control textarea {
+  resize: vertical;
+}
+.source-control button {
+  cursor: pointer;
+}
+.source-control button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.source-control h3 {
+  font-size: 11px;
+  margin: 20px 0 8px;
+}
+.git-item {
+  display: block;
+  width: 100%;
+  padding: 8px 4px;
+  text-align: left;
+  background: transparent;
+  color: var(--text);
+  border: 0;
+  overflow-wrap: anywhere;
+}
+.git-item:hover {
+  background: var(--hover);
+}
+.git-item strong,
+.git-item small {
+  display: block;
+}
+.git-item small {
+  margin-top: 4px;
+  opacity: 0.7;
+}
+.git-file {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  padding: 5px 0;
+}
+.git-file span {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.git-file small {
+  opacity: 0.7;
+}
+.git-message {
+  padding: 8px;
+  overflow-wrap: anywhere;
+}
+.git-diff {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--editor);
+}
+.git-diff > header {
+  padding: 4px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.git-diff > header strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.git-diff pre {
+  flex: 1;
+  overflow: auto;
+  margin: 0;
+  padding: 12px;
+  font:
+    14px "Courier Prime",
+    monospace;
+  tab-size: 4;
+}
+.git-diff .added {
+  background: #379d4530;
+}
+.git-diff .removed {
+  background: #d9505030;
+}

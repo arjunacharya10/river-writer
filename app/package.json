@@ -9,7 +9,8 @@
     "tauri": "tauri",
     "verify": "node verify.mjs",
     "verify:recovery": "node verify-recovery.mjs",
-    "test:writing": "node test-writing.mjs"
+    "test:writing": "node test-writing.mjs",
+    "verify:git": "node verify-git.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6",

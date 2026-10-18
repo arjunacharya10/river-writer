@@ -102,7 +102,7 @@ complete automated Mac interaction suite.
 * Save As does not replace an existing file. Mixed-newline files normalize to their
   detected convention. Save protection compares contents before replacement;
   a different app can still race a write between that check and the final rename.
-* Settings UI, full Git operations, history compaction, independent backups,
+* Settings UI, Git remotes/branches/restore, history compaction,
   FDX, print, Mac file associations, signed packaging and other v1 polish remain
   later phases. Crash recovery, automatic disk saves and local Timeline are implemented
   as described below.
@@ -159,7 +159,7 @@ or explicitly discarding a tab clears that tab's journal. A cancelled close reta
 it. Confirmed quitting now closes documents through the same cleanup path.
 
 This journal protects unsaved text independently of the automatic disk saves and
-Timeline added below. Independent backups remain pending. Next in the existing flow:
+Timeline added below. Separate backups were dropped in favour of a Git remote (#50). Next in the existing flow:
 writing polish. Preview zoom/navigation controls are excluded by #44; Explorer
 creation tools remain later work.
 
@@ -194,7 +194,7 @@ the current buffer, then replaces editor text through an isolated undo transacti
 normal autosaving applies afterward. Changing tabs invalidates pending history reads.
 
 Still pending: retention compaction/collection, real
-commits in Timeline and independent backups. No snapshots are deleted in this slice.
+commits in Timeline. No snapshots are deleted in this slice.
 History cannot protect against loss of the drive holding the project/app data.
 
 Verification: 13 service tests plus 5 VCS tests cover encoding, revisions, external
@@ -303,3 +303,28 @@ The expanded browser suite checks autosave, view switching, conflict recovery,
 cancelled copy, pending notes on project close, session restoration and no extra
 editor tabs/Bin button. Existing Todo, story, recovery and Timeline checks pass.
 The inspected screenshot is in ignored `app/output/scratchpad.png`.
+
+## Source Control, local slice (2026-10-18, #50/#51)
+
+A source-control activity icon and `View: Source Control` open the Git view for the
+open project. It offers Initialize Git, a project-local identity form when needed,
+a commit message, **Commit all changes**, the change list and commit history. Review
+changes and selecting a commit show the patch in the right pane, which it shares
+with preview and Timeline (one at a time). Before committing, pending Scratchpad/
+Todos text is flushed and named story tabs are autosaved.
+
+`river-vcs::project` (re-exported as `river_service::git`) uses libgit2 only,
+without transport features. Status builds a candidate tree in an in-memory index
+(the real index is untouched); commit writes through a temporary index while
+holding `index.lock`, compares HEAD and tree with the reviewed values, and installs
+the new index only after the commit. `_river/river.json` is never committed. The
+private autosave repository is never part of a commit. Separate automatic backups
+are dropped from v1 (#50); off-machine safety will come from pushing to a remote.
+
+Verification: three Rust tests cover add/edit/delete, extras, ignore rules, stale
+reviews, a preserved staged index, an external `index.lock`, detached/merge blocking
+and not adopting a parent repository; a mirror-push test checks a River commit
+leaves private autosaves behind. `pnpm --dir app verify:git` exercises init,
+identity, ignored files, commits, notes/tasks, side-pane diff, stale-review rejection
+and history in the browser against the real service. Remotes, branches, restore and
+scene-level diff remain.

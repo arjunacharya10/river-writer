@@ -101,5 +101,17 @@ The private repository reads main objects through alternates; its own new object
 and refs stay private. An independent local `git push --mirror` regression test
 checks that neither the private commit nor its draft blob reaches the remote.
 Standalone files use app data. Untitled drafts use crash recovery until named.
-Real commits in Timeline, retention compaction/collection and
-independent backups are still planned. Existing snapshots are not pruned yet.
+Real commits in Timeline and retention compaction/collection are still planned.
+Separate automatic backups are dropped; push to a Git remote instead (#50). Existing snapshots are not pruned yet.
+
+### Source Control, local slice (2026-10-18, #51)
+The Source Control sidebar view initializes Git for the project folder (branch
+`main`, `_river/river.json` added to `.gitignore`), asks for a project-local name and
+email only when no Git identity is configured, lists every change and shows the
+patch in the right pane. **Commit all changes** commits the whole working tree,
+ignored files excepted, with no staging step. The commit uses a temporary index and
+the standard `index.lock`; it is rejected if HEAD or the files changed since the
+review shown, keeping the message and any existing staged index. Merges, conflicts
+and detached HEAD block committing with a message pointing to Git. History loads 100
+commits at a time; selecting one shows its diff. Remotes, push/pull/fetch, branches
+and restore are the next slices.

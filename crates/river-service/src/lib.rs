@@ -1,4 +1,5 @@
 //! Desktop orchestration without a Tauri dependency. Editor text uses LF/UTF-8.
+pub use river_vcs::project as git;
 pub mod extras;
 pub mod projects;
 pub mod recovery;
@@ -566,6 +567,34 @@ pub fn publication(
     buffers: &HashMap<PathBuf, String>,
 ) -> Result<Publication, String> {
     river_paginate::paginate(engine, &script(doc, buffers)?, doc.template)
+}
+
+/// Initialize only the chosen folder; keep UI state out of ordinary Git tooling too.
+pub fn initialize_git(root: &Path) -> Result<(), String> {
+    let root = root.canonicalize().map_err(|e| e.to_string())?;
+    let ignore = root.join(".gitignore");
+    if ignore.is_symlink() {
+        return Err(".gitignore must not be a symbolic link".into());
+    }
+    git::init(&root)?;
+    let old = match fs::read(&ignore) {
+        Ok(bytes) => Some(bytes),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+        Err(e) => return Err(e.to_string()),
+    };
+    let bytes = old.as_deref().unwrap_or_default();
+    if !bytes
+        .split(|b| *b == b'\n')
+        .any(|line| line == b"/_river/river.json" || line == b"_river/river.json")
+    {
+        let mut next = bytes.to_vec();
+        if !next.is_empty() && !next.ends_with(b"\n") {
+            next.push(b'\n');
+        }
+        next.extend_from_slice(b"\n# River UI state\n/_river/river.json\n");
+        atomic_write(&ignore, &next, old.as_deref())?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]

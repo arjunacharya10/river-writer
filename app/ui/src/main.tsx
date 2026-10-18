@@ -27,6 +27,7 @@ import {
 import { ProjectWelcome } from "./components/welcome";
 import { PagePreview } from "./components/preview";
 import { TodosPanel } from "./components/todos";
+import { SourceControl, type GitReview } from "./components/source-control";
 import { ScratchpadPanel } from "./components/scratchpad";
 import {
   nameOf,
@@ -59,6 +60,21 @@ function App() {
         );
       });
     };
+  }
+  const [gitDiff, setGitDiff] = createSignal<{
+    title: string;
+    review: GitReview;
+  } | null>(null);
+  const sidePaneOpen = () =>
+    !!(((previewOpen() || historyOpen()) && current()) || gitDiff());
+  async function beforeCommit() {
+    await flushExtras();
+    for (const doc of tabs()) if (doc.path) await autosave(doc.id);
+  }
+  function showGitDiff(title: string, review: GitReview) {
+    if (previewOpen()) togglePreview();
+    setHistoryOpen(false);
+    setGitDiff({ title, review });
   }
   type Version = { id: string; timestamp: number; bytes: number };
   const [historyOpen, setHistoryOpen] = createSignal(false);
@@ -203,8 +219,7 @@ function App() {
       sizes.some((size) => !Number.isFinite(size) || size <= 0)
     )
       return;
-    if ((editor && !previewOpen() && !historyOpen()) || (!editor && !sidebar()))
-      return;
+    if ((editor && !sidePaneOpen()) || (!editor && !sidebar())) return;
     const total = sizes[0] + sizes[1];
     (editor ? setEditorSizes : setSidebarSizes)([
       sizes[0] / total,
@@ -434,6 +449,7 @@ function App() {
     setHistoryVersion("");
     setHistoryText("");
     setVersions([]);
+    setGitDiff(null);
     historyRequest++;
     historyRead++;
     clearTimeout(refreshTimer);
@@ -482,7 +498,9 @@ function App() {
       const saved = project.session;
       setSidebar(saved.sidebar);
       setSideView(
-        ["outline", "todos", "scratchpad"].includes(saved.sideView)
+        ["outline", "todos", "scratchpad", "source-control"].includes(
+          saved.sideView,
+        )
           ? saved.sideView
           : "explorer",
       );
@@ -659,6 +677,7 @@ function App() {
     view.focus();
   }
   function togglePreview() {
+    setGitDiff(null);
     setHistoryOpen(false);
     setPreviewOpen((v) => !v);
     if (previewOpen()) void updatePreview();
@@ -685,6 +704,14 @@ function App() {
     }
   };
   const allCommands: Command[] = [
+    {
+      id: "source-control",
+      label: "View: Source Control",
+      run: () => {
+        setSideView("source-control");
+        setSidebar(true);
+      },
+    },
     {
       id: "scratchpad",
       label: "View: Scratchpad",
@@ -976,6 +1003,15 @@ function App() {
               }}
             />
             <Action
+              label="Source Control"
+              icon="source-control"
+              active={sidebar() && sideView() === "source-control"}
+              onClick={() => {
+                setSideView("source-control");
+                setSidebar(true);
+              }}
+            />
+            <Action
               label="Scratchpad"
               icon="edit"
               active={sidebar() && sideView() === "scratchpad"}
@@ -1018,19 +1054,34 @@ function App() {
               class="sidebar"
             >
               <header>
-                {sideView() === "scratchpad"
-                  ? "SCRATCHPAD"
-                  : sideView() === "todos"
-                    ? "TODOS"
-                    : sideView() === "outline"
-                      ? "OUTLINE"
-                      : "EXPLORER"}
+                {sideView() === "source-control"
+                  ? "SOURCE CONTROL"
+                  : sideView() === "scratchpad"
+                    ? "SCRATCHPAD"
+                    : sideView() === "todos"
+                      ? "TODOS"
+                      : sideView() === "outline"
+                        ? "OUTLINE"
+                        : "EXPLORER"}
                 <Action
                   label="Open Project"
                   icon="folder-opened"
                   onClick={run(openFolder)}
                 />
               </header>
+              <Show when={folder()} keyed>
+                {(root) => (
+                  <SourceControl
+                    root={root}
+                    active={sidebar() && sideView() === "source-control"}
+                    beforeCommit={beforeCommit}
+                    onReview={showGitDiff}
+                  />
+                )}
+              </Show>
+              <Show when={sideView() === "source-control" && !folder()}>
+                <p class="muted">Open a project folder to use Git.</p>
+              </Show>
               <Show when={extrasRoot()} keyed>
                 {(root) => (
                   <>
@@ -1059,7 +1110,13 @@ function App() {
                   alongside it.
                 </p>
               </Show>
-              <Show when={!["todos", "scratchpad"].includes(sideView())}>
+              <Show
+                when={
+                  !["todos", "scratchpad", "source-control"].includes(
+                    sideView(),
+                  )
+                }
+              >
                 <Show
                   when={sideView() === "explorer"}
                   fallback={
@@ -1125,17 +1182,10 @@ function App() {
               style={{ display: sidebar() ? undefined : "none" }}
             />
             <Split.Panel
-              minSize={
-                (previewOpen() || historyOpen()) && current()
-                  ? "444px"
-                  : "220px"
-              }
+              minSize={sidePaneOpen() ? "444px" : "220px"}
               class="main-area"
               style={{
-                "min-width":
-                  (previewOpen() || historyOpen()) && current()
-                    ? "444px"
-                    : "220px",
+                "min-width": sidePaneOpen() ? "444px" : "220px",
               }}
             >
               <header class="editor-title">
@@ -1192,6 +1242,7 @@ function App() {
                         active={historyOpen()}
                         onClick={() => {
                           if (!historyOpen() && previewOpen()) togglePreview();
+                          setGitDiff(null);
                           setHistoryOpen(!historyOpen());
                         }}
                       />
@@ -1258,10 +1309,7 @@ function App() {
                   </Split.Panel>
                   <Split.Handle
                     style={{
-                      display:
-                        (previewOpen() || historyOpen()) && current()
-                          ? undefined
-                          : "none",
+                      display: sidePaneOpen() ? undefined : "none",
                     }}
                     class="split-handle"
                     aria-label="Resize side pane"
@@ -1269,11 +1317,47 @@ function App() {
                   <Split.Panel
                     minSize="220px"
                     class="preview-pane"
-                    aria-hidden={
-                      !((previewOpen() || historyOpen()) && current())
-                    }
-                    inert={!((previewOpen() || historyOpen()) && current())}
+                    aria-hidden={!sidePaneOpen()}
+                    inert={!sidePaneOpen()}
                   >
+                    <Show when={gitDiff()}>
+                      {(diff) => (
+                        <section class="git-diff" aria-label="Git diff">
+                          <header>
+                            <strong>{diff().title}</strong>
+                            <Action
+                              label="Close Git diff"
+                              icon="close"
+                              onClick={() => setGitDiff(null)}
+                            />
+                          </header>
+                          <Show when={diff().review.truncated}>
+                            <p class="git-message">
+                              This diff is too large to show in full. Use
+                              another Git tool to review the remainder.
+                            </p>
+                          </Show>
+                          <pre aria-label="Git changes">
+                            <For each={diff().review.patch.split("\n")}>
+                              {(line) => (
+                                <span
+                                  class={
+                                    line.startsWith("+")
+                                      ? "added"
+                                      : line.startsWith("-")
+                                        ? "removed"
+                                        : ""
+                                  }
+                                >
+                                  {line}
+                                  {"\n"}
+                                </span>
+                              )}
+                            </For>
+                          </pre>
+                        </section>
+                      )}
+                    </Show>
                     <Show when={historyOpen()}>
                       <section class="timeline" aria-label="Local history">
                         <header>
@@ -1354,7 +1438,7 @@ function App() {
                     </Show>
                   </Split.Panel>
                   <SplitVisibility
-                    open={!!((previewOpen() || historyOpen()) && current())}
+                    open={!!sidePaneOpen()}
                     panel={1}
                     defaultSizes={editorSizes()}
                     restoreKey={layoutVersion()}
