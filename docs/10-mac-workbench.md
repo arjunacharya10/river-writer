@@ -102,7 +102,7 @@ complete automated Mac interaction suite.
 * Save As does not replace an existing file. Mixed-newline files normalize to their
   detected convention. Save protection compares contents before replacement;
   a different app can still race a write between that check and the final rename.
-* Extras, settings UI, full Git operations, history compaction, independent backups,
+* Scratchpad/Bin, settings UI, full Git operations, history compaction, independent backups,
   FDX, print, Mac file associations, signed packaging and other v1 polish remain
   later phases. Crash recovery, automatic disk saves and local Timeline are implemented
   as described below.
@@ -235,7 +235,8 @@ Tab/Enter, typed capitals and Markdown isolation. The autosave/recovery/Timeline
 suite also passes. A popup screenshot is in ignored `app/output/writing-completion.png`.
 These composition checks use editor transactions; native Mac IME smoke coverage
 remains part of the platform verification work. Preview zoom/navigation controls
-are excluded by #44; Zen mode, broader syntax polish and other v1 editor work remain.
+are excluded by #44; Zen mode is deferred by #45. Broader syntax polish and
+other v1 editor work remain.
 
 
 ## Simple preview (2026-10-18, #44)
@@ -245,3 +246,29 @@ with their unused callbacks/tracking. Pages remain scrollable, including by keyb
 when the preview scroll area is focused. The editor-title preview toggle/shortcut
 opens and hides it; existing export actions outside the preview are unchanged.
 Zoom controls are no longer planned.
+
+
+## Simple Todos (2026-10-18, #46)
+
+The checklist activity icon and `View: Todos` command open a Google Tasks-inspired
+sidebar without creating an editor tab. Quick entry adds a task on Enter or blur;
+click a title to rename it, tick to complete, and expand Completed to reopen/delete
+a finished task. Delete and drag controls appear on hover/focus. Option+↑/↓ on a
+reorder handle provides a keyboard alternative. Pending task text is flushed before
+project changes, closing story tabs or quitting. The Todos view restores with the
+project session; the input stays mounted when switching sidebar views.
+
+`river-service::todos` reads/writes `_river/todos.md` as plain Markdown checkboxes.
+Loading does not create the sidecar; writes are atomic and compare the exact loaded
+snapshot with disk before replacing it. Existing Markdown, BOM and newline style
+are preserved. Symlink sidecars/files are rejected. On conflict, the sidebar keeps
+the typed input, offers Reload tasks and lets the writer retry against the newer
+list. Task edits are persisted on interaction/flush, not in story crash journals.
+
+Verification: three new Rust tests cover CRUD, reorder, reopening, Unicode, BOM/CRLF,
+unknown Markdown, stale writes and symlink boundaries (16 service tests total). The
+expanded browser suite checks mouse/keyboard completion, inline editing, drag and
+Option-arrow reorder, deletion, pending entry on sidebar/project departure, view
+restoration, external-conflict retry and no extra editor tabs. A screenshot is in
+ignored `app/output/todos.png`. The draft-recovery/Timeline suite also passes.
+Zen remains deferred; Scratchpad and Bin are the remaining extras slices.

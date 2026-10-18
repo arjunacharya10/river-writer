@@ -1,5 +1,6 @@
 import { chromium } from "playwright";
 import { verifyWriting } from "./verify-writing.mjs";
+import { verifyTodos } from "./verify-todos.mjs";
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 import { mkdtemp, readFile, writeFile, mkdir, rm } from "node:fs/promises";
@@ -323,6 +324,7 @@ try {
         editorWidthBefore,
     ) < 4,
   );
+  await verifyTodos(page, folder, root);
   await verifyWriting(page, root);
   // External changes remain intact when Save is attempted.
   await writeFile(`${folder}/Script.fountain`, "!Changed in another editor.\n");
@@ -354,7 +356,7 @@ try {
   console.log(
     JSON.stringify({
       checks:
-        "project welcome, cancelled creation, project open, recents, session restore, open, edit, save, Rust preview, repeated pane toggles, minimum widths, window resizing, tooltips, outline, tabs, undo, templates, themes, palette, find, keyboard resize, dirty close, PDF, external changes, fonts, screenplay completions/capitals, manuscript typing",
+        "project welcome, cancelled creation, project open, recents, session restore, open, edit, save, Rust preview, repeated pane toggles, minimum widths, window resizing, tooltips, outline, tabs, undo, templates, themes, palette, find, keyboard resize, dirty close, PDF, external changes, fonts, screenplay completions/capitals, manuscript typing, Todos CRUD/reorder/completion/conflict safety",
       result: "passed",
     }),
   );

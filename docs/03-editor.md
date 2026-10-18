@@ -37,7 +37,7 @@ bar**. They never open as tabs.
 | Activity bar | Explorer · Search · Source Control · Outline (scenes) · Characters · **Scratchpad · Todos · Bin** · Settings |
 | Explorer | Story files only (`.fountain`, `.md`, folders of chapters). `_river/` is hidden (like `files.exclude`) |
 | **Scratchpad view** | Side bar: one plain-text editing area, autosaved to `_river/scratchpad.md`. No toolbar. |
-| **Todos view** | Side bar: checklist backed by `_river/todos.md` (`- [ ]` / `- [x]`). Type to add, click to tick, drag to reorder. Nothing else. |
+| **Todos view** | Implemented (#46): simple task sidebar backed by `_river/todos.md`. Quick entry, inline edit, complete/reopen, collapsed completed list, delete, drag/keyboard reorder. No dates, reminders, priorities or subtasks. |
 | **Bin view** | Side bar: list of cut snippets (`_river/bin/*`), newest first. Select text → "Send to Bin" (also right-click / command). Click a snippet to expand it inline in the side bar; drag it into the editor to reuse; delete. |
 | Outline | Scenes, sections, synopses, notes; drag to reorder scenes |
 | Timeline view | Local autosave history + git commits for the current file |
@@ -55,7 +55,7 @@ bar**. They never open as tabs.
 | Command palette / Quick Open | `⌘⇧P`, `⌘P`; `@` jumps to a scene, `#` to a character |
 | Settings | Settings UI + `settings.json` (user and project scopes) |
 | Keybindings | VS Code default keymap; `keybindings.json` |
-| Zen mode | VS Code Zen mode + typewriter centering |
+| Zen mode | Deferred to keep the editor lean (#45); excluded from current v1 work. |
 | Themes | **Two only: Light and Dark**, modelled on VS Code's default Light Modern / Dark Modern. Follows the system appearance by default (like `window.autoDetectColorScheme`); can be set explicitly. More themes can come later; version 1 ships these two only. The page preview stays white paper in both themes (it shows what prints); PDFs are always white. |
 | Extensions | None |
 

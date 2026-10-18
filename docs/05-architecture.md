@@ -345,7 +345,7 @@ Packages are the official `@codemirror/*` modules unless noted; community packag
   multiple cursors (built in), bracket/quote auto-close, minimap via **`@replit/codemirror-minimap`** (MIT, Replit;
   decision #28 — verify maintenance at adoption), themes generated from the Light/Dark Modern palettes.
 * Editor behaviours: auto-uppercase cues and scene headings as you type, Tab to cycle
-  element type (optional, Final Draft habit), typewriter scrolling in Zen mode.
+  element type (optional, Final Draft habit), Zen/typewriter scrolling deferred (#45).
 * **Writing surface, not page:** no line-number gutter; a slim gutter only for change
   bars and folding; no page markers, headers, footers or page numbers. One font:
   Courier Prime (decision #35).
@@ -561,7 +561,7 @@ sample documents.
 | **1. Engine CLI** | `river-parse`, `-templates`, `-layout`, `-paginate`, `-pdf`, CLI export | Golden pagination tests pass for all 4 templates |
 | **2. Shell** | Tauri app, workbench skeleton (activity bar, Explorer, tabs, status bar, palette), CodeMirror 6 + Fountain/Markdown support + script look, document sync, save/watch | Edit + save + reopen; highlighting; outline |
 | **3. Preview** | Tile renderer, custom protocol, sync scroll, template dropdown + preview icon | Live preview within budget |
-| **4. Extras & settings** | Scratchpad/Todos/Bin views, settings editor, keybindings, Light/Dark themes, Zen mode | Feature-complete UI for v1 |
+| **4. Extras & settings** | Scratchpad/Todos/Bin views, settings editor, keybindings, Light/Dark themes (Zen deferred, #45) | Feature-complete UI for v1 |
 | **5. VCS** | Commit/log/diff/branch/checkout/restore, autosave history + Timeline, remotes push/pull/fetch/clone | Never-push-autosave test passes; credentials work for SSH + HTTPS |
 | **6. FDX + polish** | FDX import/export, Problems panel basics, packaging, signing/notarization | v1 release candidate |
 | **v1.1** | Scene merge, cherry-pick, revision marks, page diff, rename character, Characters/Stats views, reader copy, GitHub sign-in | — |

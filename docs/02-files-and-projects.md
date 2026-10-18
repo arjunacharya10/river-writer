@@ -43,7 +43,7 @@ which the Explorer hides.
 | Extra | File | Side-bar behaviour |
 |---|---|---|
 | Scratchpad | `_river/scratchpad.md` | One plain text area, autosaves, no toolbar |
-| Todos | `_river/todos.md` | Markdown checkboxes; type to add, click to tick, drag to reorder. No dates, priorities or reminders. |
+| Todos | `_river/todos.md` | Simple Google Tasks-inspired sidebar (#46): type to add, click a title to edit, tick to complete, collapse completed tasks, reopen/delete, drag or Option+↑/↓ to reorder. No dates, priorities, reminders or subtasks. |
 | Bin | `_river/bin/*` | "Send to Bin" on a selection makes a dated file; list newest first, expand inline, drag back into the editor. Shared across the project. |
 
 * Extras are **shared across branches by default** (option: per-branch).
@@ -84,3 +84,20 @@ Changing/closing projects checks unsaved text, and cancelling leaves it in place
 File → Open remains available for individual story files inside the workspace.
 Session restoration reloads **saved files**, not unsaved text: content autosave,
 crash recovery, backups and git remain separate work.
+
+
+## Todos implementation (#46)
+Opening Todos reads `_river/todos.md` without creating it. The first saved task
+creates the file. A standalone saved story uses `_river/todos.md` in its containing
+folder; an untitled story without a project asks the writer to save/open a project.
+Tasks stay out of the story-tab strip and Explorer.
+
+The sidebar supports standard `- [ ]` / `- [x]` rows (also uppercase `X` and `*`
+bullets imported from another editor). Unknown Markdown is kept, along with BOM and
+newline conventions. Reordering moves checkbox-row contents between task positions;
+non-task lines retain their positions. This is a flat list, without nested task or
+attached-description semantics. External edits are checked on each write and on
+idle window focus; conflicts preserve disk content and retain typed input for retry.
+A pending quick-entry/title edit is flushed before changing/closing a project or
+quitting. Unsaved keystrokes in task inputs are not part of story crash-recovery
+journals; tasks persist on Enter, blur or the workspace flush.

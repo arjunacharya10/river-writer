@@ -26,6 +26,7 @@ import {
 } from "./components/controls";
 import { ProjectWelcome } from "./components/welcome";
 import { PagePreview } from "./components/preview";
+import { TodosPanel } from "./components/todos";
 import {
   nameOf,
   type Story,
@@ -40,6 +41,13 @@ import {
 import "@vscode/codicons/dist/codicon.css";
 import "./style.css";
 function App() {
+  let flushTodos: () => Promise<void> = async () => {};
+  function registerTodoFlush(flush: () => Promise<void>) {
+    flushTodos = flush;
+    return () => {
+      if (flushTodos === flush) flushTodos = async () => {};
+    };
+  }
   type Version = { id: string; timestamp: number; bytes: number };
   const [historyOpen, setHistoryOpen] = createSignal(false);
   const [versions, setVersions] = createSignal<Version[]>([]);
@@ -224,6 +232,10 @@ function App() {
     sent = new Map<number, number>(),
     queues = new Map<number, Promise<unknown>>();
   const current = () => tabs().find((d) => d.id === active());
+  const todoRoot = () => {
+    const path = current()?.path;
+    return folder() || (path ? path.slice(0, path.lastIndexOf("/")) : "");
+  };
   const fail = (e: unknown) => {
     setError(String(e));
   };
@@ -319,9 +331,11 @@ function App() {
     select(doc.id);
   }
   async function newFile() {
+    await flushTodos();
     await add(await call<Story>("new_document"));
   }
   async function open(path?: string) {
+    await flushTodos();
     // Selecting an already-open story is immediate; a delayed open response must
     // not steal focus back after the writer switches to another tab.
     const existing = path ? tabs().find((doc) => doc.path === path) : undefined;
@@ -389,6 +403,7 @@ function App() {
       });
   }
   async function mayLeave() {
+    await flushTodos();
     for (const id of autosaveTimers.keys()) cancelAutosave(id);
     for (const d of tabs()) {
       if (
@@ -453,7 +468,11 @@ function App() {
       setWelcome(false);
       const saved = project.session;
       setSidebar(saved.sidebar);
-      setSideView(saved.sideView === "outline" ? "outline" : "explorer");
+      setSideView(
+        ["outline", "todos"].includes(saved.sideView)
+          ? saved.sideView
+          : "explorer",
+      );
       setPreviewOpen(saved.preview);
       setSidebarSizes(saved.sidebarSizes);
       setEditorSizes(saved.editorSizes);
@@ -534,6 +553,7 @@ function App() {
     return true;
   }
   async function close(id: number) {
+    await flushTodos();
     const doc = tabs().find((d) => d.id === id);
     if (!doc) return;
     cancelAutosave(id);
@@ -567,6 +587,7 @@ function App() {
     quitting = true;
     for (const id of autosaveTimers.keys()) cancelAutosave(id);
     try {
+      await flushTodos();
       for (const d of tabs()) {
         if (
           d.dirty &&
@@ -704,6 +725,14 @@ function App() {
     { id: "theme", label: "View: Toggle Light / Dark", run: toggleTheme },
     { id: "find", label: "Edit: Find", key: "⌘F", run: find },
     {
+      id: "todos",
+      label: "View: Todos",
+      run: () => {
+        setSideView("todos");
+        setSidebar(true);
+      },
+    },
+    {
       id: "outline",
       label: "View: Outline",
       run: () => {
@@ -723,6 +752,10 @@ function App() {
       return;
     }
     if (welcome() && id !== "quit") return;
+    if (id === "save" && document.activeElement?.closest(".todos-panel")) {
+      run(flushTodos)();
+      return;
+    }
     if (id === "quit") {
       run(quit)();
       return;
@@ -917,6 +950,15 @@ function App() {
                 setSideView("outline");
               }}
             />
+            <Action
+              label="Todos"
+              icon="checklist"
+              active={sidebar() && sideView() === "todos"}
+              onClick={() => {
+                setSidebar(true);
+                setSideView("todos");
+              }}
+            />
             <div class="activity-spacer" />
             <Action
               label="Command Palette"
@@ -942,67 +984,88 @@ function App() {
               class="sidebar"
             >
               <header>
-                {sideView() === "outline" ? "OUTLINE" : "EXPLORER"}
+                {sideView() === "todos"
+                  ? "TODOS"
+                  : sideView() === "outline"
+                    ? "OUTLINE"
+                    : "EXPLORER"}
                 <Action
                   label="Open Project"
                   icon="folder-opened"
                   onClick={run(openFolder)}
                 />
               </header>
-              <Show
-                when={sideView() === "explorer"}
-                fallback={
-                  <div class="outline">
-                    <For each={analysis()?.outline}>
-                      {(item) => (
-                        <button onClick={() => jump(item.source.bytes.start)}>
-                          <Icon
-                            name={
-                              item.kind === "scene"
-                                ? "symbol-event"
-                                : "symbol-namespace"
-                            }
-                          />
-                          <span>{item.text}</span>
-                        </button>
-                      )}
-                    </For>
-                    <Show when={!analysis()?.outline.length}>
-                      <p class="muted">Scenes and headings appear here.</p>
-                    </Show>
-                  </div>
-                }
-              >
+              <Show when={todoRoot()} keyed>
+                {(root) => (
+                  <TodosPanel
+                    root={root}
+                      active={sidebar() && sideView() === "todos"}
+                    onError={fail}
+                    registerFlush={registerTodoFlush}
+                  />
+                )}
+              </Show>
+              <Show when={sideView() === "todos" && !todoRoot()}>
+                <p class="muted">
+                  Open a project or save your story to keep tasks alongside it.
+                </p>
+              </Show>
+              <Show when={sideView() !== "todos"}>
                 <Show
-                  when={folder()}
+                  when={sideView() === "explorer"}
                   fallback={
-                    <div class="sidebar-welcome">
-                      <p>Open a folder to explore your story files.</p>
-                      <button class="primary" onClick={run(openFolder)}>
-                        Open Project
-                      </button>
+                    <div class="outline">
+                      <For each={analysis()?.outline}>
+                        {(item) => (
+                          <button onClick={() => jump(item.source.bytes.start)}>
+                            <Icon
+                              name={
+                                item.kind === "scene"
+                                  ? "symbol-event"
+                                  : "symbol-namespace"
+                              }
+                            />
+                            <span>{item.text}</span>
+                          </button>
+                        )}
+                      </For>
+                      <Show when={!analysis()?.outline.length}>
+                        <p class="muted">Scenes and headings appear here.</p>
+                      </Show>
                     </div>
                   }
                 >
-                  <div class="folder-title" title={folder()}>
-                    {folder().split("/").pop()}
-                  </div>
-                  <For each={files()}>
-                    {(file) => (
-                      <button
-                        class={`file ${current()?.path === file.path ? "selected" : ""}`}
-                        title={file.path}
-                        onClick={run(() => open(file.path))}
-                      >
-                        <Icon name="file-text" />
-                        <span>{file.name}</span>
-                      </button>
-                    )}
-                  </For>
-                  <Show when={!files().length}>
-                    <p class="muted">
-                      No .md or .fountain files in this folder.
-                    </p>
+                  <Show
+                    when={folder()}
+                    fallback={
+                      <div class="sidebar-welcome">
+                        <p>Open a folder to explore your story files.</p>
+                        <button class="primary" onClick={run(openFolder)}>
+                          Open Project
+                        </button>
+                      </div>
+                    }
+                  >
+                    <div class="folder-title" title={folder()}>
+                      {folder().split("/").pop()}
+                    </div>
+                    <For each={files()}>
+                      {(file) => (
+                        <button
+                          class={`file ${current()?.path === file.path ? "selected" : ""}`}
+                          title={file.path}
+                          onClick={run(() => open(file.path))}
+                        >
+                          <Icon name="file-text" />
+                          <span>{file.name}</span>
+                        </button>
+                      )}
+                    </For>
+                    <Show when={!files().length}>
+                      <p class="muted">
+                        No .md or .fountain files in this folder.
+                      </p>
+                    </Show>
                   </Show>
                 </Show>
               </Show>

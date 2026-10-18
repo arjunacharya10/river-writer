@@ -4,13 +4,15 @@
 Ships on **macOS only** (principle 7, decision #36). Windows is deferred and does not
 gate development or release. Linux: later or never.
 * VS Code workbench: activity bar, Explorer, Search, Source Control, Outline, editor groups/tabs,
-  command palette, quick open, breadcrumbs, minimap, status bar, settings.json, VS Code keymap, Zen mode
+  command palette, quick open, breadcrumbs, minimap, status bar, settings.json, VS Code keymap (Zen mode deferred, #45)
 * Writing assistance: current-script character/location suggestions, scene prefixes
   and times, scoped capitalization implemented (#43); broader editor polish remains.
 * Live paginated preview; PDF export; title page
 * Templates: Screenplay (+ multi-cam), Stage Play, Novel/Manuscript
 * FDX import/export
 * Extras: Scratchpad, Todos, Bin as activity-bar side-bar views (plain files in `_river/`)
+  * Todos implemented (#46): quick entry/edit, completion/reopening, collapsed completed
+    tasks, delete and drag/keyboard reorder. Scratchpad and Bin remain next.
 * Git: commit (no staging), log, diff (scene/paragraph/word), restore/revert, branch +
   checkout, remote + push/pull/fetch, clone
 * Local autosave history (never pushed); automatic local backups

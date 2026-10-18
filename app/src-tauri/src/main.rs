@@ -150,6 +150,24 @@ async fn refresh_folder(path: PathBuf) -> Result<Vec<river_service::FileEntry>, 
     work(move || river_service::list_files(&path)).await
 }
 #[tauri::command]
+async fn load_todos(root: PathBuf) -> Result<river_service::todos::Todos, String> {
+    work(move || river_service::todos::load(&root)).await
+}
+#[tauri::command]
+async fn update_todos(
+    app: tauri::AppHandle,
+    root: PathBuf,
+    expected: Option<String>,
+    change: river_service::todos::Change,
+) -> Result<river_service::todos::Todos, String> {
+    work(move || {
+        let state = app.state::<Desktop>();
+        let _documents = lock(&state.documents)?;
+        river_service::todos::update(&root, expected.as_deref(), change)
+    })
+    .await
+}
+#[tauri::command]
 async fn sync_document(
     app: tauri::AppHandle,
     id: u64,
@@ -567,6 +585,8 @@ fn main() {
             open_document,
             open_folder,
             refresh_folder,
+            load_todos,
+            update_todos,
             recent_projects,
             create_project,
             open_project,

@@ -27,6 +27,16 @@ fn main() {
                     recovery.restore(&mut docs, args["key"].as_str().ok_or("Missing key")?)?,
                 )
                 .unwrap(),
+                "load_todos" => serde_json::to_value(todos::load(Path::new(
+                    args["root"].as_str().ok_or("Missing root")?,
+                ))?)
+                .unwrap(),
+                "update_todos" => serde_json::to_value(todos::update(
+                    Path::new(args["root"].as_str().ok_or("Missing root")?),
+                    args["expected"].as_str(),
+                    serde_json::from_value(args["change"].clone()).map_err(|e| e.to_string())?,
+                )?)
+                .unwrap(),
                 "new_document" => serde_json::to_value(docs.new_document()).unwrap(),
                 "open_document" => serde_json::to_value(
                     docs.open(Path::new(
