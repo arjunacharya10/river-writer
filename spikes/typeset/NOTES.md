@@ -1,4 +1,4 @@
-# Typeset spike — resume notes
+# Typeset spike — results and implementation notes
 
 Goal (doc 05 §16 phase 0): Courier Prime screenplay page + manuscript page → PDF (krilla)
 and PNG (tiny-skia) from one display list; outputs must match; 120 pages < 150 ms.
@@ -22,3 +22,54 @@ and PNG (tiny-skia) from one display list; outputs must match; 120 pages < 150 m
 Screenplay: action x=1.5″ w=6.0″ · cue x=3.458″ · paren x=2.875″ w=2.931″ ·
 dialogue x=2.486″ w=3.458″ · transition right-aligned to 7.5″.
 Manuscript: x=1″ w=6.5″, first-line indent 36 pt, 24 pt line pitch, ragged-right.
+
+## Result (2026-10-17, macOS / Apple M5 / Rust 1.96)
+
+Implemented in `src/main.rs`. Two original fixtures produce Letter-size PDF and
+144 dpi PNG from the same positioned glyph list. All four font faces are exercised.
+PDFs retain selectable text; no fonts are discovered from the operating system.
+
+* Release full layout of 120 synthetic pages / 265,680 glyphs: median **56.67 ms**,
+  worst **62.85 ms** across 10 warm samples after one warm-up. Each page has nine
+  paragraphs, with a unique page number in its text. Font/layout contexts are reused;
+  paragraphs are shaped and wrapped again, not cloned from a completed page.
+* Export per page: PDF 0.99–1.92 ms; raster PNG 15.16–16.52 ms (includes encoding).
+* Independent Poppler renders: zero dark pixels without a counterpart within a 1px
+  radius, in either direction, without fitted alignment. Mean absolute image
+  differences: screenplay 0.677, manuscript 0.916 on a 0–255 scale. Different
+  anti-aliasing means these are **not byte-identical images**. A deliberately shifted
+  3px image is rejected by the comparator.
+* Unit tests: nominal 10 cpi across all four faces; Unicode cluster ranges through
+  shaping/wrapping (accented letters, combining mark, punctuation); page bounds.
+* `cargo clippy -- -D warnings` passes.
+
+Courier Prime's actual advance is 1228/2048 em, or 7.1953125 pt at 12 pt. The
+trial adds 0.0046875 pt letter spacing to reach a 7.2 pt writing grid without
+changing the font outlines. Ten characters measure exactly 72 pt in Parley.
+
+### Reproduce
+
+From the repository root:
+
+```sh
+cargo test --manifest-path spikes/typeset/Cargo.toml
+cargo run --release --manifest-path spikes/typeset/Cargo.toml
+python3 spikes/typeset/verify.py
+```
+
+The comparison needs Poppler (`pdftoppm`, `pdftotext`, `pdfinfo`), Pillow and NumPy.
+Generated files and `verification.json` live in ignored `spikes/typeset/output/`.
+The Codex bundled Python includes the image dependencies on this machine.
+
+### Limits / phase 1 follow-up
+
+This proves the selected layout/PDF/raster combination on macOS, not the full
+formatting engine. No parser, production pagination, scene grouping, title page,
+(MORE)/(CONT'D), dual dialogue, incremental edit cache, or Windows validation yet.
+The 150 ms measurement is full layout on synthetic page-sized blocks, not an end-to-end
+edit-and-repaginate benchmark. Rasterization is excluded from that timing.
+
+Screenplay uses a conservative 6-inch action measure ending at 7.5 inches; the
+Highland spec's unresolved default-width/right-edge question remains open. The
+first-line manuscript indent is simulated by separately wrapping the first line.
+Production code should carry source ranges through that split and pagination.

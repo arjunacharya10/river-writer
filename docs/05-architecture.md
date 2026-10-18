@@ -553,6 +553,13 @@ sample documents.
 
 ---
 
+Phase-0 progress (2026-10-17): typesetting trial implemented in `spikes/typeset/`.
+On Apple M5 / macOS, 120 synthetic pages (265,680 glyphs) fully shape/wrap into a
+display list in 56.67 ms median / 62.85 ms worst (10 warm samples). Independent PDF
+renders match preview geometry within 1 pixel at 144 dpi; anti-aliasing differs.
+This is not yet a production incremental-pagination benchmark or Windows validation.
+See [trial notes](../spikes/typeset/NOTES.md) for reproduction and limitations.
+
 ## 17. Packaging and platforms
 
 * macOS: universal binary, hardened runtime, notarized; `.dmg`; file associations for
