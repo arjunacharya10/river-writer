@@ -21,7 +21,7 @@ never from inspecting its code.
 | Commands and hotkeys | Central registry, hotkeys by command ID, conflict detection | VS Code-style registry + conflict warnings in the keybindings editor |
 | Undo across tab switches | Keeps editor state per open file | Cache CodeMirror `EditorState` per tab |
 | Startup with large projects | UI first, index in background | Editor usable immediately; outline/characters fill in |
-| Spellcheck | Chromium's spellchecker via Electron (identical everywhere) | **Gap:** Tauri uses OS webviews (Linux WebKitGTK differs). Open question: accept OS spellcheck, or bundle Hunspell-based checking in Rust (shown as editor decorations) for identical behaviour |
+| Spellcheck | Chromium's spellchecker via Electron (identical everywhere) | Use macOS system spellcheck via WKWebView; validate editor integration on Mac. Cross-platform spellcheck parity is deferred (#36) |
 | PDF export | Chromium print-to-PDF | N/A: River's own typesetting engine |
 | Mobile | One codebase via Capacitor | Later: Tauri 2 mobile targets + CodeMirror touch support; keep UI free of desktop-only assumptions |
 

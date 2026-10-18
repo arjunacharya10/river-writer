@@ -76,7 +76,8 @@ The icon is an original temporary SVG, not a proposed product identity.
 
 ## Still needed
 
-Windows/WebView2 testing; actual production parser classifications; IME and
+Windows/WebView2 testing is deferred by decision #36 and is not an exit gate.
+Current follow-up: actual production parser classifications; IME and
 accessibility testing; selection/caret edge cases across wrapped indented lines;
 continuous scroll profiling and a real 120-page document. The experiment rebuilds
 line decorations and word counts on edits; incremental work belongs in the real app.

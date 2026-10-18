@@ -1,7 +1,8 @@
 # 06 — Roadmap
 
 ## Version 1 — "write, see the page, keep every version"
-Ships on **macOS and Windows** simultaneously (principle 7). Linux: later or never.
+Ships on **macOS only** (principle 7, decision #36). Windows is deferred and does not
+gate development or release. Linux: later or never.
 * VS Code workbench: activity bar, Explorer, Search, Source Control, Outline, editor groups/tabs,
   command palette, quick open, breadcrumbs, minimap, status bar, settings.json, VS Code keymap, Zen mode
 * Live paginated preview; PDF export; title page
@@ -22,6 +23,7 @@ Ships on **macOS and Windows** simultaneously (principle 7). Linux: later or nev
 * Optional daily word-goal ring
 
 ## Later (after 1.1)
+* Windows port: revisit after the Mac app is excellent; no committed release date.
 * More themes (curated additions, or VS Code theme import with Fountain styling)
 
 ## Never

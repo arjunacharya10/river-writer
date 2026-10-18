@@ -4,6 +4,9 @@ Goal: **releasing should take no thought.** Bump the version, push a tag, and CI
 signs and publishes. Users update manually; River itself never contacts a server for
 updates.
 
+Current release target: **macOS only** (decision #36). Windows distribution and
+signing are deferred; they do not block release.
+
 ## Update policy (decision #30)
 * **No auto-update and no update checks.** River makes **no network connections except
   git push/pull/fetch/clone** (the network promise stays strict).
@@ -24,9 +27,9 @@ no winget). Nothing in v1 may make adding an **opt-in** updater later expensive:
 
 | Keep stable from v1 | Why it matters later |
 |---|---|
-| **App identity**: macOS bundle identifier, Windows product name + **UpgradeCode** (MSI) / NSIS app id | An updater (or a newer installer) can only replace an install it recognises |
-| **Signing identities**: same Apple Developer ID team and Windows signing publisher on every release | Updates must be signed by the same identity, or the OS treats the app as different/untrusted |
-| **Install locations** (`/Applications/River Writer.app`, per-user/per-machine choice on Windows decided once) | The updater swaps files in place |
+| **App identity**: macOS bundle identifier | An updater (or a newer installer) can only replace an install it recognises |
+| **Signing identities**: same Apple Developer ID team on every release | Updates must be signed by the same identity, or the OS treats the app as different/untrusted |
+| **Install locations** (`/Applications/River Writer.app`) | The updater swaps files in place |
 | **Semantic versioning** on every release | The updater compares versions |
 | **GitHub Releases as the canonical artifact host**, with stable asset naming | A future `latest.json` manifest can point at the same assets |
 | **Backward-compatible settings and `_river/` formats** (additive changes, version field) | Updating must never break existing projects |
@@ -51,12 +54,10 @@ promise is publicly reworded at that time.
 
 ```mermaid
 flowchart LR
-  PR[Pull request] --> CI[CI: fmt, clippy, unit tests,<br/>golden pagination, visual regression,<br/>E2E smoke on macOS + Windows]
-  TAG[Push tag vX.Y.Z] --> BUILD[tauri-action build matrix]
+  PR[Pull request] --> CI[CI: fmt, clippy, unit tests,<br/>golden pagination, visual regression,<br/>E2E smoke on macOS]
+  TAG[Push tag vX.Y.Z] --> BUILD[tauri-action macOS build]
   BUILD --> MAC[macOS universal .dmg<br/>codesign + notarize + staple]
-  BUILD --> WIN[Windows .msi / NSIS .exe<br/>Authenticode via Azure Trusted Signing]
   MAC --> REL[GitHub Release draft<br/>+ SHA-256 checksums + notes]
-  WIN --> REL
   REL --> PUB[Publish release → website download links update]
 ```
 
@@ -66,15 +67,14 @@ flowchart LR
   **no-networking-crates check** for the network promise).
 * UI: typecheck, lint, unit tests.
 * Visual regression renders (pages → PNG → perceptual diff).
-* E2E smoke tests of the built app on **macOS and Windows** runners.
+* E2E smoke tests of the built app on **macOS** runners.
 * Performance benchmarks against the budgets in doc 05 §1 (fail on regression).
 
 ### On a version tag (`vX.Y.Z`)
-* **`tauri-apps/tauri-action`** builds the installers in a matrix:
+* **`tauri-apps/tauri-action`** builds the macOS release:
   * **macOS:** universal binary (Apple Silicon + Intel) `.dmg`; **codesign with a
     Developer ID certificate, notarize, staple** (Apple credentials as GitHub secrets).
-  * **Windows:** `.msi` and/or NSIS `.exe`; **Authenticode signing via Azure Trusted
-    Signing** (or an OV certificate); WebView2 bootstrapper included.
+  * **Windows:** deferred; no installer, signing credentials or CI job required now.
   * **Linux:** not built (later or never; community port welcome).
 * Creates a **draft GitHub Release** with the installers, SHA-256 checksums and release notes
   generated from the changelog.
@@ -92,8 +92,7 @@ flowchart LR
 | Item | Why | Cost (approx.) |
 |---|---|---|
 | Apple Developer Program | Developer ID signing + notarization so macOS doesn't block the app | $99/year |
-| Windows code signing (Azure Trusted Signing, or an OV certificate) | Avoid "unknown publisher" / SmartScreen warnings | ~$10/month (Azure) |
-| GitHub repository secrets | Apple ID/app-specific password or API key, team ID, certificates; Azure signing credentials | — |
+| GitHub repository secrets | Apple ID/app-specific password or API key, team ID, certificates | — |
 | Website + newsletter service | Download page, changelog, sign-up (any static site + a newsletter provider) | provider-dependent |
 
 ## Versioning

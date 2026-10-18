@@ -65,7 +65,8 @@ The Codex bundled Python includes the image dependencies on this machine.
 
 This proves the selected layout/PDF/raster combination on macOS, not the full
 formatting engine. No parser, production pagination, scene grouping, title page,
-(MORE)/(CONT'D), dual dialogue, incremental edit cache, or Windows validation yet.
+(MORE)/(CONT'D), dual dialogue or incremental edit cache yet. Windows validation
+is deferred by decision #36 and does not block current development.
 The 150 ms measurement is full layout on synthetic page-sized blocks, not an end-to-end
 edit-and-repaginate benchmark. Rasterization is excluded from that timing.
 

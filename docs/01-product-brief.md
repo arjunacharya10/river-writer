@@ -26,10 +26,10 @@ Out: comics/graphic novels, essays, academic/MLA, wikis, bulletins, speeches, ar
 4. **Opinionated over configurable.** Three forms done perfectly beat 14 done adequately.
 5. **Calm.** No badges, nags, streaks, pop-ups, surveys, paywalls or callouts.
 6. **Laser-sharp.** Every feature must serve the act of writing a story.
-7. **Multiplatform, slow features.** **macOS and Windows** from v1. Every feature ships
-   on both at the same time, with the same behaviour; no platform-exclusive features.
-   River grows slowly and deliberately rather than fast and uneven. **Linux: later or
-   never** (not on the core roadmap; as an open-source project, a community port is welcome).
+7. **Mac first, craft first.** **macOS only for current development and v1.** Make
+   River excellent on the Mac: behaviour, performance and platform integration.
+   Windows is deferred to later and does not gate features or releases. There is no
+   simultaneous-platform requirement (decision #36). Linux remains later or never.
 8. **Open source.** River's source is public (license TBD, see doc 06).
 
 ## Keep (core)

@@ -6,7 +6,7 @@ formatted pages. It's a focused, anti-bloat take on Highland Pro: craft first, n
 no accounts, no AI, no plugins.
 
 ## Read first
-1. `docs/decision-log.md` — every decision (35 so far) with reasoning and reversals.
+1. `docs/decision-log.md` — every decision (36 so far) with reasoning and reversals.
    **Locked decisions are not to be relitigated** unless the user raises them.
 2. `docs/01-product-brief.md` (principles), then `02`–`08` as relevant.
 3. Formatting-engine behaviour (parser rules, template values, pagination,
@@ -15,7 +15,8 @@ no accounts, no AI, no plugins.
 ## Locked essentials
 * **Stack:** Tauri 2 · Rust engine crates (no Tauri dependency) · TypeScript + SolidJS
   workbench · CodeMirror 6 editor · Parley (text layout) · krilla (PDF) · git via git2.
-* **Platforms:** macOS + Windows at v1. Linux later or never.
+* **Platforms:** macOS only now and for v1 (#36). Windows deferred; no parity or
+  simultaneous-release gate. Prioritize Mac quality. Linux later or never.
 * **Files:** pure `.fountain`/`.md`; project = folder; extras (scratchpad, todos, bin) are
   plain text in a visible `_river/`; `_river/river.json` holds UI state only.
 * **UI:** exactly like VS Code. Editor tabs only for story files. Extras live in
@@ -31,12 +32,12 @@ no accounts, no AI, no plugins.
   checks (but keep the door open; doc 08).
 
 ## Current status and next step
-Product definition complete (35 decisions; one font: Courier Prime, #35); **typesetting and native editor trials implemented on macOS**. Next: **complete phase 0 trial builds**
+Product definition complete (36 decisions; one font: Courier Prime, #35); **typesetting and native editor trials implemented on macOS**. Next: **production engine CLI**
 (`docs/05-architecture.md` §16):
 1. ~~Typesetting~~ **done**: Parley + krilla + tiny-skia from one display list; positions
    exact, raster ≈ PDF, 120 pages in 24 ms (`spikes/typeset/NOTES.md`).
 2. Editor: CodeMirror 6 script look in a Tauri window, driven by template geometry;
-   check typing/scrolling smoothness on macOS (and Windows).
+   typing/scrolling checked on macOS. Windows testing is deferred (#36).
 Open (non-blocking) decisions: license and business model (before the first public push),
 unified syntax vs separate, `.highland` import, autosave timing (`docs/06-roadmap.md`).
 

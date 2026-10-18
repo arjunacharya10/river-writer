@@ -1,7 +1,8 @@
 # 05 — Architecture (Tauri)
 
-Status: design, no code yet. Library names are **recommendations to verify at build
-time** (maturity, licenses, current versions). Behaviour references point to
+Status: architecture defined; phase-0 typesetting and editor trials implemented on
+macOS. Untried libraries remain **recommendations to verify at build time**
+(maturity, licenses, current versions). Behaviour references point to
 `~/rea/HIGHLAND_SPEC.md` (§ numbers).
 
 ---
@@ -17,7 +18,7 @@ time** (maturity, licenses, current versions). Behaviour references point to
 | Fast on long scripts and novels | Incremental parse and pagination; background work off the UI thread. |
 | Small, native-feeling app | **Tauri 2** (system webview), Rust core — **locked** (decision #31). |
 
-Performance budgets (targets on an M-series Mac / mid-range PC):
+Performance budgets (targets on an M-series Mac):
 
 | Interaction | Budget |
 |---|---|
@@ -480,7 +481,7 @@ No grammar or spelling beyond the system spellchecker in the editor.
 ### 12.6 Remotes and credentials
 * Push/pull/fetch/clone run **only on explicit user action**, with progress over a channel.
 * Credentials: SSH agent/keys (`~/.ssh`), the OS credential manager
-  (macOS Keychain / Windows Credential Manager / libsecret), and git's credential helper
+  (macOS Keychain), and git's credential helper
   config. Never stored by River in plain files.
 * Pull = fetch + (fast-forward or scene merge). No rebase.
 * Optional v1.1 "Sign in with GitHub" via OAuth device flow, token stored in the OS keychain.
@@ -557,13 +558,14 @@ Phase-0 progress (2026-10-17): typesetting trial implemented in `spikes/typeset/
 On Apple M5 / macOS, 120 synthetic pages (265,680 glyphs) fully shape/wrap into a
 display list in 56.67 ms median / 62.85 ms worst (10 warm samples). Independent PDF
 renders match preview geometry within 1 pixel at 144 dpi; anti-aliasing differs.
-This is not yet a production incremental-pagination benchmark or Windows validation.
+This is not yet a production incremental-pagination benchmark. Windows validation
+is deferred by decision #36.
 After extracting shared `spikes/template.json`, a repeat measured 44.96 ms median /
 45.67 ms worst for the same workload. The editor trial in `spikes/editor/` runs in a
 native Tauri/WebKit window: 4,920-line document, typing transaction + forced layout
 p95 5–6 ms, with minimap enabled. Keyboard input and undo also checked natively.
 Browser tests cover source-preserving template changes, search and geometry.
-Windows and full production pagination remain unvalidated. See the
+Full production pagination remains unvalidated; Windows is outside current scope. See the
 [typesetting notes](../spikes/typeset/NOTES.md) and
 [editor notes](../spikes/editor/NOTES.md) for reproduction and limitations.
 
@@ -571,25 +573,19 @@ Windows and full production pagination remain unvalidated. See the
 
 * macOS: universal binary, hardened runtime, notarized; `.dmg`; file associations for
   `.fountain` (and optionally `.md`, without claiming ownership).
-* Windows: MSI/NSIS installer, WebView2 runtime (evergreen; bootstrapper included),
-  Authenticode code-signed; file association for `.fountain`.
-* Linux: **not in scope** (later or never; community port welcome). If added: AppImage +
-  `.deb`, WebKitGTK minimum version, `.desktop` file and MIME type for `.fountain`.
+* Windows: **deferred** (decision #36). No current installer, signing, WebView2,
+  validation or feature-parity requirements. Revisit after the Mac app is excellent.
+* Linux: **not in scope** (later or never; community port welcome).
 * Bundled fonts ship with their license files (OFL text) in the app and the About panel.
-* **Decided (#29, revised): macOS and Windows at v1**, same features and behaviour on both.
-  Linux later or never (community port welcome, since River is open source).
-  * **CI matrix:** build, unit tests, golden pagination, visual-regression renders and
-    E2E smoke tests on macOS and Windows for every change. A feature isn't done until it
-    passes on both.
-  * **Rendering parity:** pages are rasterized in Rust from bundled fonts, so preview and PDF
-    are identical across OSes by construction. Only the workbench UI depends on the webview
-    (WKWebView on macOS, WebView2/Chromium on Windows; both mature).
-  * **Per-OS integration points**, each behind one Rust abstraction: credential store
-    (Keychain / Credential Manager), printing (native print dialog with the generated PDF),
-    file associations, menus (macOS app menu vs in-window menu bar on Windows, mirroring
-    VS Code), keybindings (`⌘` ↔ `Ctrl` mapping as in VS Code), window chrome (VS Code-style
-    custom title bar on Windows, native traffic lights on macOS).
-  * **Spellcheck:** system spellcheck via the webview on both (good on macOS and Windows).
+* **Current target: macOS only** (decision #36, supersedes #29/#32).
+  * **CI:** build, unit tests, golden pagination, visual-regression renders and E2E
+    smoke tests on macOS. Windows does not gate any change or release.
+  * **Rendering:** one Rust display list and bundled fonts feed preview and PDF.
+    The workbench uses WKWebView; validate against the actual Mac webview.
+  * **Mac integration:** Keychain credentials, native print dialog with the generated
+    PDF, file associations, macOS app menus, Command-key shortcuts, native traffic
+    lights and window behaviour. Prioritize Mac quality over hypothetical port needs.
+  * **Spellcheck:** system spellcheck via the macOS webview.
 * **Paths and line endings:** the project uses `/`-normalized relative paths in
     `river.json`; text is saved with the line endings it was opened with (default LF for
     new files); git `core.autocrlf` is left to the user's config.
@@ -601,7 +597,7 @@ Windows and full production pagination remain unvalidated. See the
 | Risk | Mitigation |
 |---|---|
 | Typesetting quality (glyph positions, wrapping parity) | Phase-0 spike; one monospace font; golden visual tests |
-| Webview differences (WKWebView vs WebView2) affecting the editor/UI | CodeMirror 6 is cross-browser tested; keep UI CSS conservative; E2E tests per OS |
+| WKWebView editing behaviour and performance | Test the actual macOS webview, including typing, selection, IME and scrolling |
 | libgit2 credential edge cases (SSH agents, 2FA tokens) | Lean on OS keychains + credential helpers; clear error messages; device-flow sign-in in v1.1 |
 | Autosave store corrupted/deleted | It's a disposable safety net in `.git/river-autosave/`; real history is unaffected |
 | Large projects (multi-file novels with 100+ chapters) | Per-file parse caches, project-level indices built lazily, pagination only for the previewed file / includes |
@@ -624,6 +620,7 @@ Windows and full production pagination remain unvalidated. See the
    any push (even `--mirror`), invisible to other git tools, moves with the project,
    self-contained pruning. Lone-file mode: app data dir keyed by file path. Supersedes
    the private-refs plan in §12.3.
-5. **Platforms: macOS and Windows at v1; Linux later or never** (decision #29, revised).
+5. **Platforms: macOS only now and for v1; Windows deferred; Linux later or never**
+   (decision #36). Mac quality takes priority over simultaneous-platform delivery.
 6. **Shell: Tauri 2, locked** (decision #31) after comparing with Electron (maturity, identical
    engine, Linux) — River's focused scope, Rust-native core and strict network promise favour Tauri.
