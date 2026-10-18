@@ -6,7 +6,7 @@ formatted pages. It's a focused, anti-bloat take on Highland Pro: craft first, n
 no accounts, no AI, no plugins.
 
 ## Read first
-1. `docs/decision-log.md` — every decision (34 so far) with reasoning and reversals.
+1. `docs/decision-log.md` — every decision (35 so far) with reasoning and reversals.
    **Locked decisions are not to be relitigated** unless the user raises them.
 2. `docs/01-product-brief.md` (principles), then `02`–`08` as relevant.
 3. Formatting-engine behaviour (parser rules, template values, pagination,
@@ -31,9 +31,9 @@ no accounts, no AI, no plugins.
   checks (but keep the door open; doc 08).
 
 ## Current status and next step
-Product definition complete; **no code yet**. Next: **phase 0 trial builds**
+Product definition complete (35 decisions; one font: Courier Prime, #35); **no code yet**. Next: **phase 0 trial builds**
 (`docs/05-architecture.md` §16):
-1. Typesetting: Parley + krilla render one screenplay page and one prose page to PDF and
+1. Typesetting: Parley + krilla render one screenplay page and one manuscript page to PDF and
    to a raster image from the same display list; the outputs must match.
 2. Editor: CodeMirror 6 script look in a Tauri window, driven by template geometry;
    check typing/scrolling smoothness on macOS (and Windows).

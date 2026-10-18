@@ -89,11 +89,11 @@ bar**. They never open as tabs.
     inserted into the file.** Forcing characters (`@ . ! > ~`) are shown dimmed. Dual
     dialogue (`^`) shows sequentially with a side marker; side-by-side is preview-only.
     Bonus: screenplay lines wrap in the editor where they'll wrap on the page.
-  * **Manuscript → plain writing surface:** one left edge, ~72-character column, readable
-    serif, gentle highlighting (headings larger/bold, emphasis rendered inline with
+  * **Manuscript → plain writing surface:** one left edge, ~72-character column,
+    Courier Prime, gentle highlighting (headings larger/bold, emphasis rendered inline with
     dimmed markers, notes muted, boneyard dimmed).
-* **Editor font is independent of the page font:** default Courier Prime for
-  `.fountain`, a readable serif for `.md` (settings). Pages always use the template font.
+* **One font, no font settings (decision #35):** the editor and every template use
+  Courier Prime 12 pt. The user only types.
 * Problems and search results reference scene/paragraph, not line numbers.
 
 ## Writing behaviour inside the editor
@@ -111,7 +111,7 @@ bar**. They never open as tabs.
 ## Implementation notes
 * **CodeMirror 6** (MIT) for the editor and the diff/merge view (decision #27). Chosen
   over Monaco because the script look needs per-line indent/width/alignment and
-  Manuscript needs good proportional-font typography; CodeMirror does both natively via
+  prose-friendly soft wrapping; CodeMirror does both natively via
   line decorations + CSS (the same approach Obsidian uses for Live Preview). VS Code feel
   comes from the workbench (built by us either way), a VS Code keymap and theming.
 * Workbench chrome rebuilt in the Tauri webview to VS Code's layout, using **Codicons**.

@@ -82,7 +82,7 @@ river-writer/
 │   ├── river-parse/              Fountain + Markdown(-subset) parsers, incremental
 │   ├── river-templates/          Template data (Screenplay, Multi-cam, Stage Play, Manuscript)
 │   ├── river-text/               fonts, shaping, line breaking, hyphenation, sentence segmentation
-│   ├── river-layout/             element → line boxes (measure, wrap, justify, styles)
+│   ├── river-layout/             element → line boxes (measure, wrap, styles)        
 │   ├── river-paginate/           grouper + paginator (MORE/CONT'D, splits, keep-together)
 │   ├── river-render/             page display list → raster tiles (preview)
 │   ├── river-pdf/                page display list → PDF (font subsetting, metadata, outline)
@@ -170,7 +170,7 @@ values taken from the spec (§5 H2, §10.2 Pro):
 ```rust
 struct Template {
   id: TemplateId,                     // manuscript | screenplay | screenplay_multicam | stageplay
-  body_font: FontChain, size_pt: f32, // e.g. ["Courier Prime"] 12
+  body_font: FontChain, size_pt: f32, // always ["Courier Prime"] 12 (decision #35)
   margins_pt: Insets,                 // 72/72/72/72 (Manuscript: from spec)
   line_height: f32,                   // 1.0 screenplay; 2.36-style double for manuscript
   dialogue_line_height: f32,          // 2.0 multi-cam
@@ -181,15 +181,15 @@ struct Template {
   section: SectionStyle,              // per level: font, size, style, align, padding, line height
   header: HeaderSpec, footer: HeaderSpec,           // "%p." right-aligned etc.
   cheat_page_break_pt: f32,           // 24 screenplay, 60 stage/multi-cam
-  break_at_sentences: bool, justify: bool, merge_parentheticals: bool,
+  break_at_sentences: bool, merge_parentheticals: bool,
   first_line_indent_pt: f32, print_scene_headers: bool, print_sections: bool,
 }
 ```
 
 * Geometry is expressed as **fractions of page width** (Highland's model), so A4 and
   Letter both work; the offset-margins model (§10.2) is applied when resolving x positions.
-* User-adjustable options (bold/underlined scene headings, double-spaced headings,
-  manuscript font) are **settings overlays** merged onto the base template.
+* User-adjustable options (bold/underlined scene headings, double-spaced headings)
+  are **settings overlays** merged onto the base template.
 * Template choice per file: `river.json` map → extension default (`.md` Manuscript,
   `.fountain` Screenplay) (doc 02, decision #21).
 
@@ -204,7 +204,7 @@ flowchart LR
   E[Elements + template] --> S[Style resolve<br/>font, size, styles, indents]
   S --> SH[Shaping<br/>glyphs + advances]
   SH --> LB[Line breaking<br/>greedy / optimal + hyphenation]
-  LB --> LN[Line boxes<br/>x/y, justification]
+  LB --> LN[Line boxes<br/>x/y]
   LN --> PG[Pagination<br/>groups → pages]
   PG --> DL[Page display list]
   DL --> R[Raster tiles<br/>preview]
@@ -212,11 +212,8 @@ flowchart LR
 ```
 
 ### 7.1 Fonts (river-text)
-* **Bundled fonts only** for page output (identical rendering everywhere). V1 set:
-  * Courier Prime (Regular/Italic/Bold/BoldItalic), SIL OFL, for screenplay, multi-cam and stage play.
-  * One prose serif family with true italics and small caps (candidates with open
-    licenses, e.g. Libre Baskerville / EB Garamond / Source Serif) for Manuscript.
-  * Optional: a "standard manuscript" Courier-style option for submissions.
+* **One bundled font (decision #35):** Courier Prime (Regular/Italic/Bold/BoldItalic),
+  SIL OFL, 12 pt, for every template and the editor. No font settings.
 * Font loading and metrics: `ttf-parser` / `skrifa`. Glyph outlines for raster: `swash`
   or `skrifa` + a scaler.
 * Fallback for missing glyphs (e.g. CJK names in a script): a bundled fallback font, or
@@ -228,7 +225,6 @@ flowchart LR
 * Segmentation (`unicode-segmentation`): graphemes (cursor/ranges), **words** (word
   counts, word diff), **sentences** (UAX #29) for sentence-boundary page breaks (spec §7).
 * Line-break opportunities: `unicode-linebreak` (UAX #14).
-* Hyphenation (Manuscript only, off by default): `hyphenation` crate (Knuth–Liang patterns).
 
 Alternative to assembling these pieces: a higher-level layout crate (`cosmic-text` or
 `parley`) for shaping + line layout. **Recommendation:** start with `parley` or
@@ -238,13 +234,12 @@ positions; otherwise compose `rustybuzz` + custom breaking. Decide with a spike 
 ### 7.3 Line layout (river-layout)
 * Input: an element + resolved style → output `Vec<LineBox>` (glyph runs with x
   offsets, baseline, height).
-* **Screenplay fast path:** monospaced Courier at 12 pt = 7.2 pt per character (10 cpi), so
-  wrapping is column arithmetic (e.g. action ≈ 61 columns, dialogue ≈ 35). This path is
-  exact and very fast; it is still validated against the general path in tests.
-* **Prose path:** proportional fonts, greedy breaking by default; **optimal
-  (Knuth–Plass) breaking when justify is on** to avoid rivers and loose lines; first-line
-  indent (none on a continuation after a page split, spec §7); small caps on the first
-  line of a chapter (`capitalizeFirstNewParagraphLine`).
+* **Monospace path (all templates):** Courier Prime at 12 pt = 7.2 pt per character
+  (10 cpi), so wrapping is column arithmetic (e.g. action ≈ 61 columns, dialogue ≈ 35).
+  Exact and very fast; still validated against Parley's line breaking in tests.
+* **Manuscript:** ragged-right, greedy breaking, no justification or hyphenation;
+  first-line indent (none on a continuation after a page split, spec §7); the first
+  line of a chapter is uppercased (`capitalizeFirstNewParagraphLine`; no small caps).
 * Element styles (template bit flags, spec §5): bold/italic/underline/uppercase applied
   before shaping (uppercase transforms the text; underline is a decoration in the display list).
 * Width rules: `x = margin_left + left_fraction × page_width`,
@@ -265,8 +260,7 @@ Implements spec §6–§7 as a pure function over cached line boxes:
      and repeat `CUE (CONT'D)` at the top of the next page (the strings are settings);
    * **action/prose split**: break at a sentence boundary (screenplay family) or line
      boundary (manuscript); widow/orphan control (≥ 2 lines); the continuation gets no
-     first-line indent; a justified split line stays justified (Highland appends invisible
-     text; River simply justifies that line explicitly);
+     first-line indent;
    * scene headings and character cues never end a page (keep-with-next).
 3. **Headers/footers:** `%p`, `%pp`, `%title`, `%#`, `%none`, alignment and styles per
    template; first-page suppression rules.
@@ -341,7 +335,7 @@ Packages are the official `@codemirror/*` modules unless noted; community packag
   forcing characters and render emphasis; the document text is never modified.
   Values derive from the active template (`element_left`/`element_width` × 8.5″ × 10 ch/in),
   so the editor and the PDF share one geometry source.
-* **Manuscript:** no structural indents; a centered ~72 ch column, proportional serif,
+* **Manuscript:** no structural indents; a centered ~72 ch column, Courier Prime,
   heading line decorations (larger/bold), emphasis marks with dimmed markers.
 * **VS Code parity:** VS Code keymap (community keymap package or our own keymap
   table), search panel themed like VS Code's find widget (`@codemirror/search`),
@@ -350,8 +344,8 @@ Packages are the official `@codemirror/*` modules unless noted; community packag
 * Editor behaviours: auto-uppercase cues and scene headings as you type, Tab to cycle
   element type (optional, Final Draft habit), typewriter scrolling in Zen mode.
 * **Writing surface, not page:** no line-number gutter; a slim gutter only for change
-  bars and folding; no page markers, headers, footers or page numbers. Editor font is
-  independent of the template font.
+  bars and folding; no page markers, headers, footers or page numbers. One font:
+  Courier Prime (decision #35).
 
 ### 8.2 Text synchronization (webview ↔ Rust)
 * **CodeMirror holds the live buffer** for responsiveness. Each transaction's `ChangeSet`
@@ -548,7 +542,7 @@ sample documents.
 
 | Phase | Deliverable | Exit criteria |
 |---|---|---|
-| **0. Spikes** (1–2 wks) | Typesetting spike with **Parley + krilla**: Courier screenplay + serif prose → PDF + raster from one display list. Editor spike: CodeMirror 6 script look (line decorations from template geometry) + VS Code keymap | Preview pixels = PDF render; 120 pages < 150 ms incremental |
+| **0. Spikes** (1–2 wks) | Typesetting spike with **Parley + krilla**: Courier Prime screenplay + manuscript page → PDF + raster from one display list. Editor spike: CodeMirror 6 script look (line decorations from template geometry) + VS Code keymap | Preview pixels = PDF render; 120 pages < 150 ms incremental |
 | **1. Engine CLI** | `river-parse`, `-templates`, `-layout`, `-paginate`, `-pdf`, CLI export | Golden pagination tests pass for all 4 templates |
 | **2. Shell** | Tauri app, workbench skeleton (activity bar, Explorer, tabs, status bar, palette), CodeMirror 6 + Fountain/Markdown support + script look, document sync, save/watch | Edit + save + reopen; highlighting; outline |
 | **3. Preview** | Tile renderer, custom protocol, sync scroll, template dropdown + preview icon | Live preview within budget |
@@ -592,7 +586,7 @@ sample documents.
 
 | Risk | Mitigation |
 |---|---|
-| Typesetting quality (prose justification, hyphenation) | Phase-0 spike; Knuth–Plass for justified text; golden visual tests |
+| Typesetting quality (glyph positions, wrapping parity) | Phase-0 spike; one monospace font; golden visual tests |
 | Webview differences (WKWebView vs WebView2) affecting the editor/UI | CodeMirror 6 is cross-browser tested; keep UI CSS conservative; E2E tests per OS |
 | libgit2 credential edge cases (SSH agents, 2FA tokens) | Lean on OS keychains + credential helpers; clear error messages; device-flow sign-in in v1.1 |
 | Autosave store corrupted/deleted | It's a disposable safety net in `.git/river-autosave/`; real history is unaffected |
@@ -603,8 +597,8 @@ sample documents.
 ---
 
 ## 19. Technical decisions (resolved 2026-10-17)
-1. **Text layout: Parley** for shaping and line layout, with River's own pagination. Add a
-   custom Knuth–Plass breaker in v1.1 for the justified Manuscript option. The phase-0
+1. **Text layout: Parley** for shaping and line layout, with River's own pagination. No
+   justification (decision #35: one monospace font, ragged-right). The phase-0
    spike must confirm identical glyph positions for raster and PDF; cosmic-text/custom
    are the fallbacks.
 2. **PDF: krilla** (font subsetting, outlines, links, metadata, PDF/A); drop to
