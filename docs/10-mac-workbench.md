@@ -533,3 +533,5 @@ file is never replaced; the `create_file` command holds the document lock. Cover
 service test (extension rules, existing files, invalid names, no escaping the folder) and
 by `verify` (create, open, duplicate-name error, Escape cancel). Screenshot: ignored
 `app/output/new-file.png`.
+
+Activity-bar global Palette/theme icons and the status-bar format label were removed (#69). Palette and theme actions remain in the native View menu and command palette.

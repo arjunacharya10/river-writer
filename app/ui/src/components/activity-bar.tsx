@@ -13,8 +13,6 @@ export function ActivityBar(props: {
   view: string;
   sidebar: boolean;
   onShow: (view: string) => void;
-  onPalette: () => void;
-  onTheme: () => void;
 }) {
   return (
     <nav class="activity-bar" aria-label="Activity">
@@ -27,16 +25,6 @@ export function ActivityBar(props: {
         />
       ))}
       <div class="activity-spacer" />
-      <Action
-        label="Command Palette"
-        icon="terminal"
-        onClick={props.onPalette}
-      />
-      <Action
-        label="Toggle Light / Dark"
-        icon="color-mode"
-        onClick={props.onTheme}
-      />
     </nav>
   );
 }

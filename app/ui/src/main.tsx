@@ -893,8 +893,6 @@ function App() {
             view={sideView()}
             sidebar={sidebar()}
             onShow={showView}
-            onPalette={() => dispatch("palette")}
-            onTheme={toggleTheme}
           />
           <Split
             class="workbench-split"
@@ -1088,7 +1086,6 @@ function App() {
             current()
               ? {
                   analysis: analysis(),
-                  fountain: !!current()?.path?.endsWith(".fountain"),
                 }
               : null
           }

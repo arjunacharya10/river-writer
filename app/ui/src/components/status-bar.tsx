@@ -7,7 +7,7 @@ export function StatusBar(props: {
   onBranch: () => void;
   notice: string;
   /** Present when a story is open. */
-  story: { analysis: Analysis | null; fountain: boolean } | null;
+  story: { analysis: Analysis | null } | null;
 }) {
   return (
     <footer class="status-bar">
@@ -28,7 +28,6 @@ export function StatusBar(props: {
           <>
             <span>{story().analysis?.words ?? "—"} words</span>
             <span>{story().analysis?.scenes ?? "—"} scenes</span>
-            <span>{story().fountain ? "Fountain" : "Markdown"}</span>
           </>
         )}
       </Show>
