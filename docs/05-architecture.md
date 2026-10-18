@@ -624,3 +624,10 @@ Full production pagination remains unvalidated; Windows is outside current scope
    (decision #36). Mac quality takes priority over simultaneous-platform delivery.
 6. **Shell: Tauri 2, locked** (decision #31) after comparing with Electron (maturity, identical
    engine, Linux) — River's focused scope, Rust-native core and strict network promise favour Tauri.
+
+
+## Workbench component implementation note (decision #37)
+Use Kobalte controls behind small River wrappers and Corvu resizable panels for the
+workbench splits. CodeMirror remains the editor. Shared CSS tokens own the appearance;
+Tauri supplies native Mac menus/dialogs. Adopt this foundation in the production shell,
+not as an unrelated rewrite of the disposable editor trial.

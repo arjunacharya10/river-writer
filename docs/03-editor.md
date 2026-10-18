@@ -117,3 +117,15 @@ bar**. They never open as tabs.
 * Workbench chrome rebuilt in the Tauri webview to VS Code's layout, using **Codicons**.
 * **Do not fork VS Code/Code-OSS**: it's Electron and brings the extension host,
   which conflicts with Tauri and the no-extensions principle.
+
+## Workbench component foundation (decision #37)
+* Kobalte provides accessible controls (menus, dialogs, selects, tooltips, tabs),
+  wrapped as River components so styling and upgrades stay centralized.
+* Corvu resizable provides keyboard-accessible, collapsible split panels.
+* CodeMirror 6 owns the writing surface and its editing interactions.
+* Use Tauri native macOS app menus and file/print dialogs where appropriate.
+* Shared CSS tokens define River’s two themes, spacing, borders and component states.
+  The foundation does not change the locked VS Code workbench layout.
+* References: https://kobalte.dev/docs/core/overview/introduction/ and
+  https://corvu.dev/docs/primitives/resizable/ . These are build dependencies, not
+  network connections made by the released app.

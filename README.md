@@ -4,7 +4,7 @@ An offline writing app for screenwriters, playwrights and novelists. You write p
 text, and River turns it into perfectly formatted pages. No cloud, no accounts, no
 subscription.
 
-Status: **phase 0 trials underway.** Product definition is complete (36 decisions).
+Status: **phase 0 trials underway.** Product definition is complete (37 decisions).
 The typesetting and native editor trials run on macOS and meet their experimental
 performance budgets. **macOS is the sole current/v1 target; Windows is deferred**
 (decision #36). Next: the production parser, paginator and engine CLI.

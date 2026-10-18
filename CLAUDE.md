@@ -6,7 +6,7 @@ formatted pages. It's a focused, anti-bloat take on Highland Pro: craft first, n
 no accounts, no AI, no plugins.
 
 ## Read first
-1. `docs/decision-log.md` — every decision (36 so far) with reasoning and reversals.
+1. `docs/decision-log.md` — every decision (37 so far with reasoning and reversals.
    **Locked decisions are not to be relitigated** unless the user raises them.
 2. `docs/01-product-brief.md` (principles), then `02`–`08` as relevant.
 3. Formatting-engine behaviour (parser rules, template values, pagination,
@@ -15,6 +15,8 @@ no accounts, no AI, no plugins.
 ## Locked essentials
 * **Stack:** Tauri 2 · Rust engine crates (no Tauri dependency) · TypeScript + SolidJS
   workbench · CodeMirror 6 editor · Parley (text layout) · krilla (PDF) · git via git2.
+* **UI components (#37):** Kobalte behind River wrappers; Corvu resizable panels;
+  shared CSS tokens; native Mac menus/dialogs via Tauri. CodeMirror owns editing.
 * **Platforms:** macOS only now and for v1 (#36). Windows deferred; no parity or
   simultaneous-release gate. Prioritize Mac quality. Linux later or never.
 * **Files:** pure `.fountain`/`.md`; project = folder; extras (scratchpad, todos, bin) are
@@ -32,7 +34,7 @@ no accounts, no AI, no plugins.
   checks (but keep the door open; doc 08).
 
 ## Current status and next step
-Product definition complete (36 decisions; one font: Courier Prime, #35); **typesetting and native editor trials implemented on macOS**. Next: **production engine CLI**
+Product definition complete (37 decisions; one font: Courier Prime, #35); **typesetting and native editor trials implemented on macOS**. Next: **production engine CLI**
 (`docs/05-architecture.md` §16):
 1. ~~Typesetting~~ **done**: Parley + krilla + tiny-skia from one display list; positions
    exact, raster ≈ PDF, 120 pages in 24 ms (`spikes/typeset/NOTES.md`).
