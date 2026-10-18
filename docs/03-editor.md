@@ -20,7 +20,7 @@ trademarks and are not used.)
 │🗑 │              │ PANEL:  PROBLEMS │ TIMELINE │ STATS                           │
 │⚙ │              │  ⚠ Cue "JON" also written as "JOHN" (12 places)               │
 ├──┴──────────────┴───────────────────────────────────────────────────────────────┤
-│ ⎇ main ↑2 ↓0 · ⚠ 1 · p.12/104 · 23,410 words · ~104 min · Screenplay · Fountain │
+│ ⎇ main ↑2 ↓0 · ⚠ 1 · 23,410 words · 58 scenes · Fountain                         │
 └──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -45,18 +45,37 @@ bar**. They never open as tabs.
 | Source Control | VS Code SCM view: commit box, changes list (all files, **no staging section**), branches, ⋯ menu for push/pull/fetch/merge/tag (doc 04) |
 | Editor groups & tabs | **Story files only** (+ the page preview and diff views of story files). Splits, preview tabs, pinned tabs, drag between groups |
 | Template | **Template dropdown in the editor title bar**, next to the preview icon (story tabs only): `[ Manuscript ▾ ] [preview] [⋯]`. Options: Manuscript · Screenplay · Screenplay (Multi-cam) · Stage Play. **Default by extension: `.md` → Manuscript, `.fountain` → Screenplay.** "New File" creates an `.md` (Manuscript) unless named `*.fountain`. Changing it re-paginates the preview instantly; the choice is remembered per file in `_river/river.json`. No template prompt when creating projects or files. |
+| Preview toolbar | Page count + runtime estimate ("104 pages · ~104 min"), zoom, page navigation |
 | Preview | **One preview icon in the editor title bar** (right end of the tab row, where VS Code shows "Open Preview to the Side"), visible only for story tabs. Click toggles the paginated page preview beside the script; scroll-synced. Keys: `⌘K V` (to the side), `⇧⌘V` (in place). The adjacent **⋯** menu holds Export PDF, Export FDX, Print. |
 | Diff editor | Side-by-side and inline, word-level highlighting, scene badges |
 | Minimap | Real minimap with scene headers as section markers |
 | Breadcrumbs | File › Act/section › Scene |
 | Panel (bottom) | **Problems** (script check) · **Timeline** · **Stats** (pages, runtime, words per character). No terminal or output panel. |
-| Status bar | Branch + sync, problems, page X/Y, words, runtime (~1 page = 1 min), language mode (template is chosen in the editor title bar, not here) |
+| Status bar | Branch + sync, problems, **words, scenes**, language mode. No page info (pages live in the preview). Template is chosen in the editor title bar. |
 | Command palette / Quick Open | `⌘⇧P`, `⌘P`; `@` jumps to a scene, `#` to a character |
 | Settings | Settings UI + `settings.json` (user and project scopes) |
 | Keybindings | VS Code default keymap; `keybindings.json` |
 | Zen mode | VS Code Zen mode + typewriter centering |
 | Themes | **Two only: Light and Dark**, modelled on VS Code's default Light Modern / Dark Modern. Follows the system appearance by default (like `window.autoDetectColorScheme`); can be set explicitly. More themes can come later; version 1 ships these two only. The page preview stays white paper in both themes (it shows what prints); PDFs are always white. |
 | Extensions | None |
+
+## The editor is a writing surface, not a page
+* **Line breaks in the editor are irrelevant to the page.** Text soft-wraps at a
+  comfortable, centered column with default side margins (`editor.textWidth`, default
+  ~72 characters, or `fill`). Page geometry is a preview/PDF concern only.
+* **No line numbers** (`lineNumbers: off`). Navigation is by scene: Outline,
+  breadcrumbs, minimap, `⌘P` → `@scene`, "Go to Scene", "Go to Page" (via the preview
+  mapping), and clicking a preview page jumps to the text.
+* **No page information in the editor:** no page-break markers or page numbers
+  (Highland's "show page numbers in editor" is deliberately not copied). Page count and
+  runtime appear in the preview toolbar.
+* **Gentle highlighting, one left edge:** scene headings bold, cues accented,
+  parentheticals and notes muted, boneyard dimmed, emphasis rendered inline with its
+  markers visible. No screenplay indentation in the editor ("script look" is a possible
+  later option).
+* **Editor font is independent of the page font:** default Courier Prime for
+  `.fountain`, a readable serif for `.md` (settings). Pages always use the template font.
+* Problems and search results reference scene/paragraph, not line numbers.
 
 ## Writing behaviour inside the editor
 * Fountain/Markdown language modes with highlighting and auto-formatting following
@@ -65,7 +84,8 @@ bar**. They never open as tabs.
   locations, times of day).
 * Autocapitalize scene headers and cues.
 * Rename character (like Rename Symbol, F2) across cues, dialogue mentions, title page.
-* Gutter change bars since the last commit (click to peek or revert).
+* Gutter: **no line numbers**; a slim strip for change bars since the last commit (click to
+  peek or revert) and fold arrows for scenes/sections.
 * Problems = script check: inconsistent cue spellings, unclosed `[[note`, empty
   scenes, unused characters. Never grammar.
 

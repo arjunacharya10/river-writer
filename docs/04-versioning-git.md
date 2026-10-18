@@ -35,8 +35,8 @@ reset modes, detached HEAD, submodules, hooks. SHAs appear only as a short code 
 
 ## Autosave history (not git commits)
 * River keeps an automatic safety net while you write (~every 1–2 min of idle).
-* Stored in **local-only** storage (e.g. under `.git/river-autosave/` or a private ref),
-  never shown as commits and **never pushed**.
+* Stored in a **separate local repository at `.git/river-autosave/`** (shares object
+  storage with the main repository), never shown as commits and **never pushed** (doc 05 §12.3).
 * Thinned over time: everything today, hourly for a week, daily for a month, weekly after.
 * A "Local history" view lets you restore from it. This is the "never lose work" guarantee.
 

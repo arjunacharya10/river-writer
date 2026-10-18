@@ -23,6 +23,7 @@ Performance budgets (targets on an M-series Mac / mid-range PC):
 |---|---|
 | Keystroke → editor highlight | < 16 ms (client-side tokenizer) |
 | Keystroke → outline/diagnostics refresh | < 100 ms (debounced 50 ms) |
+| Pagination runs | **only while the preview is open, or on export/print** (the editor never needs page data) |
 | Edit → preview pages updated, 120-page script | < 150 ms after debounce |
 | Edit → preview updated, 400-page novel | < 300 ms after debounce |
 | Open project (400-page novel) | < 1 s to first editable view |
@@ -328,8 +329,11 @@ struct Page { number: Option<String>, size: SizePt, ops: Vec<DrawOp>, src: Range
   * diagnostics → Monaco markers + Problems panel;
   * rename provider (F2) for characters, done in Rust across all project files.
 * Editor behaviours: auto-uppercase cues and scene headings as you type, Tab to cycle
-  element type (optional, Final Draft habit), typewriter scrolling in Zen mode,
-  soft-wrap at a readable measure.
+  element type (optional, Final Draft habit), typewriter scrolling in Zen mode.
+* **Writing surface, not page:** `lineNumbers: off`; soft-wrap at a centered column
+  (`editor.textWidth`, default ~72 ch, or fill) unrelated to page lines; no page markers;
+  glyph margin used only for change bars and folding. Editor font is independent of
+  the template font.
 
 ### 8.2 Text synchronization (webview ↔ Rust)
 * **Monaco holds the live buffer** for responsiveness. Each change sends a compact delta
@@ -344,8 +348,7 @@ struct Page { number: Option<String>, size: SizePt, ops: Vec<DrawOp>, src: Range
   if clean, reload silently; if dirty, VS Code-style "file changed on disk" compare/choose.
 
 ### 8.3 Workbench UI
-* TypeScript + a light reactive framework (**SolidJS** recommended for its
-  fine-grained updates and small runtime; React is acceptable for ecosystem reasons),
+* TypeScript + **SolidJS** (decided, §19.3),
   styled with VS Code's CSS variables (`--vscode-*` equivalents) so both themes map
   1:1 to the Light/Dark Modern palettes.
 * **Codicons** for icons. Core components: activity bar, side bar container, tabs
@@ -426,13 +429,14 @@ No grammar or spelling beyond the system spellchecker in the editor.
   that is never shown to the user.
 
 ### 12.3 Autosave history (local only)
-* Stored as commits on **private refs** `refs/river/autosave/<branch>` in the same
-  repository (objects deduplicated with real history; no second store).
+* **Decided (§19.4):** stored in a separate repository at `.git/river-autosave/` that
+  shares objects with the main repository via `objects/info/alternates` (no duplication),
+  one autosave branch per real branch. *(Earlier plan: private refs
+  `refs/river/autosave/<branch>` in the main repository; replaced to remove any
+  `--mirror` leak risk.)*
 * Created after ~90 s of idle when content changed; message `autosave`.
-* **Never pushed:** River's push uses explicit refspecs (`refs/heads/<branch>`,
-  `refs/tags/*`) only. (Caveat: a user running `git push --mirror` from the CLI would
-  include them. Documented; River could also offer to keep autosaves in a separate
-  local repo instead.)
+* **Never pushed:** it isn't part of the main repository's refs, so no push (including
+  `git push --mirror` from the CLI) can include it; a fresh clone has commits but no autosaves.
 * **Retention:** a compaction job rewrites the autosave chain to keep all of today,
   hourly for 7 days, daily for 30 days, weekly beyond. Unreferenced objects are
   collected by periodic `gc`.
@@ -525,7 +529,7 @@ sample documents.
 
 | Phase | Deliverable | Exit criteria |
 |---|---|---|
-| **0. Spikes** (1–2 wks) | Typesetting spike: Courier screenplay + serif justified prose → PDF + raster from one display list; pick `parley`/`cosmic-text`/custom | Preview pixels = PDF render; 120 pages < 150 ms incremental |
+| **0. Spikes** (1–2 wks) | Typesetting spike with **Parley + krilla**: Courier screenplay + serif prose → PDF + raster from one display list | Preview pixels = PDF render; 120 pages < 150 ms incremental |
 | **1. Engine CLI** | `river-parse`, `-templates`, `-layout`, `-paginate`, `-pdf`, CLI export | Golden pagination tests pass for all 4 templates |
 | **2. Shell** | Tauri app, workbench skeleton (activity bar, Explorer, tabs, status bar, palette), Monaco + Fountain/Markdown modes, document sync, save/watch | Edit + save + reopen; highlighting; outline |
 | **3. Preview** | Tile renderer, custom protocol, sync scroll, template dropdown + preview icon | Live preview within budget |
@@ -555,15 +559,24 @@ sample documents.
 | Typesetting quality (prose justification, hyphenation) | Phase-0 spike; Knuth–Plass for justified text; golden visual tests |
 | Webview differences (WebKit vs WebView2 vs WebKitGTK) affecting Monaco/UI | Monaco is cross-browser tested; keep UI CSS conservative; E2E tests per OS |
 | libgit2 credential edge cases (SSH agents, 2FA tokens) | Lean on OS keychains + credential helpers; clear error messages; device-flow sign-in in v1.1 |
-| Autosave refs leaking via external `--mirror` pushes | Document it; optional separate local store |
+| Autosave store corrupted/deleted | It's a disposable safety net in `.git/river-autosave/`; real history is unaffected |
 | Large projects (multi-file novels with 100+ chapters) | Per-file parse caches, project-level indices built lazily, pagination only for the previewed file / includes |
 | Scope creep toward "VS Code features" | Doc 01 principles; "Never" list in doc 06; no extension host |
 
 ---
 
-## 19. Open technical questions
-1. `parley` vs `cosmic-text` vs custom shaping/breaking (phase-0 spike decides).
-2. `krilla` vs `pdf-writer` for PDF output.
-3. SolidJS vs React for the workbench.
-4. Autosave storage: private refs in the project repository (current plan) vs a separate local repository.
-5. Platform scope at v1 (doc 06).
+## 19. Technical decisions (resolved 2026-10-17)
+1. **Text layout: Parley** for shaping and line layout, with River's own pagination. Add a
+   custom Knuth–Plass breaker in v1.1 for the justified Manuscript option. The phase-0
+   spike must confirm identical glyph positions for raster and PDF; cosmic-text/custom
+   are the fallbacks.
+2. **PDF: krilla** (font subsetting, outlines, links, metadata, PDF/A); drop to
+   `pdf-writer` for any single feature krilla lacks.
+3. **Workbench UI: SolidJS** (fine-grained updates for many small VS Code-style widgets;
+   JSX keeps a React switch cheap). React is the fallback if developer familiarity wins.
+4. **Autosave store: a separate repository inside `.git/` (`.git/river-autosave/`)**
+   sharing object storage with the main repository via git alternates. Never part of
+   any push (even `--mirror`), invisible to other git tools, moves with the project,
+   self-contained pruning. Lone-file mode: app data dir keyed by file path. Supersedes
+   the private-refs plan in §12.3.
+5. Platform scope at v1: **open** (doc 06).
