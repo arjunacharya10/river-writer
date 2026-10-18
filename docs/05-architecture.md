@@ -639,3 +639,11 @@ Use Kobalte controls behind small River wrappers and Corvu resizable panels for 
 workbench splits. CodeMirror remains the editor. Shared CSS tokens own the appearance;
 Tauri supplies native Mac menus/dialogs. Adopt this foundation in the production shell,
 not as an unrelated rewrite of the disposable editor trial.
+
+Phase-2/3 baseline (2026-10-18): `app/` now connects the engine to a native Mac
+workbench, with real document IO, template geometry, outline/diagnostics, revisioned
+preview, safe save conflicts, native menus/dialogs, Kobalte controls and Corvu splits.
+The Tauri-independent `river-service` owns document orchestration. Full-buffer IPC,
+polling for external changes and whole-page binary IPC are initial implementations;
+incremental patches, watchers, generated types, tiles and sync scroll remain pending.
+See [Mac workbench validation and limits](10-mac-workbench.md).

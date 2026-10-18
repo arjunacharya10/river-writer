@@ -1,0 +1,15 @@
+[package]
+name = "river-service"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+river-model = { path = "../river-model" }
+river-parse = { path = "../river-parse" }
+river-templates = { path = "../river-templates" }
+river-text = { path = "../river-text" }
+river-paginate = { path = "../river-paginate" }
+river-pdf = { path = "../river-pdf" }
+river-render = { path = "../river-render" }

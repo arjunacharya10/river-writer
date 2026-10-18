@@ -654,6 +654,14 @@ pub fn parse(source: &str, format: Format) -> Script {
 /// Includes are relative to their containing file, constrained to the initial
 /// file's directory after canonicalization. No network or arbitrary external reads.
 pub fn parse_file(path: &Path) -> Result<Script, String> {
+    parse_file_with(path, &std::collections::HashMap::new())
+}
+/// Parse a saved root with normalized, unsaved editor buffers taking precedence.
+/// Keys must be canonical paths; containment and cycle checks still apply.
+pub fn parse_file_with(
+    path: &Path,
+    buffers: &std::collections::HashMap<PathBuf, String>,
+) -> Result<Script, String> {
     let root = path
         .canonicalize()
         .map_err(|e| format!("{}: {e}", path.display()))?;
@@ -661,7 +669,12 @@ pub fn parse_file(path: &Path) -> Result<Script, String> {
         .parent()
         .ok_or("Input has no containing directory")?
         .to_path_buf();
-    fn load(path: &Path, base: &Path, stack: &mut Vec<PathBuf>) -> Result<Script, String> {
+    fn load(
+        path: &Path,
+        base: &Path,
+        stack: &mut Vec<PathBuf>,
+        buffers: &std::collections::HashMap<PathBuf, String>,
+    ) -> Result<Script, String> {
         let path = path
             .canonicalize()
             .map_err(|e| format!("{}: {e}", path.display()))?;
@@ -678,8 +691,12 @@ pub fn parse_file(path: &Path) -> Result<Script, String> {
             return Err("Include depth exceeds 32".into());
         }
         stack.push(path.clone());
-        let text =
-            std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+        let text = match buffers.get(&path) {
+            Some(text) => text.clone(),
+            None => {
+                std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?
+            }
+        };
         let mut s = parse(&text, Format::for_path(&path));
         s.files[0].path = Some(path.clone());
         let mut elements = vec![];
@@ -694,7 +711,7 @@ pub fn parse_file(path: &Path) -> Result<Script, String> {
                 if target.is_empty() {
                     return Err("Empty include path".into());
                 }
-                let mut child = load(&path.parent().unwrap().join(target), base, stack)?;
+                let mut child = load(&path.parent().unwrap().join(target), base, stack, buffers)?;
                 let offset = s.files.len();
                 for e in &mut child.elements {
                     e.source.file += offset;
@@ -727,7 +744,7 @@ pub fn parse_file(path: &Path) -> Result<Script, String> {
         stack.pop();
         Ok(s)
     }
-    load(&root, &base, &mut vec![])
+    load(&root, &base, &mut vec![], buffers)
 }
 #[cfg(test)]
 mod tests {

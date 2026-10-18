@@ -825,6 +825,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "river-service"
+version = "0.1.0"
+dependencies = [
+ "river-model",
+ "river-paginate",
+ "river-parse",
+ "river-pdf",
+ "river-render",
+ "river-templates",
+ "river-text",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "river-templates"
 version = "0.1.0"
 dependencies = [

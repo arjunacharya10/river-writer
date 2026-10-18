@@ -1,0 +1,6 @@
+{
+  "identifier": "main-window",
+  "description": "Receive native Mac menu commands in the local workbench.",
+  "windows": ["main"],
+  "permissions": ["core:event:allow-listen", "core:event:allow-unlisten"]
+}

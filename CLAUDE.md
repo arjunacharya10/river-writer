@@ -6,9 +6,9 @@ formatted pages. It's a focused, anti-bloat take on Highland Pro: craft first, n
 no accounts, no AI, no plugins.
 
 ## Read first
-1. `docs/decision-log.md` — every decision (37 so far with reasoning and reversals.
+1. `docs/decision-log.md` — every decision (37 so far) with reasoning and reversals.
    **Locked decisions are not to be relitigated** unless the user raises them.
-2. `docs/01-product-brief.md` (principles), then `02`–`09` as relevant.
+2. `docs/01-product-brief.md` (principles), then `02`–`10` as relevant.
 3. Formatting-engine behaviour (parser rules, template values, pagination,
    (MORE)/(CONT'D)): `~/rea/HIGHLAND_SPEC.md` (research workspace: `~/rea/README.md`).
 
@@ -34,14 +34,15 @@ no accounts, no AI, no plugins.
   checks (but keep the door open; doc 08).
 
 ## Current status and next step
-Product definition complete (37 decisions). **The first engine CLI baseline is implemented**
-in the root Rust workspace (`crates/`). Real `.fountain`/`.md` files export to PDF/PNG
-with all four templates, inline styles, source maps, includes, title pages and dialogue
-continuations. See `docs/09-engine-cli.md` for commands, verification and limitations.
+Product definition complete (37 decisions). Engine CLI and the first production Mac
+workbench are implemented. `app/` uses Kobalte/Corvu/CodeMirror with native menus,
+real story-file IO, Rust-driven outline and page preview/PDF. `river-service` stays
+independent of Tauri. See `docs/09-engine-cli.md` and `docs/10-mac-workbench.md` for
+commands, verification and boundaries. The editor spike remains disposable.
 
-Next: production Mac workbench integration; incremental parsing/pagination and broader
-formatting fixtures remain engine follow-up. Kobalte/Corvu are approved for that shell
-(#37). The editor in `spikes/` is still a disposable experiment. Windows is deferred (#36).
+Next: finish shell/preview phases (incremental updates, watchers, generated IPC types,
+preview tiles/zoom/sync scroll and navigation polish), then extras/settings and Git.
+Windows is deferred (#36). No autosave/history/backups yet; unsaved edits are in memory.
 Open (non-blocking) decisions: license and business model (before the first public push),
 unified syntax vs separate, `.highland` import, autosave timing (`docs/06-roadmap.md`).
 

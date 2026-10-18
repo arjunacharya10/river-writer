@@ -129,3 +129,10 @@ bar**. They never open as tabs.
 * References: https://kobalte.dev/docs/core/overview/introduction/ and
   https://corvu.dev/docs/primitives/resizable/ . These are build dependencies, not
   network connections made by the released app.
+
+## Implementation progress (2026-10-18)
+The first production Mac workbench in `app/` implements Explorer/story tabs,
+CodeMirror with Rust-driven script geometry, outline/diagnostics, the template picker,
+page preview, PDF export, basic command palette, two themes and Corvu keyboard-resizable
+splits. Native menus/dialogs are wired. This is the first shell/preview slice; the full
+UI described above is still the target. See [current scope and verification](10-mac-workbench.md).

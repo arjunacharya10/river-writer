@@ -4,17 +4,21 @@ An offline writing app for screenwriters, playwrights and novelists. You write p
 text, and River turns it into perfectly formatted pages. No cloud, no accounts, no
 subscription.
 
-Status: **first engine CLI baseline implemented** (37 decisions). macOS is the sole
-current/v1 target; Windows is deferred. Real Fountain/Markdown files export to PDF
-and preview images through the Rust workspace. See [engine usage and validation](docs/09-engine-cli.md).
+Status: **engine CLI and first Mac workbench slice implemented** (37 decisions).
+The native app now opens/edits/saves story files, shows Rust page previews and exports
+PDF, using the approved Kobalte/Corvu foundation. macOS is the sole current/v1 target.
+See [workbench usage and boundaries](docs/10-mac-workbench.md) and
+[engine validation](docs/09-engine-cli.md).
 
 ```sh
-cargo run -p river-cli -- export fixtures/screenplay.fountain -o output.pdf
+pnpm --dir app install
+pnpm --dir app tauri dev
 cargo test --workspace
 ```
 
-Next: production Mac workbench integration, plus incremental parsing/pagination and
-broader formatting fixtures. The editor under `spikes/` remains an experiment.
+Next: finish the shell/preview phases—incremental updates, watching, navigation and
+preview polish—then extras/settings and versioning. The editor under `spikes/`
+remains an experiment.
 
 ## Documents
 
@@ -29,5 +33,6 @@ broader formatting fixtures. The editor under `spikes/` remains an experiment.
 | [docs/07-prior-art.md](docs/07-prior-art.md) | Technical lessons from Obsidian and open-source projects (what we reuse instead of re-solving) |
 | [docs/08-release-and-distribution.md](docs/08-release-and-distribution.md) | CI/CD (GitHub Actions + tauri-action), signing, release flow, manual-update policy, newsletter |
 | [docs/09-engine-cli.md](docs/09-engine-cli.md) | Implemented CLI, crate responsibilities, supported formatting, verification and limits |
+| [docs/10-mac-workbench.md](docs/10-mac-workbench.md) | Native workbench, setup, verification and remaining shell/preview work |
 | [docs/decision-log.md](docs/decision-log.md) | Every product decision, with the reasoning and any reversals |
 
