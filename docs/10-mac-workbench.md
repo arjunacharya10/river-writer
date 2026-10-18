@@ -539,3 +539,36 @@ Activity-bar global Palette/theme icons and the status-bar format label were rem
 Crash recovery now journals untitled drafts and blocked saves (including later edits) only (#71). Named files and Scratchpad otherwise rely on one-second autosave; a crash before that save can lose recent edits. Existing journals remain recoverable.
 
 Whole-project Git restore was removed (#72). Restore now requires a single file; its Undo still refuses to overwrite newer edits. Branch creation starts at the current commit.
+
+
+## Verification after lean-product cleanup (2026-10-18)
+
+Tested commit `3034353`; rebuilt the debug Mac bundle with
+`pnpm --dir app tauri build --debug --bundles app`. Bundle signature verification
+(`codesign --verify --deep --strict`) passes. Workspace and native-shell clippy
+checks pass with warnings denied.
+
+All four browser suites pass: `verify`, `verify:git`, `verify:recovery`,
+`test:writing`. These cover project creation/open/cancellation/recents/session,
+Explorer file creation, writing assistance, editing/Undo/save/autosave, templates,
+preview and pane sizing, palette/theme/find, PDF export, external-change safety,
+Todos, Scratchpad conflicts and copy/reload, Git commits/review/stale-review safety,
+branch-menu create/switch/dirty-switch refusal, single-file restore/safe Undo,
+and crash recovery after abrupt service termination. They use the real Rust service
+but Chrome and substitutes for native dialogs; they do not verify WKWebView or
+native menus/dialogs.
+
+The working-tree workspace run has one expected failure: `golden_all_templates`
+compares the user's modified `fixtures/screenplay.fountain` against the committed
+baseline. All 69 Rust tests pass against an isolated archive of the same commit
+with committed fixtures. The user's fixture is unchanged. PDF exports for all four
+templates were independently rendered through Poppler; all 11 sample pages were
+visually inspected with no clipping or overlap found.
+
+**Native end-to-end sign-off is blocked, not passed.** The computer-use controller
+lists `app.riverwriter.mac` but rejects attachment with `Invalid app`; resolving
+River by name/path instead targets the obsolete `dev.riverwriter.desktop` identifier.
+Finder attachment also failed (`cgWindowNotFound`). Resetting the controller session
+and the user reopening the rebuilt app did not resolve it. No native project,
+menu/dialog, Finder-open, quit/relaunch or crash-recovery click-through was completed
+in this pass. These checks remain required before claiming full Mac verification.
