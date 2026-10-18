@@ -614,3 +614,15 @@ suite, native compile/clippy and bundle signature verification pass after the fi
 This completes the normal v1 flow check on this Mac. It is not an exhaustive test
 of every OS/input-method or filesystem failure; composition edge cases remain
 covered by the existing editor transaction tests rather than native IME switching.
+
+## Unwritable folders and Recents (2026-10-18, #74)
+
+`projects::open` creates and removes a hidden probe file before accepting a folder, so a
+folder River cannot write to is refused before it is remembered in Recents. The new
+`forget_recent_project` command and the × on each Recent Projects row remove an entry.
+`rememberSession` in `main.tsx` never throws: the periodic save still reports a failure,
+but Close Project, switching projects and Quit continue regardless.
+
+Covered by a service test (read-only folder refused, no probe left behind, forgetting
+entries) and by `verify`, which closes a project whose folder and `_river/` are read-only,
+checks a read-only folder is refused and kept out of Recents, and removes a Recents entry.

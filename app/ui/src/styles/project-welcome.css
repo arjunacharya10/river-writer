@@ -127,6 +127,30 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.recent-projects li {
+  position: relative;
+}
+.recent-projects li .recent-project {
+  padding-right: 40px;
+}
+.forget-recent {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 4px;
+  border-radius: 4px;
+  color: var(--muted);
+  opacity: 0;
+}
+.recent-projects li:hover .forget-recent,
+.forget-recent:focus-visible {
+  opacity: 1;
+}
+.forget-recent:hover {
+  background: var(--hover);
+  color: var(--text);
+}
 .recent-project small {
   font-size: 10px;
   color: var(--muted);

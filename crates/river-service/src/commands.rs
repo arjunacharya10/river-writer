@@ -150,6 +150,13 @@ impl Service {
                 };
                 self.enter_project(projects::open(&path)?)
             }
+            "forget_recent_project" => match self.shell.config_dir() {
+                Some(config) => {
+                    projects::forget(&config, &arg::<PathBuf>(args, "path")?)?;
+                    DONE
+                }
+                None => DONE,
+            },
             "create_project" => match self.shell.new_project_location() {
                 Some(path) => self.enter_project(projects::create(&path)?),
                 None => reply(Value::Null),

@@ -73,7 +73,8 @@ sidebar/preview visibility, split sizes and Light/Dark choice. UI-only session m
 is saved under `"session"` in `_river/river.json`; this can create the project sidecar
 before any extras are used. Existing template settings and unknown JSON keys are kept.
 Recent locations are stored in the app's local configuration as `projects.json` (up to
-12 projects). Missing folders stay listed as unavailable; failure to open leaves the
+12 projects). River only opens folders it can write to (#74); an entry can be removed
+from Recent Projects with its × button, which never touches the folder. Missing folders stay listed as unavailable; failure to open leaves the
 welcome screen/current workspace intact. No story content is stored in recents.
 
 File → New Project, Open Project and Close Project also work from the workspace.

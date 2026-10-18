@@ -408,13 +408,18 @@ function App() {
       theme: manualTheme ? (dark() ? "dark" : "light") : null,
     };
   }
-  async function rememberSession() {
+  /** Session state is window layout only, so a failed save never blocks leaving. */
+  async function rememberSession(report = false) {
     clearTimeout(sessionTimer);
-    if (folder())
+    if (!folder()) return;
+    try {
       await call("save_project_session", {
         path: folder(),
         session: sessionSnapshot(),
       });
+    } catch (e) {
+      if (report) fail(e);
+    }
   }
   let discardPending = false;
   async function confirmDiscard(name: string): Promise<boolean> {
@@ -782,7 +787,7 @@ function App() {
     projectBusy();
     clearTimeout(sessionTimer);
     if (folder() && !welcome() && !projectBusy())
-      sessionTimer = setTimeout(() => void rememberSession().catch(fail), 600);
+      sessionTimer = setTimeout(() => void rememberSession(true), 600);
   });
   onMount(() => {
     void call<{ key: string; path: string | null }[]>("recovery_drafts")
@@ -876,6 +881,12 @@ function App() {
           error={error()}
           onNew={run(() => loadProject(true))}
           onOpen={(path) => run(() => loadProject(false, path))()}
+          onForget={(path) =>
+            run(async () => {
+              await call("forget_recent_project", { path });
+              await refreshRecent();
+            })()
+          }
           onDismiss={() => setError("")}
         />
       </Show>

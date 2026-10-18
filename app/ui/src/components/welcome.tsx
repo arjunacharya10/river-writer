@@ -21,6 +21,8 @@ export function ProjectWelcome(props: {
   error: string;
   onNew: () => void;
   onOpen: (path?: string) => void;
+  /** Remove a location from Recent Projects; the folder is untouched. */
+  onForget: (path: string) => void;
   onDismiss: () => void;
 }) {
   return (
@@ -100,6 +102,15 @@ export function ProjectWelcome(props: {
                           ? lastOpened(project.lastOpened)
                           : "Unavailable"}
                       </small>
+                    </Button>
+                    <Button
+                      class="forget-recent"
+                      aria-label={`Remove ${project.name} from Recent Projects`}
+                      title="Remove from Recent Projects"
+                      disabled={props.busy}
+                      onClick={() => props.onForget(project.path)}
+                    >
+                      <Icon name="close" />
                     </Button>
                   </li>
                 )}

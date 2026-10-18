@@ -68,8 +68,29 @@ fn relative(path: &str) -> bool {
             .components()
             .all(|c| matches!(c, Component::Normal(_)))
 }
+/// River saves into the project (stories, `_river/`, Git), so a folder it cannot
+/// write to is refused up front rather than failing on every later save.
+fn writable(path: &Path) -> Result<(), String> {
+    let probe = path.join(format!(".river-write-check-{}", std::process::id()));
+    match fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&probe)
+    {
+        Ok(_) => {
+            let _ = fs::remove_file(&probe);
+            Ok(())
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => Ok(()),
+        Err(_) => Err(format!(
+            "River can't save in “{}”. Choose a folder you can write to, such as one in Documents.",
+            path.file_name().unwrap_or_default().to_string_lossy()
+        )),
+    }
+}
 pub fn open(path: &Path) -> Result<Project, String> {
     let path = canonical_folder(path)?;
+    writable(&path)?;
     let files = list_files(&path)?;
     let state = path.join("_river/river.json");
     let mut session = match fs::read(&state) {
@@ -191,6 +212,20 @@ pub fn recents(config: &Path) -> Result<Vec<RecentProject>, String> {
     }
     Ok(items)
 }
+/// Remove one location from Recent Projects. The folder itself is untouched.
+pub fn forget(config: &Path, path: &Path) -> Result<(), String> {
+    let state = config.join("projects.json");
+    let Ok(old) = fs::read(&state) else {
+        return Ok(());
+    };
+    let mut items = recents(config)?;
+    items.retain(|p| p.path != path);
+    atomic_write(
+        &state,
+        &serde_json::to_vec_pretty(&items).unwrap(),
+        Some(&old),
+    )
+}
 pub fn remember(config: &Path, project: &Project) -> Result<(), String> {
     let state = config.join("projects.json");
     let old = fs::read(&state).ok();
@@ -286,6 +321,29 @@ mod tests {
         assert_eq!(r.len(), 1);
         assert!(!r[0].available);
         assert!(open(&p.path).is_err());
+        forget(&config, &p.path).unwrap();
+        assert!(recents(&config).unwrap().is_empty());
+        forget(&dir.join("no-config"), &p.path).unwrap();
+        fs::remove_dir_all(dir).unwrap();
+    }
+    #[cfg(unix)]
+    #[test]
+    fn folders_river_cannot_write_to_are_refused() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = dir();
+        let locked = dir.join("Locked");
+        fs::create_dir(&locked).unwrap();
+        fs::write(locked.join("Story.md"), "words").unwrap();
+        fs::set_permissions(&locked, fs::Permissions::from_mode(0o555)).unwrap();
+        let refused = open(&locked);
+        fs::set_permissions(&locked, fs::Permissions::from_mode(0o755)).unwrap();
+        assert!(refused.err().unwrap().contains("can't save"));
+        let p = open(&locked).unwrap();
+        assert_eq!(p.files.len(), 1);
+        assert!(
+            fs::read_dir(&locked).unwrap().count() == 1,
+            "probe file left behind"
+        );
         fs::remove_dir_all(dir).unwrap();
     }
 }

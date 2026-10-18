@@ -2,7 +2,14 @@ import { chromium } from "playwright";
 import { verifyWriting } from "./verify-writing.mjs";
 import { verifyTodos } from "./verify-todos.mjs";
 import { verifyScratchpad } from "./verify-scratchpad.mjs";
-import { mkdtemp, readFile, writeFile, mkdir, rm } from "node:fs/promises";
+import {
+  mkdtemp,
+  readFile,
+  writeFile,
+  mkdir,
+  rm,
+  chmod,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { root, startBackend, openPage } from "./test-harness.mjs";
 import assert from "node:assert/strict";
@@ -345,6 +352,47 @@ try {
         editorWidthBefore,
     ) < 4,
   );
+  // A project whose folder turns read-only still closes: session state is layout only.
+  const welcomeScreen = page.getByRole("main", { name: "Project welcome" });
+  await mkdir(`${folder}/_river`, { recursive: true });
+  await chmod(`${folder}/_river`, 0o555);
+  await chmod(folder, 0o555);
+  const sessionSaves = calls.length;
+  await page.keyboard.press("ControlOrMeta+Shift+w");
+  await welcomeScreen.waitFor();
+  await chmod(folder, 0o755);
+  await chmod(`${folder}/_river`, 0o755);
+  assert.ok(
+    calls.slice(sessionSaves).some((c) => c.name === "save_project_session"),
+  );
+  // Folders River cannot write to are refused and never join Recents.
+  const locked = `${folder}/Locked`;
+  await mkdir(locked);
+  await chmod(locked, 0o555);
+  await assert.rejects(
+    invoke("open_project", { path: locked }),
+    /can't save in “Locked”/,
+  );
+  await chmod(locked, 0o755);
+  await rm(locked, { recursive: true });
+  assert.ok(
+    (await invoke("recent_projects")).every((p) => !p.path.endsWith("/Locked")),
+  );
+  // Recent Projects entries can be removed without touching the folder.
+  const recentCount = await page.locator(".recent-project").count();
+  await page
+    .locator(".recent-projects li")
+    .first()
+    .getByRole("button", { name: /^Remove .* from Recent Projects$/ })
+    .click();
+  await page.waitForFunction(
+    (n) => document.querySelectorAll(".recent-project").length === n - 1,
+    recentCount,
+  );
+  await page
+    .getByRole("button", { name: "Open Project…", exact: true })
+    .click();
+  await page.getByRole("tab", { name: /Script.fountain/ }).waitFor();
   await verifyTodos(page, folder, root);
   await verifyScratchpad(page, folder, root);
   await verifyWriting(page, root);
@@ -378,7 +426,7 @@ try {
   console.log(
     JSON.stringify({
       checks:
-        "project welcome, cancelled creation, project open, Explorer New File, recents, session restore, open, edit, save, Rust preview, repeated pane toggles, minimum widths, window resizing, tooltips, outline, tabs, undo, templates, themes, palette, find, keyboard resize, dirty close, PDF, external changes, fonts, screenplay completions/capitals, manuscript typing, Todos CRUD/reorder/completion/conflict safety, Scratchpad autosave/recovery/conflict copy/session restore",
+        "project welcome, cancelled creation, project open, Explorer New File, recents, read-only folders, removing recents, closing with an unsaveable session, session restore, open, edit, save, Rust preview, repeated pane toggles, minimum widths, window resizing, tooltips, outline, tabs, undo, templates, themes, palette, find, keyboard resize, dirty close, PDF, external changes, fonts, screenplay completions/capitals, manuscript typing, Todos CRUD/reorder/completion/conflict safety, Scratchpad autosave/recovery/conflict copy/session restore",
       result: "passed",
     }),
   );
