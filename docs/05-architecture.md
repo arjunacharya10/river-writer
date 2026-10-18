@@ -294,7 +294,8 @@ struct Page { number: Option<String>, size: SizePt, ops: Vec<DrawOp>, src: Range
   **exact** pixels. No webview text layout.
 * Delivered through a **Tauri custom URI scheme** (`river://page/<doc>/<rev>/<n>@<scale>.webp`):
   the preview view is a virtualized list of `<img>` tiles; only visible ±2 pages render.
-  Zooming re-requests at the new scale (blurry-then-sharp swap).
+  The preview stays simple: scrollable pages with page-count/status only (#44);
+  no zoom or navigation toolbar controls.
 * Cache by (page content hash, scale). Unchanged pages after an edit are never re-rendered.
 * Theme: pages stay white paper in both themes (decision #19); the surrounding canvas follows the theme.
 * Alternative considered: render PDF and show via pdf.js. Rejected for latency and

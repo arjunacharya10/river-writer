@@ -8,7 +8,6 @@ import {
 } from "solid-js";
 import { call } from "../bridge";
 import type { Preview } from "../types";
-import { Action } from "./controls";
 function Paper(props: {
   id: number;
   token: number;
@@ -69,64 +68,25 @@ export function PagePreview(props: {
   preview: Preview | null;
   busy: boolean;
   error: string;
-  onClose: () => void;
-  onExport: () => void;
 }) {
-  const [page, setPage] = createSignal(1),
-    [renderError, setRenderError] = createSignal("");
-  let scroller!: HTMLDivElement;
-  function visiblePage() {
-    if (!scroller) return;
-    const threshold =
-      scroller.getBoundingClientRect().top +
-      Math.min(100, scroller.clientHeight / 4);
-    for (const paper of scroller.querySelectorAll<HTMLElement>("[data-page]")) {
-      if (paper.getBoundingClientRect().bottom > threshold) {
-        setPage(Number(paper.dataset.page));
-        break;
-      }
-    }
-  }
+  const [renderError, setRenderError] = createSignal("");
   createEffect(() => {
     props.preview?.token;
     setRenderError("");
-    queueMicrotask(visiblePage);
   });
-  function jump(n: number) {
-    scroller
-      .querySelector(`[data-page="${n}"]`)
-      ?.scrollIntoView({ block: "start", behavior: "smooth" });
-  }
   return (
     <section class="page-preview" aria-label="Page preview">
       <header class="preview-toolbar">
         <span>
           {props.busy ? "Updating…" : `${props.preview?.pages ?? 0} pages`}
         </span>
-        <div class="page-navigation">
-          <Action
-            label="Previous page"
-            icon="chevron-up"
-            onClick={() => jump(Math.max(1, page() - 1))}
-          />
-          <span aria-label="Current page">{page()}</span>
-          <Action
-            label="Next page"
-            icon="chevron-down"
-            onClick={() =>
-              jump(Math.min(props.preview?.pages ?? 1, page() + 1))
-            }
-          />
-        </div>
-        <Action label="Export PDF" icon="export" onClick={props.onExport} />
-        <Action label="Close preview" icon="close" onClick={props.onClose} />
       </header>
       <Show when={props.error || renderError()}>
         <div class="preview-error" role="alert">
           {props.error || renderError()}
         </div>
       </Show>
-      <div class="preview-scroll" ref={scroller} onScroll={visiblePage}>
+      <div class="preview-scroll" tabindex="0" aria-label="Preview pages">
         <Show when={props.preview} keyed>
           {(preview) => (
             <div data-token={preview.token}>

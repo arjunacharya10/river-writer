@@ -1153,8 +1153,6 @@ function App() {
                         preview={preview()}
                         busy={previewBusy()}
                         error={previewError()}
-                        onClose={togglePreview}
-                        onExport={run(exportPdf)}
                       />
                     </Show>
                   </Split.Panel>

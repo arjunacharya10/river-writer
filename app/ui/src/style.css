@@ -521,11 +521,6 @@ kbd {
 .preview-toolbar > span {
   flex: 1;
 }
-.page-navigation {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
 .preview-scroll {
   overflow: auto;
   flex: 1;

@@ -45,7 +45,7 @@ bar**. They never open as tabs.
 | Source Control | VS Code SCM view: commit box, changes list (all files, **no staging section**), branches, ⋯ menu for push/pull/fetch/merge/tag (doc 04) |
 | Editor groups & tabs | **Story files only** (+ the page preview and diff views of story files). Splits, preview tabs, pinned tabs, drag between groups |
 | Template | **Template dropdown in the editor title bar**, next to the preview icon (story tabs only): `[ Manuscript ▾ ] [preview] [⋯]`. Options: Manuscript · Screenplay · Screenplay (Multi-cam) · Stage Play. **Default by extension: `.md` → Manuscript, `.fountain` → Screenplay.** "New File" creates an `.md` (Manuscript) unless named `*.fountain`. Changing it re-paginates the preview instantly; the choice is remembered per file in `_river/river.json`. No template prompt when creating projects or files. |
-| Preview toolbar | Page count + runtime estimate ("104 pages · ~104 min"), zoom, page navigation |
+| Preview toolbar | Page count/update status only (#44). Scroll through the pages; no zoom, export, navigation arrows or close button. Use the editor-title toggle to hide the pane. |
 | Preview | **One preview icon in the editor title bar** (right end of the tab row, where VS Code shows "Open Preview to the Side"), visible only for story tabs. Click toggles the paginated page preview beside the script; scroll-synced. Keys: `⌘K V` (to the side), `⇧⌘V` (in place). The adjacent **⋯** menu holds Export PDF, Export FDX, Print. |
 | Diff editor | Side-by-side and inline, word-level highlighting, scene badges |
 | Minimap | Real minimap with scene headers as section markers |

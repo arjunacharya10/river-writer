@@ -75,7 +75,7 @@ The browser check uses the real Rust service/parser/layout/rasterizer/PDF writer
 `workbench_host`, with deterministic test substitutes for OS dialogs. It checks open,
 edit, save, tab undo, outline, source-preserving template changes, theme, palette,
 find, keyboard resizing, cancelling dirty close, PDF and external-change protection.
-It checks page navigation and all four font faces, and rejects browser errors.
+It checks scrolling through preview pages and all four font faces, and rejects browser errors.
 Screenshots go to ignored `app/output/`. The adapter is excluded from production
 execution; a packaged app uses Tauri IPC.
 
@@ -91,7 +91,7 @@ complete automated Mac interaction suite.
   project-wide completion, broader syntax highlighting and project-wide search remain.
   Current-script writing assistance is implemented below (#43).
 * Preview currently renders whole pages, not tiles. Changed revisions rerender
-  visible pages; bounded tile caching, zoom, editor/page sync scroll, accessible
+  visible pages; bounded tile caching, editor/page sync scroll, accessible
   selectable page text and production performance budgets remain unverified.
 * Includes are still constrained to the initial story file's directory, as in the
   CLI baseline. Project-root include resolution and unsaved new include files need
@@ -160,7 +160,8 @@ it. Confirmed quitting now closes documents through the same cleanup path.
 
 This journal protects unsaved text independently of the automatic disk saves and
 Timeline added below. Independent backups remain pending. Next in the existing flow:
-writing polish and preview navigation. Explorer creation tools remain later work.
+writing polish. Preview zoom/navigation controls are excluded by #44; Explorer
+creation tools remain later work.
 
 Verification: service restart tests cover Unicode, untitled and named drafts, external
 edits, saved/discarded cleanup and invalid identifiers. `app/verify-recovery.mjs` kills
@@ -233,5 +234,14 @@ checks a character suggestion, dialogue continuation, location/time acceptance v
 Tab/Enter, typed capitals and Markdown isolation. The autosave/recovery/Timeline
 suite also passes. A popup screenshot is in ignored `app/output/writing-completion.png`.
 These composition checks use editor transactions; native Mac IME smoke coverage
-remains part of the platform verification work. Preview zoom/navigation is next
-in the agreed flow; Zen mode, broader syntax polish and other v1 editor work remain.
+remains part of the platform verification work. Preview zoom/navigation controls
+are excluded by #44; Zen mode, broader syntax polish and other v1 editor work remain.
+
+
+## Simple preview (2026-10-18, #44)
+The preview header now contains only page count/update status. Export, previous/next
+chevrons, current-page navigation and the close button have been removed, together
+with their unused callbacks/tracking. Pages remain scrollable, including by keyboard
+when the preview scroll area is focused. The editor-title preview toggle/shortcut
+opens and hides it; existing export actions outside the preview are unchanged.
+Zoom controls are no longer planned.

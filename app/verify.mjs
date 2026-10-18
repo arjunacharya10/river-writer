@@ -110,8 +110,11 @@ try {
     1224,
   );
   assert.equal(
-    await page.getByLabel("Current page", { exact: true }).innerText(),
-    "1",
+    await page
+      .getByRole("region", { name: "Page preview", exact: true })
+      .getByRole("button")
+      .count(),
+    0,
   );
   await page.mouse.move(0, 0);
   await page
@@ -125,18 +128,13 @@ try {
     await tip.evaluate((node) => getComputedStyle(node).pointerEvents),
     "none",
   );
-  await page.getByRole("button", { name: "Next page", exact: true }).click();
-  await page.waitForFunction(
-    () =>
-      document.querySelector('[aria-label="Current page"]').textContent === "2",
-  );
-  await page
-    .getByRole("button", { name: "Previous page", exact: true })
-    .click();
-  await page.waitForFunction(
-    () =>
-      document.querySelector('[aria-label="Current page"]').textContent === "1",
-  );
+  await page.locator(".preview-scroll").evaluate((node) => {
+    node.scrollTop = node.scrollHeight;
+  });
+  await page.getByAltText("Page 2", { exact: true }).waitFor();
+  await page.locator(".preview-scroll").evaluate((node) => {
+    node.scrollTop = 0;
+  });
   // Repeated hide/show must preserve both source visibility and real pane geometry.
   // Reading .cm-content alone misses a zero-width editor containing intact text.
   const toggle = page.getByRole("button", {
