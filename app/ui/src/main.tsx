@@ -203,7 +203,8 @@ function App() {
       sizes.some((size) => !Number.isFinite(size) || size <= 0)
     )
       return;
-    if ((editor && !previewOpen()) || (!editor && !sidebar())) return;
+    if ((editor && !previewOpen() && !historyOpen()) || (!editor && !sidebar()))
+      return;
     const total = sizes[0] + sizes[1];
     (editor ? setEditorSizes : setSidebarSizes)([
       sizes[0] / total,
@@ -658,6 +659,7 @@ function App() {
     view.focus();
   }
   function togglePreview() {
+    setHistoryOpen(false);
     setPreviewOpen((v) => !v);
     if (previewOpen()) void updatePreview();
     else {
@@ -1123,10 +1125,17 @@ function App() {
               style={{ display: sidebar() ? undefined : "none" }}
             />
             <Split.Panel
-              minSize={previewOpen() && current() ? "444px" : "220px"}
+              minSize={
+                (previewOpen() || historyOpen()) && current()
+                  ? "444px"
+                  : "220px"
+              }
               class="main-area"
               style={{
-                "min-width": previewOpen() && current() ? "444px" : "220px",
+                "min-width":
+                  (previewOpen() || historyOpen()) && current()
+                    ? "444px"
+                    : "220px",
               }}
             >
               <header class="editor-title">
@@ -1181,7 +1190,10 @@ function App() {
                         label="Toggle local history"
                         icon="history"
                         active={historyOpen()}
-                        onClick={() => setHistoryOpen(!historyOpen())}
+                        onClick={() => {
+                          if (!historyOpen() && previewOpen()) togglePreview();
+                          setHistoryOpen(!historyOpen());
+                        }}
                       />
                       <Action
                         label="Export PDF"
@@ -1246,17 +1258,92 @@ function App() {
                   </Split.Panel>
                   <Split.Handle
                     style={{
-                      display: previewOpen() && current() ? undefined : "none",
+                      display:
+                        (previewOpen() || historyOpen()) && current()
+                          ? undefined
+                          : "none",
                     }}
                     class="split-handle"
-                    aria-label="Resize page preview"
+                    aria-label="Resize side pane"
                   />
                   <Split.Panel
                     minSize="220px"
                     class="preview-pane"
-                    aria-hidden={!(previewOpen() && current())}
-                    inert={!(previewOpen() && current())}
+                    aria-hidden={
+                      !((previewOpen() || historyOpen()) && current())
+                    }
+                    inert={!((previewOpen() || historyOpen()) && current())}
                   >
+                    <Show when={historyOpen()}>
+                      <section class="timeline" aria-label="Local history">
+                        <header>
+                          <strong>TIMELINE · LOCAL HISTORY</strong>
+                          <Action
+                            label="Close local history"
+                            icon="close"
+                            onClick={() => setHistoryOpen(false)}
+                          />
+                        </header>
+                        <div class="timeline-body">
+                          <div class="timeline-list">
+                            <For each={versions()}>
+                              {(version) => (
+                                <button
+                                  class={
+                                    historyVersion() === version.id
+                                      ? "selected"
+                                      : ""
+                                  }
+                                  aria-pressed={historyVersion() === version.id}
+                                  onClick={run(() =>
+                                    inspectVersion(version.id),
+                                  )}
+                                >
+                                  {new Date(
+                                    version.timestamp * 1000,
+                                  ).toLocaleString()}{" "}
+                                  · {version.bytes} bytes
+                                </button>
+                              )}
+                            </For>
+                            <Show when={historyMore()}>
+                              <button
+                                disabled={historyBusy()}
+                                onClick={run(() => loadHistory(true))}
+                              >
+                                Load older versions
+                              </button>
+                            </Show>
+                            <Show when={!versions().length}>
+                              <p class="muted">
+                                {historyBusy()
+                                  ? "Loading…"
+                                  : current()?.path
+                                    ? "Saved versions will appear here."
+                                    : "Save this draft to start local history."}
+                              </p>
+                            </Show>
+                          </div>
+                          <div class="timeline-version">
+                            <Show
+                              when={historyVersion()}
+                              fallback={
+                                <p class="muted">
+                                  Choose a version to read its text.
+                                </p>
+                              }
+                            >
+                              <button onClick={run(restoreVersion)}>
+                                Restore this version
+                              </button>
+                              <pre aria-label="Version text">
+                                {historyText()}
+                              </pre>
+                            </Show>
+                          </div>
+                        </div>
+                      </section>
+                    </Show>
                     <Show when={previewOpen() && current()}>
                       <PagePreview
                         id={active()!}
@@ -1267,7 +1354,7 @@ function App() {
                     </Show>
                   </Split.Panel>
                   <SplitVisibility
-                    open={!!(previewOpen() && current())}
+                    open={!!((previewOpen() || historyOpen()) && current())}
                     panel={1}
                     defaultSizes={editorSizes()}
                     restoreKey={layoutVersion()}
@@ -1287,70 +1374,6 @@ function App() {
                     )}
                   </For>
                 </div>
-              </Show>
-              <Show when={historyOpen()}>
-                <section class="timeline" aria-label="Local history">
-                  <header>
-                    <strong>TIMELINE · LOCAL HISTORY</strong>
-                    <Action
-                      label="Close local history"
-                      icon="close"
-                      onClick={() => setHistoryOpen(false)}
-                    />
-                  </header>
-                  <div class="timeline-body">
-                    <div class="timeline-list">
-                      <For each={versions()}>
-                        {(version) => (
-                          <button
-                            class={
-                              historyVersion() === version.id ? "selected" : ""
-                            }
-                            aria-pressed={historyVersion() === version.id}
-                            onClick={run(() => inspectVersion(version.id))}
-                          >
-                            {new Date(
-                              version.timestamp * 1000,
-                            ).toLocaleString()}{" "}
-                            · {version.bytes} bytes
-                          </button>
-                        )}
-                      </For>
-                      <Show when={historyMore()}>
-                        <button
-                          disabled={historyBusy()}
-                          onClick={run(() => loadHistory(true))}
-                        >
-                          Load older versions
-                        </button>
-                      </Show>
-                      <Show when={!versions().length}>
-                        <p class="muted">
-                          {historyBusy()
-                            ? "Loading…"
-                            : current()?.path
-                              ? "Saved versions will appear here."
-                              : "Save this draft to start local history."}
-                        </p>
-                      </Show>
-                    </div>
-                    <div class="timeline-version">
-                      <Show
-                        when={historyVersion()}
-                        fallback={
-                          <p class="muted">
-                            Choose a version to read its text.
-                          </p>
-                        }
-                      >
-                        <button onClick={run(restoreVersion)}>
-                          Restore this version
-                        </button>
-                        <pre aria-label="Version text">{historyText()}</pre>
-                      </Show>
-                    </div>
-                  </div>
-                </section>
               </Show>
             </Split.Panel>
             <SplitVisibility

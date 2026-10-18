@@ -178,7 +178,7 @@ try {
       await assertPanes(true);
     }
   }
-  const divider = page.getByRole("separator", { name: "Resize page preview" });
+  const divider = page.getByRole("separator", { name: "Resize side pane" });
   await divider.focus();
   for (let n = 0; n < 15; n++) await page.keyboard.press("ArrowLeft");
   await assertPanes(true);

@@ -460,7 +460,7 @@ No grammar or spelling beyond the system spellchecker in the editor.
 * **Retention (planned; not implemented yet):** a compaction job rewrites the autosave chain to keep all of today,
   hourly for 7 days, daily for 30 days, weekly beyond. Unreferenced objects are
   collected by periodic `gc`.
-* Surfaced in the **Timeline** bottom panel per file: preview a saved version and
+* Surfaced in the **Timeline** right pane per file (shared with preview, decision #49): preview a saved version and
   restore it as an isolated, undoable editor edit. The current buffer is checkpointed
   before restoration. Merging real commits into Timeline remains planned. The current
   list loads 200 versions at a time; Load older versions exposes the remaining history.

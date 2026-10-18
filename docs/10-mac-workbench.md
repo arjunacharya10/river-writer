@@ -188,7 +188,7 @@ objects stay in the private repository. No author-identity setup is needed for t
 private snapshots. Standalone files use app-data history keyed by source path.
 
 Before each disk replacement, both the old bytes and changed new bytes are protected.
-The editor title bar's history button opens a Timeline bottom panel for the current
+The editor title bar's history button opens a Timeline in the right pane shared with preview (decision #49) for the current
 file, showing versions in batches of 200 with a text preview. Restore first checkpoints
 the current buffer, then replaces editor text through an isolated undo transaction;
 normal autosaving applies afterward. Changing tabs invalidates pending history reads.

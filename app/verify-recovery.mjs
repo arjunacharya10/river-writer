@@ -136,6 +136,18 @@ try {
     .click();
   const timeline = page.getByRole("region", { name: "Local history" });
   await timeline.waitFor();
+  const editorBounds = await page.locator(".editor-pane").boundingBox();
+  const historyBounds = await timeline.boundingBox();
+  assert.ok(historyBounds.x >= editorBounds.x + editorBounds.width - 2);
+  assert.ok(historyBounds.height > editorBounds.height * 0.9);
+  await page
+    .getByRole("button", { name: "Toggle page preview", exact: true })
+    .click();
+  assert.equal(await timeline.count(), 0);
+  await page
+    .getByRole("button", { name: "Toggle local history", exact: true })
+    .click();
+  await timeline.waitFor();
   await until(
     async () => (await timeline.locator(".timeline-list button").count()) === 2,
   );
