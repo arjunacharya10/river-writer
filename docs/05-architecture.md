@@ -82,7 +82,7 @@ river-writer/
 │   ├── river-parse/              Fountain + Markdown(-subset) parsers, incremental
 │   ├── river-templates/          Template data (Screenplay, Multi-cam, Stage Play, Manuscript)
 │   ├── river-text/               fonts, shaping, line breaking, hyphenation, sentence segmentation
-│   ├── river-layout/             element → line boxes (measure, wrap, styles)        
+│   ├── river-layout/             element → line boxes (measure, wrap, styles)
 │   ├── river-paginate/           grouper + paginator (MORE/CONT'D, splits, keep-together)
 │   ├── river-render/             page display list → raster tiles (preview)
 │   ├── river-pdf/                page display list → PDF (font subsetting, metadata, outline)
