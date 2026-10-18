@@ -6,7 +6,7 @@ formatted pages. It's a focused, anti-bloat take on Highland Pro: craft first, n
 no accounts, no AI, no plugins.
 
 ## Read first
-1. `docs/decision-log.md` — every decision (63 so far) with reasoning and reversals.
+1. `docs/decision-log.md` — every decision (64 so far) with reasoning and reversals.
    **Locked decisions are not to be relitigated** unless the user raises them.
 2. `docs/01-product-brief.md` (principles), then `02`–`10` as relevant.
 3. Formatting-engine behaviour (parser rules, template values, pagination,
@@ -34,16 +34,17 @@ no accounts, no AI, no plugins.
   checks (but keep the door open; doc 08).
 
 ## Current status and next step
-Product definition complete (63 decisions). Engine CLI and the first production Mac
+Product definition complete (64 decisions). Engine CLI and the first production Mac
 workbench are implemented. `app/` uses Kobalte/Corvu/CodeMirror with native menus,
 a project welcome screen (New/Open/Recent), saved project tab/layout restoration,
 real story-file IO, Rust-driven outline and page preview/PDF. `river-service` stays
 independent of Tauri. See `docs/09-engine-cli.md` and `docs/10-mac-workbench.md` for
 commands, verification and boundaries.
 
-Next: finish shell/preview phases (incremental updates, watchers, generated IPC types,
-preview polish), settings, then Git polish (revert, branch delete/merge)
-(#51 commits, #53 restore, #55 branches done; FDX moved to v1.1, #54; remotes parked, #52). River must never require installed tools. Autosave, crash recovery, private Timeline, Todos and
+Next: v1 scope is frozen (#64): release what is built. Remaining for v1 are native checks
+in the Mac app, the first signed and notarized build, and fixes. Remotes, settings,
+Quick Open, search, Explorer tree, print, A4, retention, revert/branch delete/merge,
+CI release and FDX are v1.1 (`docs/06-roadmap.md`). River must never require installed tools. Autosave, crash recovery, private Timeline, Todos and
 Scratchpad are implemented; separate backups dropped in favour of a Git remote (#50).
 Windows is deferred (#36).
 License: **MIT**; no business model or monetization planned (#40). These questions are closed.

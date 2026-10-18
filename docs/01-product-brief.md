@@ -41,12 +41,13 @@ Out: comics/graphic novels, essays, academic/MLA, wikis, bulletins, speeches, ar
 * Notes `[[ ]]`, boneyard `/* */`, synopses `=`
 * Final Draft (FDX) import and export (v1.1, #54)
 * Includes (`{{INCLUDE: …}}`) for chapter-per-file projects
-* Characters list (names, counts, rename)
+* Characters list (names, counts, rename) (v1.1)
 * Two themes only: **Light** and **Dark** (modelled on VS Code's Light/Dark Modern), following the system appearance (more can come later)
 * **Scratchpad and todos**, each just a plain-text dump (see doc 02)
 * Git-based versioning with standard git vocabulary (see doc 04)
 * **UI exactly like VS Code** (see doc 03)
-* Automatic local backups
+* Automatic local history (private autosaves and Timeline); off-machine copies via a Git
+  remote from v1.1 (#50, #64)
 
 ## Cut entirely
 Cloud sync, Fling/web review and comments, accounts and sign-in, AI features,
@@ -64,7 +65,7 @@ tables/checklists/code blocks/footnotes in story formats.
 | Revision mode | Revision marks = the diff since a tag, rendered as colored pages and asterisks |
 | Sprints/goals/milestones | Optional daily word-goal ring, off by default |
 | Scratchpad + Todos | Plain-text files in `_river/` |
-| Backups | Automatic local backups to a chosen folder |
+| Backups | Private local history; push to your own Git remote (v1.1) |
 
 ## Where it wins
 * **Against Final Draft / Fade In:** plain text, calmer, open source, beautiful typography.

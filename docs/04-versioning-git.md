@@ -9,7 +9,11 @@ considered: writer-renamed terms, simpler non-git models.)
 * A normal git repository at the project root (`.git/`), embedded via a Rust git
   library, so no git install is needed.
 * A folder that is already a git repository is simply adopted.
-* `.gitignore` always contains `_river/river.json`.
+* `_river/river.json` is excluded through `.git/info/exclude`; River never edits
+  `.gitignore` (#62).
+* **v1 scope (#64):** commit, history, diff, restore and branch create/switch. Remotes,
+  revert, branch delete/merge, tags, writer-shaped diff, retention and teaching hints
+  are v1.1.
 
 ## The visible subset
 | Term | In River |

@@ -15,8 +15,8 @@ pnpm --dir app tauri build --debug --bundles app
 ```
 
 The development bundle is `app/src-tauri/target/debug/bundle/macos/River Writer.app`.
-Its identifier is `dev.riverwriter.desktop`; release identity, signing and
-notarization remain release work. The engine stays in the root Cargo workspace;
+Its identifier is `app.riverwriter.mac` (#56); signing and notarization are covered
+below under Mac release polish. The engine stays in the root Cargo workspace;
 the desktop package has its own workspace/lockfile.
 
 ## Implemented
@@ -102,11 +102,10 @@ complete automated Mac interaction suite.
 * Save As does not replace an existing file. Mixed-newline files normalize to their
   detected convention. Save protection compares contents before replacement;
   a different app can still race a write between that check and the final rename.
-* Settings UI, Git remotes/branches/restore, history compaction,
-  FDX, print, Mac file associations, signed packaging and other v1 polish remain
-  later phases. Crash recovery, automatic disk saves and local Timeline are implemented
+* Settings UI, Git remotes, history compaction, FDX and print are v1.1 (#54, #64).
+  Branches, restore, Mac file associations and signed packaging are done below. Crash recovery, automatic disk saves and local Timeline are implemented
   as described below.
-* Development icon/identity only. No public push has been made; the MIT license and no-business-model decision are now settled (#40).
+* No public push has been made; the MIT license and no-business-model decision are now settled (#40).
 
 ## Preview toggle fix (2026-10-18)
 Repeated preview/sidebar unmounts exposed Corvu 0.2.5's remaining-panel size

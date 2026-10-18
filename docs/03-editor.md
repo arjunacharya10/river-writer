@@ -139,8 +139,9 @@ bar**. They never open as tabs.
 The first production Mac workbench in `app/` implements Explorer/story tabs,
 CodeMirror with Rust-driven script geometry, outline/diagnostics, the template picker,
 page preview, PDF export, basic command palette, two themes and Corvu keyboard-resizable
-splits. Native menus/dialogs are wired. This is the first shell/preview slice; the full
-UI described above is still the target. See [current scope and verification](10-mac-workbench.md).
+splits. Native menus/dialogs are wired. The full UI described above is the long-term
+target; v1 ships what is built today, and Settings, Quick Open, breadcrumbs, project
+search, the Explorer tree, editor groups and preview sync are v1.1 (#64). See [current scope and verification](10-mac-workbench.md).
 
 Pane sizing (#38): editor and preview have a **220 CSS px minimum** each; the sidebar
 has a **170 px minimum**, matching VS Code's defaults. Visible panes do not collapse

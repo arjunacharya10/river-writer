@@ -3,35 +3,51 @@
 ## Version 1 — "write, see the page, keep every version"
 Ships on **macOS only** (principle 7, decision #36). Windows is deferred and does not
 gate development or release. Linux: later or never.
-* VS Code workbench: activity bar, Explorer, Search, Source Control, Outline, editor groups/tabs,
-  command palette, quick open, breadcrumbs, minimap, status bar, settings.json, VS Code keymap (Zen mode deferred, #45)
-* Writing assistance: current-script character/location suggestions, scene prefixes
-  and times, scoped capitalization implemented (#43); broader editor polish remains.
-* Live paginated preview; PDF export; title page
+
+**Scope is frozen (#64): v1 is what is built today, plus release polish and fixes.**
+* VS Code-style workbench: activity bar, Explorer (flat list of story files), Source
+  Control, Outline (click to jump), story tabs, command palette, minimap, status bar,
+  native Mac menus and dialogs, project welcome with recent projects
+* Writing assistance: character/location suggestions, scene prefixes and times, scoped
+  capitalization (#43)
+* Live paginated preview; PDF export; title page (US Letter)
 * Templates: Screenplay (+ multi-cam), Stage Play, Novel/Manuscript
-* Extras: Scratchpad and Todos as activity-bar sidebar views (plain files in `_river/`).
-  Bin removed (#47).
-  * Todos implemented (#46): quick entry/edit, completion/reopening, collapsed completed
-    tasks, delete and drag/keyboard reorder.
-  * Scratchpad implemented (#48): one writing area, autosave, recovery, conflict-copy
-    handling. No extra editor tabs or toolbar.
-* Git: commit (no staging), log, diff (scene/paragraph/word), restore/revert, branch +
-  checkout, remote + push/pull/fetch, clone
-  * Implemented (#51): Source Control view with init, project identity, review all
-    changes, commit everything, commit history and diff. File/project restore with Undo (#53) and branch
-    list/create/switch (#55) implemented. Remaining: revert commits, branch delete/merge,
-    scene-level diff. Remotes/push/pull/fetch/clone parked (#52);
-    when built they run in-process, with no installed `git` required.
-* Local autosave history (never pushed). Separate automatic backups dropped (#50);
-  off-machine safety comes from the writer's Git remote
-  * Implemented: crash recovery, one-second idle disk saves, private per-branch Git
-    history, Timeline preview/restore with Undo (doc 10). Remaining: retention
-    compaction, real commits in Timeline.
+* Extras: Scratchpad (#48) and Todos (#46) as sidebar views (plain files in `_river/`)
+* Git, built in (no installed `git`): on by default with a starting snapshot (#62),
+  review and commit everything (#51), history and commit diffs, file/project restore
+  with Undo (#53), branch create/switch (#55), Mac-account identity (#63)
+* Draft protection: one-second autosave, crash recovery, private per-branch history and
+  Timeline with restore/Undo (#42). No off-machine copy in v1; writers use their own
+  Mac backups (#50, #64)
+* Mac release: `app.riverwriter.mac` identity, icon, file associations, signed and
+  notarized DMG via `scripts/release-mac.sh` (#56–#58)
 * Themes: Light and Dark only, following the system appearance
 
+### Left before releasing v1
+* Native checks in the Mac app after the refactor (#61): open, edit/save, preview, PDF,
+  Timeline, Git review/commit/restore/branch, Finder double-click
+* First real signed + notarized build (writer's `river-notary` profile, x86_64 target)
+* Doc and bug fixes found along the way
+
 ## Version 1.1
-* Final Draft (FDX) import and export (moved from v1, #54)
-* Scene-level merge + conflict resolution; cherry-pick scene/paragraph
+Moved from v1 (#64):
+* Git remotes: add remote, push/pull/fetch, clone (in-process, #52); revert a commit;
+  branch delete; tags and milestones; first-run Git hints and Help → Git for Writers
+* Writer-shaped diff (scene/paragraph/word) and gutter change bars
+* Settings UI + `settings.json`/`keybindings.json`
+* Quick Open (⌘P, `@` scenes, `#` characters) and breadcrumbs
+* Project-wide search/replace
+* Explorer tree: folders, new/rename/delete, folder watching
+* Native Print; A4 paper / Page Setup
+* Preview sync scroll and click-to-jump; Outline drag-to-reorder scenes
+* Private-history retention; real commits in Timeline
+* Split editor groups, pinned tabs; includes resolved from the project root
+* CI release workflow, `CHANGELOG.md`, network-promise audit; Help → Check for Updates /
+  Subscribe links
+
+Already planned for 1.1:
+* Final Draft (FDX) import and export (#54)
+* Branch merge with scene-level merge + conflict resolution; cherry-pick scene/paragraph
 * Tags → revision marks (colored pages + asterisks since a tag); page diff
 * Problems panel (script check); rename character (F2); Characters view; Stats panel
 * Reader-copy export (line numbers, margin notes)
@@ -50,8 +66,8 @@ services, non-creative templates.
 1. One unified syntax for screen and prose, or Fountain + Markdown kept separate?
    (Current lean: separate.)
 2. Open Highland `.highland` files as a migration path? (ZIP → TextBundle → `text.fountain`/`text.md`)
-3. History retention/compaction implementation. The disk-save interval is settled
-   at 1 second idle; checkpoints protect each disk replacement (#42).
+3. History retention/compaction implementation (v1.1, #64). The disk-save interval is
+   settled at 1 second idle; checkpoints protect each disk replacement (#42).
 
 ## Closed decisions: license and business model (#40)
 * **License: MIT.** The repository's `LICENSE` contains the grant.

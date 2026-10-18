@@ -564,7 +564,7 @@ sample documents.
 | **4. Extras & settings** | Scratchpad/Todos views, settings editor, keybindings, Light/Dark themes (Zen deferred, #45) | Feature-complete UI for v1 |
 | **5. VCS** | Commit/log/diff/branch/checkout/restore, autosave history + Timeline, remotes push/pull/fetch/clone | Never-push-autosave test passes; credentials work for SSH + HTTPS |
 | **6. FDX + polish** | FDX import/export, Problems panel basics, packaging, signing/notarization | v1 release candidate |
-| **v1.1** | Scene merge, cherry-pick, revision marks, page diff, rename character, Characters/Stats views, reader copy, GitHub sign-in | — |
+| **v1.1** | Everything moved by #64 (remotes, settings, Quick Open, search, Explorer tree, print, A4, retention, CI release), scene merge, cherry-pick, revision marks, page diff, rename character, Characters/Stats views, reader copy, GitHub sign-in | — |
 
 ---
 

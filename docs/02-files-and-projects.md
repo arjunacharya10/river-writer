@@ -17,7 +17,7 @@
 ```
 The Long Night/
 ├── .git/                          ← real git repository (doc 04)
-├── .gitignore                     ← includes _river/river.json and anything marked "ignore"
+├── .gitignore                     ← the writer's own; River never edits it (#62)
 ├── The Long Night.fountain        ← the story (or several files, e.g. one per chapter)
 └── _river/
     ├── scratchpad.md              ← free-form dump
@@ -80,7 +80,7 @@ File → New Project, Open Project and Close Project also work from the workspac
 Changing/closing projects checks unsaved text, and cancelling leaves it in place.
 File → Open remains available for individual story files inside the workspace.
 Session restoration reloads **saved files**, not unsaved text: content autosave,
-crash recovery, backups and git remain separate work.
+crash recovery and Git are described elsewhere (backups dropped, #50).
 
 
 ## Todos implementation (#46)
