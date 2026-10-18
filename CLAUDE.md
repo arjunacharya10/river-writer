@@ -33,8 +33,8 @@ no accounts, no AI, no plugins.
 ## Current status and next step
 Product definition complete (35 decisions; one font: Courier Prime, #35); **typesetting and native editor trials implemented on macOS**. Next: **complete phase 0 trial builds**
 (`docs/05-architecture.md` §16):
-1. Typesetting: Parley + krilla render one screenplay page and one manuscript page to PDF and
-   to a raster image from the same display list; the outputs must match.
+1. ~~Typesetting~~ **done**: Parley + krilla + tiny-skia from one display list; positions
+   exact, raster ≈ PDF, 120 pages in 24 ms (`spikes/typeset/NOTES.md`).
 2. Editor: CodeMirror 6 script look in a Tauri window, driven by template geometry;
    check typing/scrolling smoothness on macOS (and Windows).
 Open (non-blocking) decisions: license and business model (before the first public push),

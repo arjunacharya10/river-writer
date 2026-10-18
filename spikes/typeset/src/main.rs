@@ -402,8 +402,56 @@ fn manuscript_sample() -> Vec<(El, String)> {
 
 // ---------------------------------------------------------------- main
 
+/// `typeset compare a.png b.png diff.png`: pixel diff of two same-size renders.
+/// Reports ink (dark pixel) counts, ink centroid shift, and pixels whose gray level
+/// differs by more than 64 (anti-aliasing noise stays below that).
+fn compare(a: &str, b: &str, diff_out: &str) {
+    let a = tiny_skia::Pixmap::load_png(a).unwrap();
+    let b = tiny_skia::Pixmap::load_png(b).unwrap();
+    assert_eq!((a.width(), a.height()), (b.width(), b.height()), "size mismatch");
+    let gray = |p: &tiny_skia::PremultipliedColorU8| (p.red() as i32 + p.green() as i32 + p.blue() as i32) / 3;
+    let mut diff = tiny_skia::Pixmap::new(a.width(), a.height()).unwrap();
+    let (mut ink_a, mut ink_b, mut big) = (0u64, 0u64, 0u64);
+    let (mut cxa, mut cya, mut cxb, mut cyb) = (0f64, 0f64, 0f64, 0f64);
+    let w = a.width() as usize;
+    for (i, (pa, pb)) in a.pixels().iter().zip(b.pixels()).enumerate() {
+        let (ga, gb) = (gray(pa), gray(pb));
+        let (x, y) = ((i % w) as f64, (i / w) as f64);
+        if ga < 128 {
+            ink_a += 1;
+            cxa += x;
+            cya += y;
+        }
+        if gb < 128 {
+            ink_b += 1;
+            cxb += x;
+            cyb += y;
+        }
+        let d = (ga - gb).abs();
+        if d > 64 {
+            big += 1;
+        }
+        let v = 255 - d.min(255) as u8;
+        diff.pixels_mut()[i] = tiny_skia::ColorU8::from_rgba(255, v, v, 255).premultiply();
+    }
+    diff.save_png(diff_out).unwrap();
+    let total = (a.width() * a.height()) as f64;
+    println!(
+        "ink a={ink_a} b={ink_b} ({:+.2}%); centroid shift dx={:.3}px dy={:.3}px; pixels |Δ|>64: {big} ({:.3}% of page, {:.2}% of ink)",
+        (ink_b as f64 - ink_a as f64) / ink_a as f64 * 100.0,
+        cxb / ink_b as f64 - cxa / ink_a as f64,
+        cyb / ink_b as f64 - cya / ink_a as f64,
+        big as f64 / total * 100.0,
+        big as f64 / ink_a as f64 * 100.0,
+    );
+}
+
 fn main() {
-    let out = std::path::PathBuf::from(std::env::args().nth(1).unwrap_or_else(|| "out".into()));
+    let args: Vec<String> = std::env::args().collect();
+    if args.get(1).map(String::as_str) == Some("compare") {
+        return compare(&args[2], &args[3], &args[4]);
+    }
+    let out =std::path::PathBuf::from(std::env::args().nth(1).unwrap_or_else(|| "out".into()));
     std::fs::create_dir_all(&out).unwrap();
     let fonts: Vec<Vec<u8>> = FONT_FILES.iter().map(|f| std::fs::read(format!("{FONT_DIR}/{f}")).unwrap()).collect();
     let mut engine = Engine::new(&fonts);

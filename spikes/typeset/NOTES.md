@@ -80,3 +80,18 @@ Both trials now read `../template.json` (source geometry; no duplicate editor va
 The refactored trial was rechecked: 44.96 ms median / 45.67 ms max for the same
 265,680-glyph workload. PDF/PNG comparison still passes, including its negative
 control. Normal run-to-run timing varies with compilation and other applications.
+
+## Results (2026-10-17, M-series Mac, release build)
+Run: `cargo run --release -- <outdir>`; compare: `typeset compare a.png b.png diff.png`.
+* **Geometry exact:** `pdftotext -bbox` puts action at 108.0 pt, dialogue 178.99, paren 207.0,
+  cue 248.98, transition right edge 540.0. Wrapping: action 60 cols, dialogue 34.
+* **Courier Prime advance is 1228/2048 em = 7.195 pt**, not 7.2: phase-1 column math must use
+  the font's real advance (60 cols = 431.7 pt).
+* **Preview vs PDF:** our tiny-skia raster vs poppler's render of our PDF at 144 dpi: 0.05% of
+  page pixels differ by > 64 gray levels (≈2.5% of ink pixels, all on glyph edges); poppler
+  draws ~1.6% more ink and sits ~0.4 px right (rasterizer AA/pixel-centre convention).
+  Glyph positions are identical by construction (same display list).
+* **Speed (120-page screenplay, cold):** full layout + paginate 24 ms (budget: 150 ms
+  incremental); PDF write 17 ms; one page raster at 144 dpi 9.5 ms.
+* Not covered (phase 1): (MORE)/(CONT'D), sentence-boundary splits, title page, dual
+  dialogue, incremental re-pagination, bold/italic/underline runs inside a line.
