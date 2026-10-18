@@ -1,0 +1,11 @@
+[package]
+name = "river-layout"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+river-model = { path = "../river-model" }
+river-templates = { path = "../river-templates" }
+river-text = { path = "../river-text" }
+unicode-segmentation.workspace = true

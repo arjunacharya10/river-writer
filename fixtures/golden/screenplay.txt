@@ -1,0 +1,31 @@
+template screenplay
+PAGE 1 number None
+Centered 108.000 240.000 12.000 The Other Bank
+Centered 108.000 276.000 12.000 Written by
+Centered 108.000 312.000 12.000 N. Writer
+Action 72.000 672.000 12.000 October 17, 2026
+Action 72.000 696.000 12.000 writer@example.test
+PAGE 2 number Some(1)
+Scene 108.000 72.000 12.000 EXT. FERRY TERMINAL - NIGHT
+Action 108.000 96.000 12.000 Rain taps the roof. MAYA lays a brass key beside the old
+Action 108.000 108.000 12.000 radio. A sign reads: Last crossing at dusk.
+Cue 248.976 132.000 12.000 MAYA
+Parenthetical 207.000 144.000 12.000 (quietly)
+Dialogue 178.992 156.000 12.000 I thought you said the river was
+Dialogue 178.992 168.000 12.000 safe. Every light on the far bank
+Dialogue 178.992 180.000 12.000 is still burning.
+Cue 248.976 204.000 12.000 ELIAS
+Dialogue 178.992 216.000 12.000 I said the bridge was safe.
+Cue 162.000 240.000 12.000 MAYA
+Dialogue 108.000 252.000 12.000 Then we take the bridge.
+Cue 396.000 240.000 12.000 ELIAS
+Dialogue 342.000 252.000 12.000 There is no bridge.
+Transition 108.000 276.000 12.000 CUT TO:
+PAGE 3 number Some(2)
+Scene 108.000 72.000 12.000 INT. SIGNAL ROOM - NIGHT
+Action 108.000 96.000 12.000 A yellow light flashes twice. The dead radio begins to hum.
+Cue 248.976 120.000 12.000 MCKAY
+Dialogue 178.992 132.000 12.000 We have your signal.
+Lyric 178.992 144.000 12.000 The river runs beneath the road.
+Centered 108.000 168.000 12.000 THE END
+Action 72.000 36.000 12.000 [generated] 2.

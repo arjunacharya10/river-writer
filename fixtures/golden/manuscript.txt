@@ -1,0 +1,23 @@
+template manuscript
+PAGE 1 number None
+Centered 108.000 240.000 24.000 The Other Bank
+Centered 108.000 288.000 24.000 N. Writer
+PAGE 2 number Some(1)
+Section 72.000 72.000 24.000 CHAPTER ONE
+Paragraph 72.000 96.000 24.000 By morning the river had carried away the steps. Nora stood
+Paragraph 72.000 120.000 24.000 where the garden ended and watched a branch turn slowly in the
+Paragraph 72.000 144.000 24.000 current. She had expected the house to feel smaller after
+Paragraph 72.000 168.000 24.000 everyone left. Instead, each empty room seemed to have acquired
+Paragraph 72.000 192.000 24.000 another door.
+Paragraph 72.000 216.000 24.000 She put the brass key in her pocket. On the far bank, the
+Paragraph 72.000 240.000 24.000 ferryman raised one hand, as though they had arranged to meet.
+Paragraph 72.000 264.000 24.000 Nora did not wave back.
+Blockquote 108.000 288.000 24.000 Come before the first frost.
+Rule 72.000 336.000 24.000 * * *
+Section 72.000 384.000 24.000 THE LETTER
+Paragraph 72.000 408.000 24.000 The letter mentioned three things:
+ListItem 72.000 432.000 24.000 - The apple trees.
+ListItem 72.000 456.000 24.000 - The broken clock.
+ListItem 72.000 480.000 24.000 - The spare room at the end of the hall.
+Paragraph 72.000 504.000 24.000 Nora read it again. Nobody had mentioned a flood.
+Action 72.000 36.000 12.000 [generated] 1

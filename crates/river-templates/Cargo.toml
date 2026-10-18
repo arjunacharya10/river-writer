@@ -1,0 +1,10 @@
+[package]
+name = "river-templates"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+river-model = { path = "../river-model" }
+serde.workspace = true
+serde_json.workspace = true

@@ -1,0 +1,32 @@
+template stageplay
+PAGE 1 number None
+Centered 108.000 240.000 12.000 The Other Bank
+Centered 108.000 276.000 12.000 Written by
+Centered 108.000 312.000 12.000 N. Writer
+Action 72.000 672.000 12.000 October 17, 2026
+Action 72.000 696.000 12.000 writer@example.test
+PAGE 2 number Some(1)
+Scene 108.000 72.000 12.000 EXT. FERRY TERMINAL - NIGHT
+Action 288.000 96.000 12.000 Rain taps the roof. MAYA lays a
+Action 288.000 108.000 12.000 brass key beside the old radio. A
+Action 288.000 120.000 12.000 sign reads: Last crossing at dusk.
+Cue 214.992 144.000 12.000 MAYA
+Parenthetical 214.992 156.000 12.000 (quietly)
+Dialogue 124.272 168.000 12.000 I thought you said the river was safe. Every
+Dialogue 124.272 180.000 12.000 light on the far bank is still burning.
+Cue 214.992 204.000 12.000 ELIAS
+Dialogue 124.272 216.000 12.000 I said the bridge was safe.
+Cue 162.000 240.000 12.000 MAYA
+Dialogue 108.000 252.000 12.000 Then we take the bridge.
+Cue 396.000 240.000 12.000 ELIAS
+Dialogue 342.000 252.000 12.000 There is no bridge.
+Transition 288.000 276.000 12.000 CUT TO:
+PAGE 3 number Some(2)
+Scene 108.000 72.000 12.000 INT. SIGNAL ROOM - NIGHT
+Action 288.000 96.000 12.000 A yellow light flashes twice. The
+Action 288.000 108.000 12.000 dead radio begins to hum.
+Cue 214.992 132.000 12.000 MCKAY
+Dialogue 124.272 144.000 12.000 We have your signal.
+Lyric 108.000 156.000 12.000 THE RIVER RUNS BENEATH THE ROAD.
+Centered 288.000 180.000 12.000 THE END
+Action 72.000 36.000 12.000 [generated] 2.

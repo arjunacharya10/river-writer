@@ -1,0 +1,162 @@
+[
+  {
+    "id": "screenplay",
+    "pitch": 12,
+    "dialogue_pitch": 12,
+    "first_indent": 0,
+    "cheat": 24,
+    "sentence_breaks": true,
+    "print_sections": false,
+    "number_first": false,
+    "action": {
+      "x": 108,
+      "width": 432,
+      "align": "left"
+    },
+    "scene": {
+      "x": 108,
+      "width": 400.032,
+      "align": "left"
+    },
+    "cue": {
+      "x": 248.976,
+      "width": 248.976,
+      "align": "left"
+    },
+    "parenthetical": {
+      "x": 207,
+      "width": 211.032,
+      "align": "left"
+    },
+    "dialogue": {
+      "x": 178.992,
+      "width": 248.976,
+      "align": "left"
+    },
+    "lyric": {
+      "x": 178.992,
+      "width": 361.008,
+      "align": "left"
+    }
+  },
+  {
+    "id": "screenplay-multicam",
+    "pitch": 12,
+    "dialogue_pitch": 24,
+    "first_indent": 0,
+    "cheat": 60,
+    "sentence_breaks": true,
+    "print_sections": false,
+    "number_first": false,
+    "action": {
+      "x": 108,
+      "width": 432,
+      "align": "left"
+    },
+    "scene": {
+      "x": 108,
+      "width": 400.032,
+      "align": "left"
+    },
+    "cue": {
+      "x": 248.976,
+      "width": 248.976,
+      "align": "left"
+    },
+    "parenthetical": {
+      "x": 207,
+      "width": 211.032,
+      "align": "left"
+    },
+    "dialogue": {
+      "x": 178.992,
+      "width": 248.976,
+      "align": "left"
+    },
+    "lyric": {
+      "x": 178.992,
+      "width": 361.008,
+      "align": "left"
+    }
+  },
+  {
+    "id": "stageplay",
+    "pitch": 12,
+    "dialogue_pitch": 12,
+    "first_indent": 0,
+    "cheat": 60,
+    "sentence_breaks": true,
+    "print_sections": false,
+    "number_first": false,
+    "action": {
+      "x": 288,
+      "width": 252,
+      "align": "left"
+    },
+    "scene": {
+      "x": 108,
+      "width": 400.032,
+      "align": "left"
+    },
+    "cue": {
+      "x": 214.992,
+      "width": 325.00800000000004,
+      "align": "left"
+    },
+    "parenthetical": {
+      "x": 214.992,
+      "width": 239.976,
+      "align": "left"
+    },
+    "dialogue": {
+      "x": 124.272,
+      "width": 330.984,
+      "align": "left"
+    },
+    "lyric": {
+      "x": 108,
+      "width": 348.984,
+      "align": "left"
+    }
+  },
+  {
+    "id": "manuscript",
+    "pitch": 24,
+    "dialogue_pitch": 24,
+    "first_indent": 36,
+    "cheat": 0,
+    "sentence_breaks": false,
+    "print_sections": true,
+    "number_first": true,
+    "action": {
+      "x": 72,
+      "width": 468,
+      "align": "left"
+    },
+    "scene": {
+      "x": 72,
+      "width": 468,
+      "align": "left"
+    },
+    "cue": {
+      "x": 72,
+      "width": 468,
+      "align": "left"
+    },
+    "parenthetical": {
+      "x": 72,
+      "width": 468,
+      "align": "left"
+    },
+    "dialogue": {
+      "x": 72,
+      "width": 468,
+      "align": "left"
+    },
+    "lyric": {
+      "x": 72,
+      "width": 468,
+      "align": "left"
+    }
+  }
+]

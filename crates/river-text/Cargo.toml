@@ -1,0 +1,10 @@
+[package]
+name = "river-text"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+river-model = { path = "../river-model" }
+parley.workspace = true
+skrifa.workspace = true

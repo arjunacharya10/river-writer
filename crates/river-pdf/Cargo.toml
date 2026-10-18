@@ -1,0 +1,10 @@
+[package]
+name = "river-pdf"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+river-model = { path = "../river-model" }
+river-text = { path = "../river-text" }
+krilla.workspace = true

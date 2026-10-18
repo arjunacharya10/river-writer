@@ -8,7 +8,7 @@ no accounts, no AI, no plugins.
 ## Read first
 1. `docs/decision-log.md` — every decision (37 so far with reasoning and reversals.
    **Locked decisions are not to be relitigated** unless the user raises them.
-2. `docs/01-product-brief.md` (principles), then `02`–`08` as relevant.
+2. `docs/01-product-brief.md` (principles), then `02`–`09` as relevant.
 3. Formatting-engine behaviour (parser rules, template values, pagination,
    (MORE)/(CONT'D)): `~/rea/HIGHLAND_SPEC.md` (research workspace: `~/rea/README.md`).
 
@@ -34,12 +34,14 @@ no accounts, no AI, no plugins.
   checks (but keep the door open; doc 08).
 
 ## Current status and next step
-Product definition complete (37 decisions; one font: Courier Prime, #35); **typesetting and native editor trials implemented on macOS**. Next: **production engine CLI**
-(`docs/05-architecture.md` §16):
-1. ~~Typesetting~~ **done**: Parley + krilla + tiny-skia from one display list; positions
-   exact, raster ≈ PDF, 120 pages in 24 ms (`spikes/typeset/NOTES.md`).
-2. Editor: CodeMirror 6 script look in a Tauri window, driven by template geometry;
-   typing/scrolling checked on macOS. Windows testing is deferred (#36).
+Product definition complete (37 decisions). **The first engine CLI baseline is implemented**
+in the root Rust workspace (`crates/`). Real `.fountain`/`.md` files export to PDF/PNG
+with all four templates, inline styles, source maps, includes, title pages and dialogue
+continuations. See `docs/09-engine-cli.md` for commands, verification and limitations.
+
+Next: production Mac workbench integration; incremental parsing/pagination and broader
+formatting fixtures remain engine follow-up. Kobalte/Corvu are approved for that shell
+(#37). The editor in `spikes/` is still a disposable experiment. Windows is deferred (#36).
 Open (non-blocking) decisions: license and business model (before the first public push),
 unified syntax vs separate, `.highland` import, autosave timing (`docs/06-roadmap.md`).
 

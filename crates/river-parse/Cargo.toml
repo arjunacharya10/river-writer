@@ -1,0 +1,9 @@
+[package]
+name = "river-parse"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+river-model = { path = "../river-model" }
+pulldown-cmark.workspace = true

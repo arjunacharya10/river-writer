@@ -1,7 +1,7 @@
 # 05 — Architecture (Tauri)
 
-Status: architecture defined; phase-0 typesetting and editor trials implemented on
-macOS. Untried libraries remain **recommendations to verify at build time**
+Status: first engine CLI baseline implemented on macOS; desktop integration remains
+ahead. Untried libraries remain **recommendations to verify at build time**
 (maturity, licenses, current versions). Behaviour references point to
 `~/rea/HIGHLAND_SPEC.md` (§ numbers).
 
@@ -79,6 +79,7 @@ flowchart LR
 river-writer/
 ├── docs/                         product docs (this folder)
 ├── crates/                       Rust workspace (UI-independent, unit-testable)
+│   ├── river-cli/                river export/check/inspect + end-to-end tests
 │   ├── river-model/              Element, ElementType, Token, Script, TitlePage, ranges
 │   ├── river-parse/              Fountain + Markdown(-subset) parsers, incremental
 │   ├── river-templates/          Template data (Screenplay, Multi-cam, Stage Play, Manuscript)
@@ -568,6 +569,13 @@ Browser tests cover source-preserving template changes, search and geometry.
 Full production pagination remains unvalidated; Windows is outside current scope. See the
 [typesetting notes](../spikes/typeset/NOTES.md) and
 [editor notes](../spikes/editor/NOTES.md) for reproduction and limitations.
+
+Phase-1 progress (2026-10-17): the production Rust workspace and `river` CLI now
+export real source files using all four templates, with source mapping, inline styles,
+relative includes, title pages, dual dialogue and MORE/CONT'D. Golden regression
+snapshots cover all four templates. A 120-page middle-file edit takes 45.3 ms including
+a full reparse with shape-cache reuse; incremental parsing/page invalidation is pending.
+See [engine usage, validation and boundaries](09-engine-cli.md).
 
 ## 17. Packaging and platforms
 
