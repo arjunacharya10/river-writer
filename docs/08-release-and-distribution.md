@@ -18,6 +18,35 @@ updates.
   formats stay backward-compatible; a newer River never silently rewrites `_river/` in a
   way an older River can't read (version field in `river.json`, additive changes only).
 
+## Keeping the door open for a future updater (decision #34)
+v1 has **no updater, no update checks, and no package-manager channels** (no Homebrew,
+no winget). Nothing in v1 may make adding an **opt-in** updater later expensive:
+
+| Keep stable from v1 | Why it matters later |
+|---|---|
+| **App identity**: macOS bundle identifier, Windows product name + **UpgradeCode** (MSI) / NSIS app id | An updater (or a newer installer) can only replace an install it recognises |
+| **Signing identities**: same Apple Developer ID team and Windows signing publisher on every release | Updates must be signed by the same identity, or the OS treats the app as different/untrusted |
+| **Install locations** (`/Applications/River Writer.app`, per-user/per-machine choice on Windows decided once) | The updater swaps files in place |
+| **Semantic versioning** on every release | The updater compares versions |
+| **GitHub Releases as the canonical artifact host**, with stable asset naming | A future `latest.json` manifest can point at the same assets |
+| **Backward-compatible settings and `_river/` formats** (additive changes, version field) | Updating must never break existing projects |
+
+Prepared but **not shipped** in v1:
+* An **updater signing keypair** (Tauri updater, Ed25519) generated once and stored
+  offline (hardware-backed or password-protected, never in CI), so the first
+  updater-capable release can be signed without a scramble.
+* The release workflow has `createUpdaterArtifacts` **off**; turning it on later produces
+  signed update bundles from the same pipeline.
+* Settings schema reserves `update.mode` (only `"off"` in v1).
+* The network-promise audit (dependency check + no-connection test) is written as an
+  **allow-list** (today: git only), so adding the updater later is one reviewed line,
+  not a rewrite.
+
+If an updater is ever added, it must follow the guards already agreed: **opt-in** (asked
+once, default off), signed (Ed25519 + OS code signing), HTTPS to one fixed static URL, no
+identifiers sent, never silent installs, never during unsaved work, and the network
+promise is publicly reworded at that time.
+
 ## CI/CD pipeline (GitHub Actions)
 
 ```mermaid

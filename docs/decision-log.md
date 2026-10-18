@@ -38,3 +38,4 @@ supersede older ones.
 | 31 | Shell | **Tauri 2 — locked** | Compared with Electron (more mature, identical engine, easy Linux). Tauri wins for River's focused scope: Rust-native core, no Node runtime, strict network promise by default, lighter. Mac (WKWebView) and Windows (WebView2) are both low-risk |
 | 32 | Platforms (revises #29) | **macOS + Windows at v1; Linux later or never** | Linux's WebKitGTK was Tauri's main risk; not our headache. Community port welcome |
 | 33 | Open source | **River will be open source** | License and business model TBD (doc 06) |
+| 34 | Future updater | **No auto-update, no Homebrew/winget in v1**, but keep the door open: stable app identity, signing identities, install locations, semver, GitHub Releases assets; updater keypair prepared offline; `createUpdaterArtifacts` off; `update.mode` reserved; network audit as an allow-list | A later updater must be opt-in, signed (Ed25519 + OS signing), never silent; see doc 08 |
