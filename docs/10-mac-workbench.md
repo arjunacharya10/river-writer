@@ -328,3 +328,26 @@ leaves private autosaves behind. `pnpm --dir app verify:git` exercises init,
 identity, ignored files, commits, notes/tasks, side-pane diff, stale-review rejection
 and history in the browser against the real service. Remotes, branches, restore and
 scene-level diff remain.
+
+## Git restore (2026-10-18, #53)
+
+The commit diff pane lists the commit's files, each with **Restore**, and a **Restore
+project…** header button. An inline confirmation precedes every restore. River
+autosaves named tabs, refuses if a project tab still has unsaved changes, then calls
+`river_vcs::project::restore` while holding the document lock. Open tabs for rewritten
+files reload (closing tabs whose file the restore removed); Scratchpad/Todos remount
+and reload. A status banner offers **Undo restore** until dismissed.
+
+The backend validates every path (plain components, no symbolic-link ancestors, not
+a folder, not `.git` or `_river/river.json`) before touching disk, checkpoints each
+replaced story file in private history through `Documents::checkpoint_replaced`,
+writes files atomically and rolls back already-applied paths on an I/O error. Undo
+compares each restored path with the post-restore tree and refuses rather than
+overwrite later edits.
+
+Verification: two new VCS tests cover deleted-file recovery, project restore and undo,
+checkpoint callbacks, refusing undo over newer writing, unchanged history, foreign
+commits, failed checkpoints and symbolic links. `pnpm --dir app verify:git` now
+restores a file and the whole project through the UI with an open tab, undoes both,
+checks ignored files survive and that undo refuses after an external edit. Screenshot:
+ignored `app/output/git-restore.png`. Branches and reverting commits remain.

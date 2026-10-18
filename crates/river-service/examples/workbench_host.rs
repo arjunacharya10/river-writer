@@ -55,6 +55,20 @@ fn main() {
                     args["message"].as_str().ok_or("Missing message")?,
                 )?)
                 .unwrap(),
+                "git_restore" => serde_json::to_value(docs.git_restore(
+                    Path::new(args["root"].as_str().ok_or("Missing root")?),
+                    args["commit"].as_str().ok_or("Missing commit")?,
+                    args["path"].as_str(),
+                )?)
+                .unwrap(),
+                "git_undo_restore" => {
+                    docs.git_undo_restore(
+                        Path::new(args["root"].as_str().ok_or("Missing root")?),
+                        &serde_json::from_value(args["restored"].clone())
+                            .map_err(|e| e.to_string())?,
+                    )?;
+                    Value::Null
+                }
                 "recovery_drafts" => serde_json::to_value(recovery.pending()?).unwrap(),
                 "recover_draft" => serde_json::to_value(
                     recovery.restore(&mut docs, args["key"].as_str().ok_or("Missing key")?)?,

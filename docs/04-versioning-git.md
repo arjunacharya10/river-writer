@@ -115,3 +115,18 @@ review shown, keeping the message and any existing staged index. Merges, conflic
 and detached HEAD block committing with a message pointing to Git. History loads 100
 commits at a time; selecting one shows its diff. Remotes, push/pull/fetch, branches
 and restore are the next slices.
+
+### Restore (2026-10-18, #53)
+Selecting a commit shows its files and diff in the right pane. **Restore** beside a
+file, or **Restore project…** in the header, asks for confirmation and then rewrites
+working files to match that commit. A file the commit deleted is brought back from
+the commit's parent. Restore never commits or moves the branch; the result appears as
+ordinary uncommitted changes.
+
+Before writing, River saves named tabs, refuses if a tab still has unsaved changes,
+records the current project state as a Git tree and checkpoints replaced story files
+in private Timeline history. A banner offers **Undo restore**, which puts the restored
+paths back as they were unless one was edited after the restore. The pre-restore tree
+is unreferenced, so Undo belongs to the current session; Timeline still holds the
+replaced story text. Ignored files, `.git` and `_river/river.json` are never touched;
+symbolic-link paths, links and submodules in the commit are refused.

@@ -74,6 +74,33 @@ async fn git_commit(
     .await
 }
 #[tauri::command]
+async fn git_restore(
+    app: tauri::AppHandle,
+    root: PathBuf,
+    commit: String,
+    path: Option<String>,
+) -> Result<river_service::git::Restored, String> {
+    work(move || {
+        let state = app.state::<Desktop>();
+        let docs = lock(&state.documents)?;
+        docs.git_restore(&root, &commit, path.as_deref())
+    })
+    .await
+}
+#[tauri::command]
+async fn git_undo_restore(
+    app: tauri::AppHandle,
+    root: PathBuf,
+    restored: river_service::git::Restored,
+) -> Result<(), String> {
+    work(move || {
+        let state = app.state::<Desktop>();
+        let docs = lock(&state.documents)?;
+        docs.git_undo_restore(&root, &restored)
+    })
+    .await
+}
+#[tauri::command]
 async fn new_document(app: tauri::AppHandle) -> Result<Document, String> {
     work(move || Ok(lock(&app.state::<Desktop>().documents)?.new_document())).await
 }
@@ -710,6 +737,8 @@ fn main() {
             git_log,
             git_diff,
             git_commit,
+            git_restore,
+            git_undo_restore,
             new_document,
             open_document,
             open_folder,

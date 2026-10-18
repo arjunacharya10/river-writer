@@ -1187,3 +1187,62 @@ kbd {
 .git-diff .removed {
   background: #d9505030;
 }
+
+.git-restore {
+  margin-left: auto;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.git-confirm {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  background: var(--sidebar);
+}
+.git-confirm p {
+  flex-basis: 100%;
+  margin: 0;
+  line-height: 1.5;
+}
+.git-confirm button {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+.git-diff-files {
+  list-style: none;
+  margin: 0;
+  padding: 4px 12px;
+  max-height: 30%;
+  overflow: auto;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.git-diff-files li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+}
+.git-diff-files span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.git-diff-files small {
+  color: var(--muted);
+}
+.git-diff-files button {
+  padding: 2px 8px;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}

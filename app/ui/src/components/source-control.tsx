@@ -25,7 +25,7 @@ export function SourceControl(props: {
   root: string;
   active: boolean;
   beforeCommit: () => Promise<void>;
-  onReview: (title: string, review: GitReview) => void;
+  onReview: (title: string, review: GitReview, commit?: string) => void;
 }) {
   const root = props.root;
   const [status, setStatus] = createSignal<Status>();
@@ -262,7 +262,7 @@ export function SourceControl(props: {
                           id: c.id,
                         });
                         if (!disposed)
-                          props.onReview(c.message.split("\n")[0], diff);
+                          props.onReview(c.message.split("\n")[0], diff, c.id);
                       })
                     }
                   >

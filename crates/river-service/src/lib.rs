@@ -156,6 +156,30 @@ impl Documents {
             .ok_or("Local history is unavailable")?;
         history.checkpoint(doc.text.as_bytes())
     }
+    /// Keep a story file's current bytes in private history before Git replaces them.
+    pub fn checkpoint_replaced(&self, path: &Path, bytes: &[u8]) -> Result<(), String> {
+        if !story(path) {
+            return Ok(());
+        }
+        match self.history(path)? {
+            Some(history) => history.checkpoint(bytes),
+            None => Ok(()),
+        }
+    }
+    /// Restore a file or the project from a commit, checkpointing replaced stories first.
+    pub fn git_restore(
+        &self,
+        root: &Path,
+        commit: &str,
+        path: Option<&str>,
+    ) -> Result<git::Restored, String> {
+        git::restore(root, commit, path, &mut |p, b| {
+            self.checkpoint_replaced(p, b)
+        })
+    }
+    pub fn git_undo_restore(&self, root: &Path, restored: &git::Restored) -> Result<(), String> {
+        git::undo_restore(root, restored, &mut |p, b| self.checkpoint_replaced(p, b))
+    }
     pub fn autosave(&mut self, id: u64, revision: u64) -> Result<Option<Document>, String> {
         let doc = self.get(id)?;
         if doc.revision != revision || !doc.dirty || doc.path.is_none() {

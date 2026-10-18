@@ -160,11 +160,82 @@ try {
   await page
     .getByRole("button", { name: "Script.fountain", exact: true })
     .count();
+  // Restore one file from a commit, with an open tab, then undo it.
+  const story = `${folder}/Script.fountain`;
+  const editorText = () => page.locator(".cm-content").innerText();
+  const until = async (check) => {
+    for (let n = 0; n < 100; n++) {
+      if (await check()) return;
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    throw Error("Timed out waiting for restore");
+  };
+  await diff
+    .getByRole("button", { name: "Restore Script.fountain", exact: true })
+    .click();
+  const confirm = diff.getByRole("alertdialog", { name: "Confirm restore" });
+  await confirm.getByRole("button", { name: "Restore", exact: true }).click();
+  await page
+    .getByRole("status")
+    .filter({ hasText: "Restored Script.fountain" })
+    .waitFor();
+  assert.match(await readFile(story, "utf8"), /A first draft/);
+  await until(async () => /A first draft/.test(await editorText()));
+  assert.equal((await invoke("git_log", { root: folder })).length, 2);
+  await page.screenshot({ path: `${root}/app/output/git-restore.png` });
+  await page.getByRole("button", { name: "Undo restore", exact: true }).click();
+  await until(async () => /Later ending/.test(await readFile(story, "utf8")));
+  await until(async () => /Later ending/.test(await editorText()));
+  // Whole project: removes files added since, then undo brings them back.
+  await diff
+    .getByRole("button", { name: "Restore project…", exact: true })
+    .click();
+  await confirm.getByRole("button", { name: "Restore", exact: true }).click();
+  await page
+    .getByRole("status")
+    .filter({ hasText: "Restored 2 files" })
+    .waitFor();
+  assert.match(await readFile(story, "utf8"), /A first draft/);
+  await assert.rejects(readFile(`${folder}/_river/todos.md`, "utf8"));
+  assert.equal(await readFile(`${folder}/private.md`, "utf8"), "Private notes");
+  await page.getByRole("button", { name: "Undo restore", exact: true }).click();
+  await until(async () => {
+    try {
+      return (
+        (await readFile(`${folder}/_river/todos.md`, "utf8")) ===
+        "- [ ] Rewrite ending\n"
+      );
+    } catch {
+      return false;
+    }
+  });
+  assert.match(await readFile(story, "utf8"), /Later ending/);
+  // Undo never overwrites writing done after a restore.
+  await confirm.count();
+  await diff
+    .getByRole("button", { name: "Restore Script.fountain", exact: true })
+    .click();
+  await confirm.getByRole("button", { name: "Restore", exact: true }).click();
+  await page
+    .getByRole("status")
+    .filter({ hasText: "Restored Script.fountain" })
+    .waitFor();
+  await writeFile(story, "Newer writing after the restore.\n");
+  await page.getByRole("button", { name: "Undo restore", exact: true }).click();
+  await page
+    .getByRole("alert")
+    .filter({ hasText: "changed after the restore" })
+    .waitFor();
+  assert.equal(
+    await readFile(story, "utf8"),
+    "Newer writing after the restore.\n",
+  );
+  assert.equal((await invoke("git_log", { root: folder })).length, 2);
   await mkdir(`${root}/app/output`, { recursive: true });
   await page.screenshot({ path: `${root}/app/output/source-control.png` });
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: initialize, local identity, ignored files, ordinary commits, notes/tasks, side-pane diff, stale-review rejection and commit history.",
+    "PASS: initialize, local identity, ignored files, ordinary commits, notes/tasks, side-pane diff, stale-review rejection, commit history, file/project restore, undo and edit-after-restore protection.",
   );
 } catch (e) {
   console.error(await page.locator("body").innerText());

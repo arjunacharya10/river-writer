@@ -64,17 +64,120 @@ function App() {
   const [gitDiff, setGitDiff] = createSignal<{
     title: string;
     review: GitReview;
+    commit?: string;
   } | null>(null);
+  type Restored = { before: string; after: string; paths: string[] };
+  const [restoreAsk, setRestoreAsk] = createSignal<string | null | undefined>(
+    undefined,
+  );
+  const [restoreBusy, setRestoreBusy] = createSignal(false);
+  const [restoreUndo, setRestoreUndo] = createSignal<{
+    root: string;
+    restored: Restored;
+    label: string;
+  } | null>(null);
+  const [extrasEpoch, setExtrasEpoch] = createSignal(0);
+  /** Bring open tabs and extras in line with files Git just rewrote on disk. */
+  async function afterGitWrite(root: string, paths: string[]) {
+    const changed = new Set(paths.map((p) => `${root}/${p}`));
+    for (const doc of tabs()) {
+      if (!doc.path || !changed.has(doc.path)) continue;
+      cancelAutosave(doc.id);
+      await queues.get(doc.id)?.catch(() => {});
+      try {
+        const d = await call<Story>("reload_document", { id: doc.id });
+        patch(d.id, d);
+        sent.set(d.id, d.revision);
+        states.delete(d.id);
+        if (active() === d.id) {
+          loaded = null;
+          loadEditor();
+        }
+      } catch {
+        // The restore removed this file; its saved text is in Git and Timeline.
+        await call("close_document", { id: doc.id });
+        const remaining = tabs().filter((d) => d.id !== doc.id);
+        states.delete(doc.id);
+        scrolls.delete(doc.id);
+        sent.delete(doc.id);
+        queues.delete(doc.id);
+        setTabs(remaining);
+        if (active() === doc.id) {
+          loaded = null;
+          setActive(remaining.at(-1)?.id ?? null);
+        }
+      }
+    }
+    setExternal(false);
+    setExtrasEpoch((n) => n + 1);
+    if (folder())
+      setFiles(await call<FileEntry[]>("refresh_folder", { path: folder() }));
+    if (previewOpen()) void updatePreview();
+  }
+  async function prepareGitWrite(root: string) {
+    await beforeCommit();
+    const unsaved = tabs().find(
+      (d) => d.dirty && d.path?.startsWith(root + "/"),
+    );
+    if (unsaved)
+      throw Error(
+        `${nameOf(unsaved)} has changes River could not save. Save or close it before restoring.`,
+      );
+  }
+  async function restoreFromGit(path: string | null) {
+    const diff = gitDiff(),
+      root = folder();
+    if (!diff?.commit || !root || restoreBusy()) return;
+    setRestoreBusy(true);
+    try {
+      await prepareGitWrite(root);
+      const restored = await call<Restored>("git_restore", {
+        root,
+        commit: diff.commit,
+        path,
+      });
+      setRestoreAsk(undefined);
+      await afterGitWrite(root, restored.paths);
+      const count = restored.paths.length;
+      setRestoreUndo({
+        root,
+        restored,
+        label: path
+          ? `Restored ${path} from “${diff.title}”.`
+          : `Restored ${count} file${count === 1 ? "" : "s"} from “${diff.title}”.`,
+      });
+    } finally {
+      setRestoreBusy(false);
+    }
+  }
+  async function undoRestore() {
+    const undo = restoreUndo();
+    if (!undo || restoreBusy()) return;
+    setRestoreBusy(true);
+    try {
+      await prepareGitWrite(undo.root);
+      await call("git_undo_restore", {
+        root: undo.root,
+        restored: undo.restored,
+      });
+      setRestoreUndo(null);
+      await afterGitWrite(undo.root, undo.restored.paths);
+      setNotice("Restore undone.");
+    } finally {
+      setRestoreBusy(false);
+    }
+  }
   const sidePaneOpen = () =>
     !!(((previewOpen() || historyOpen()) && current()) || gitDiff());
   async function beforeCommit() {
     await flushExtras();
     for (const doc of tabs()) if (doc.path) await autosave(doc.id);
   }
-  function showGitDiff(title: string, review: GitReview) {
+  function showGitDiff(title: string, review: GitReview, commit?: string) {
     if (previewOpen()) togglePreview();
     setHistoryOpen(false);
-    setGitDiff({ title, review });
+    setRestoreAsk(undefined);
+    setGitDiff({ title, review, commit });
   }
   type Version = { id: string; timestamp: number; bytes: number };
   const [historyOpen, setHistoryOpen] = createSignal(false);
@@ -1082,23 +1185,31 @@ function App() {
               <Show when={sideView() === "source-control" && !folder()}>
                 <p class="muted">Open a project folder to use Git.</p>
               </Show>
-              <Show when={extrasRoot()} keyed>
-                {(root) => (
-                  <>
-                    <ScratchpadPanel
-                      root={root}
-                      active={sidebar() && sideView() === "scratchpad"}
-                      onError={fail}
-                      registerFlush={registerExtrasFlush}
-                    />
-                    <TodosPanel
-                      root={root}
-                      active={sidebar() && sideView() === "todos"}
-                      onError={fail}
-                      registerFlush={registerExtrasFlush}
-                    />
-                  </>
-                )}
+              <Show
+                when={
+                  extrasRoot() ? `${extrasEpoch()}\u0000${extrasRoot()}` : ""
+                }
+                keyed
+              >
+                {(key) => {
+                  const root = key.slice(key.indexOf("\u0000") + 1);
+                  return (
+                    <>
+                      <ScratchpadPanel
+                        root={root}
+                        active={sidebar() && sideView() === "scratchpad"}
+                        onError={fail}
+                        registerFlush={registerExtrasFlush}
+                      />
+                      <TodosPanel
+                        root={root}
+                        active={sidebar() && sideView() === "todos"}
+                        onError={fail}
+                        registerFlush={registerExtrasFlush}
+                      />
+                    </>
+                  );
+                }}
               </Show>
               <Show
                 when={
@@ -1265,6 +1376,19 @@ function App() {
                   />
                 </div>
               </Show>
+              <Show when={restoreUndo()}>
+                {(undo) => (
+                  <div class="message" role="status">
+                    <span>{undo().label}</span>
+                    <button disabled={restoreBusy()} onClick={run(undoRestore)}>
+                      Undo restore
+                    </button>
+                    <button onClick={() => setRestoreUndo(null)}>
+                      Dismiss
+                    </button>
+                  </div>
+                )}
+              </Show>
               <Show when={external()}>
                 <div class="message">
                   <span>
@@ -1325,12 +1449,71 @@ function App() {
                         <section class="git-diff" aria-label="Git diff">
                           <header>
                             <strong>{diff().title}</strong>
+                            <Show when={diff().commit}>
+                              <button
+                                class="git-restore"
+                                disabled={restoreBusy()}
+                                onClick={() => setRestoreAsk(null)}
+                              >
+                                Restore project…
+                              </button>
+                            </Show>
                             <Action
                               label="Close Git diff"
                               icon="close"
                               onClick={() => setGitDiff(null)}
                             />
                           </header>
+                          <Show when={restoreAsk() !== undefined}>
+                            <div
+                              class="git-confirm"
+                              role="alertdialog"
+                              aria-label="Confirm restore"
+                            >
+                              <p>
+                                {restoreAsk() === null
+                                  ? "Make the whole project match this commit? Files added since will be removed. You can undo this."
+                                  : `Replace ${restoreAsk()} with its version in this commit? You can undo this.`}
+                              </p>
+                              <button
+                                class="primary"
+                                disabled={restoreBusy()}
+                                onClick={run(() =>
+                                  restoreFromGit(restoreAsk() ?? null),
+                                )}
+                              >
+                                Restore
+                              </button>
+                              <button
+                                disabled={restoreBusy()}
+                                onClick={() => setRestoreAsk(undefined)}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </Show>
+                          <Show when={diff().commit}>
+                            <ul
+                              class="git-diff-files"
+                              aria-label="Files in this commit"
+                            >
+                              <For each={diff().review.files}>
+                                {(file) => (
+                                  <li>
+                                    <span title={file.path}>{file.path}</span>
+                                    <small>{file.kind}</small>
+                                    <button
+                                      disabled={restoreBusy()}
+                                      aria-label={`Restore ${file.path}`}
+                                      onClick={() => setRestoreAsk(file.path)}
+                                    >
+                                      Restore
+                                    </button>
+                                  </li>
+                                )}
+                              </For>
+                            </ul>
+                          </Show>
                           <Show when={diff().review.truncated}>
                             <p class="git-message">
                               This diff is too large to show in full. Use

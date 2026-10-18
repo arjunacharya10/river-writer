@@ -1,6 +1,6 @@
 //! Standard local Git operations. The private autosave repository is never traversed.
 use git2::{DiffFormat, Index, IndexAddOption, Oid, Repository, RepositoryState, Signature};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::{fs, io::Write, path::Path};
 fn err(e: impl std::fmt::Display) -> String {
     format!("Git: {e}")
@@ -322,18 +322,238 @@ pub fn log(root: &Path, before: Option<&str>) -> Result<Vec<Commit>, String> {
 }
 pub fn commit_diff(root: &Path, id: &str) -> Result<Review, String> {
     let repo = open(root)?;
-    let id = Oid::from_str(id).map_err(err)?;
-    let tip = head(&repo)?.ok_or("No commits yet")?;
-    if id != tip.id() && !repo.graph_descendant_of(tip.id(), id).map_err(err)? {
-        return Err("This commit is not in the current branch history.".into());
-    }
-    let c = repo.find_commit(id).map_err(err)?;
+    let c = reachable(&repo, id)?;
     let old = if c.parent_count() > 0 {
         Some(c.parent(0).map_err(err)?.tree().map_err(err)?)
     } else {
         None
     };
     review(&repo, old.as_ref(), &c.tree().map_err(err)?)
+}
+
+/// Called with each existing file's bytes before a restore replaces or removes it.
+pub type Checkpoint<'a> = dyn FnMut(&Path, &[u8]) -> Result<(), String> + 'a;
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Restored {
+    /// Pre-restore project tree; the undo source.
+    pub before: String,
+    /// Project tree just after the restore; undo checks restored files still match it.
+    pub after: String,
+    /// Project-relative paths that were written or removed.
+    pub paths: Vec<String>,
+}
+fn reachable<'r>(repo: &'r Repository, id: &str) -> Result<git2::Commit<'r>, String> {
+    let id = Oid::from_str(id).map_err(err)?;
+    let tip = head(repo)?.ok_or("No commits yet")?;
+    if id != tip.id() && !repo.graph_descendant_of(tip.id(), id).map_err(err)? {
+        return Err("This commit is not in the current branch history.".into());
+    }
+    repo.find_commit(id).map_err(err)
+}
+fn current_tree(repo: &Repository) -> Result<Oid, String> {
+    if repo.state() != RepositoryState::Clean || repo.index().map_err(err)?.has_conflicts() {
+        return Err("Finish the current Git operation or conflicts before restoring.".into());
+    }
+    candidate(repo, &mut Index::new().map_err(err)?)
+}
+fn blob_at(tree: &git2::Tree<'_>, path: &str) -> Result<Option<(Oid, i32)>, String> {
+    match tree.get_path(Path::new(path)) {
+        Ok(entry) => match entry.kind() {
+            Some(git2::ObjectType::Blob) if matches!(entry.filemode(), 0o100644 | 0o100755) => {
+                Ok(Some((entry.id(), entry.filemode())))
+            }
+            _ => Err(format!(
+                "{path} is a link, folder or submodule in Git. Restore it with another Git tool."
+            )),
+        },
+        Err(e) if e.code() == git2::ErrorCode::NotFound => Ok(None),
+        Err(e) => Err(err(e)),
+    }
+}
+/// A tree path becomes a disk path only through plain components and real
+/// folders under the project root, never through a symbolic link.
+fn disk_path(root: &Path, path: &str) -> Result<std::path::PathBuf, String> {
+    let relative = Path::new(path);
+    if path == "_river/river.json"
+        || relative.as_os_str().is_empty()
+        || !relative
+            .components()
+            .all(|c| matches!(c, std::path::Component::Normal(_)))
+        || relative.starts_with(".git")
+    {
+        return Err(format!("River will not restore {path}."));
+    }
+    let mut at = root.to_path_buf();
+    for part in relative.components() {
+        at.push(part);
+        if at.is_symlink() {
+            return Err(format!(
+                "{path} goes through a symbolic link; River will not replace it."
+            ));
+        }
+    }
+    if at.is_dir() {
+        return Err(format!(
+            "{path} is a folder on disk; River will not replace it."
+        ));
+    }
+    Ok(at)
+}
+/// Write or remove each path so it matches `source`. Every path is validated
+/// before any disk change; a later I/O failure rolls back what was applied.
+fn apply(
+    repo: &Repository,
+    root: &Path,
+    source: &git2::Tree<'_>,
+    paths: &[String],
+    before: &git2::Tree<'_>,
+    before_replace: &mut Checkpoint<'_>,
+) -> Result<(), String> {
+    let mut plan = Vec::new();
+    for path in paths {
+        plan.push((disk_path(root, path)?, blob_at(source, path)?));
+    }
+    for (disk, _) in &plan {
+        if let Ok(old) = fs::read(disk) {
+            before_replace(disk, &old)?;
+        }
+    }
+    let mut done: Vec<usize> = Vec::new();
+    let write = |disk: &Path, target: &Option<(Oid, i32)>| -> Result<(), String> {
+        match target {
+            Some((id, mode)) => {
+                let blob = repo.find_blob(*id).map_err(err)?;
+                let parent = disk.parent().ok_or("Invalid restore path")?;
+                fs::create_dir_all(parent).map_err(err)?;
+                let temp = parent.join(format!(".river-restore-{}-{}", std::process::id(), id));
+                let result = (|| {
+                    let mut file = fs::OpenOptions::new()
+                        .write(true)
+                        .create_new(true)
+                        .open(&temp)?;
+                    file.write_all(blob.content())?;
+                    file.sync_all()?;
+                    #[cfg(unix)]
+                    {
+                        use std::os::unix::fs::PermissionsExt;
+                        let mode = if *mode == 0o100755 { 0o755 } else { 0o644 };
+                        fs::set_permissions(&temp, fs::Permissions::from_mode(mode))?;
+                    }
+                    fs::rename(&temp, disk)
+                })();
+                if result.is_err() {
+                    let _ = fs::remove_file(&temp);
+                }
+                result.map_err(err)
+            }
+            None => match fs::remove_file(disk) {
+                Ok(()) => {
+                    // Tidy folders emptied by the restore, never the root itself.
+                    let mut dir = disk.parent();
+                    while let Some(d) = dir.filter(|d| *d != root && d.starts_with(root)) {
+                        if fs::remove_dir(d).is_err() {
+                            break;
+                        }
+                        dir = d.parent();
+                    }
+                    Ok(())
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+                Err(e) => Err(err(e)),
+            },
+        }
+    };
+    for (n, (disk, target)) in plan.iter().enumerate() {
+        if let Err(e) = write(disk, target) {
+            for &m in done.iter().rev() {
+                let original = blob_at(before, &paths[m]).ok().flatten();
+                let _ = write(&plan[m].0, &original);
+            }
+            return Err(format!("Restore stopped and was rolled back: {e}"));
+        }
+        done.push(n);
+    }
+    Ok(())
+}
+/// Restore one file (`path`) or the whole project from a commit in this branch.
+/// A file deleted by that commit is restored from the commit's parent.
+pub fn restore(
+    root: &Path,
+    commit: &str,
+    path: Option<&str>,
+    before_replace: &mut Checkpoint<'_>,
+) -> Result<Restored, String> {
+    let repo = open(root)?;
+    let c = reachable(&repo, commit)?;
+    let before_id = current_tree(&repo)?;
+    let before = repo.find_tree(before_id).map_err(err)?;
+    let (source, paths) = match path {
+        Some(path) => {
+            let tree = c.tree().map_err(err)?;
+            let source = if blob_at(&tree, path)?.is_some() {
+                tree
+            } else {
+                (c.parent_count() > 0)
+                    .then(|| c.parent(0).and_then(|p| p.tree()))
+                    .transpose()
+                    .map_err(err)?
+                    .filter(|t| matches!(blob_at(t, path), Ok(Some(_))))
+                    .ok_or_else(|| format!("{path} is not part of this commit."))?
+            };
+            let paths = if blob_at(&before, path)? == blob_at(&source, path)? {
+                vec![]
+            } else {
+                vec![path.to_owned()]
+            };
+            (source, paths)
+        }
+        None => {
+            let source = c.tree().map_err(err)?;
+            let diff = repo
+                .diff_tree_to_tree(Some(&before), Some(&source), None)
+                .map_err(err)?;
+            let paths = diff
+                .deltas()
+                .filter_map(|d| d.new_file().path().or(d.old_file().path()))
+                .map(|p| p.to_string_lossy().into_owned())
+                .filter(|p| p != "_river/river.json")
+                .collect();
+            (source, paths)
+        }
+    };
+    if paths.is_empty() {
+        return Err("Nothing to restore: it already matches this commit.".into());
+    }
+    apply(&repo, root, &source, &paths, &before, before_replace)?;
+    Ok(Restored {
+        before: before_id.to_string(),
+        after: current_tree(&repo)?.to_string(),
+        paths,
+    })
+}
+/// Put restored paths back as they were before the restore, unless one of them
+/// was edited after it (then the newer writing wins and undo is refused).
+pub fn undo_restore(
+    root: &Path,
+    restored: &Restored,
+    before_replace: &mut Checkpoint<'_>,
+) -> Result<(), String> {
+    let repo = open(root)?;
+    let before = repo
+        .find_tree(Oid::from_str(&restored.before).map_err(err)?)
+        .map_err(|_| "The pre-restore state is no longer available.".to_owned())?;
+    let after = repo
+        .find_tree(Oid::from_str(&restored.after).map_err(err)?)
+        .map_err(|_| "The restore can no longer be undone.".to_owned())?;
+    let now = repo.find_tree(current_tree(&repo)?).map_err(err)?;
+    for path in &restored.paths {
+        if blob_at(&now, path)? != blob_at(&after, path)? {
+            return Err(format!(
+                "{path} changed after the restore, so it was not undone. Use Timeline or Source Control to recover older text."
+            ));
+        }
+    }
+    apply(&repo, root, &before, &restored.paths, &now, before_replace)
 }
 
 #[cfg(test)]
@@ -465,6 +685,117 @@ mod tests {
         assert!(status(&root).unwrap().blocked.is_some());
         let s = status(&root).unwrap();
         assert!(commit(&root, s.head.as_deref(), &s.tree, "Fail").is_err());
+        fs::remove_dir_all(root).unwrap();
+    }
+    fn none(_: &Path, _: &[u8]) -> Result<(), String> {
+        Ok(())
+    }
+    #[test]
+    fn restores_files_and_projects_and_undoes_them() {
+        let root = folder();
+        init(&root).unwrap();
+        identity(&root, "Writer", "writer@example.invalid").unwrap();
+        fs::create_dir_all(root.join("acts")).unwrap();
+        fs::write(root.join("acts/One.fountain"), "INT. CAFÉ - DAY\n").unwrap();
+        fs::write(root.join("Deleted.md"), "a scene worth keeping").unwrap();
+        let first = save(&root, "First");
+        fs::remove_file(root.join("Deleted.md")).unwrap();
+        fs::write(root.join("acts/One.fountain"), "INT. CAFÉ - NIGHT 🎬\n").unwrap();
+        let second = save(&root, "Second");
+        fs::write(root.join("New.md"), "uncommitted new chapter").unwrap();
+        // Bring back a file deleted by a commit, from that commit's parent.
+        let mut seen = Vec::new();
+        let r = restore(&root, &second, Some("Deleted.md"), &mut |p, _| {
+            seen.push(p.to_path_buf());
+            Ok(())
+        })
+        .unwrap();
+        assert!(seen.is_empty());
+        assert_eq!(
+            fs::read_to_string(root.join("Deleted.md")).unwrap(),
+            "a scene worth keeping"
+        );
+        undo_restore(&root, &r, &mut none).unwrap();
+        assert!(!root.join("Deleted.md").exists());
+        // Whole project: overwrites, recreates, removes newer files; checkpoints old text.
+        let mut replaced = Vec::new();
+        let r = restore(&root, &first, None, &mut |p, b| {
+            replaced.push((
+                p.file_name().unwrap().to_string_lossy().into_owned(),
+                b.to_vec(),
+            ));
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!(
+            fs::read_to_string(root.join("acts/One.fountain")).unwrap(),
+            "INT. CAFÉ - DAY\n"
+        );
+        assert!(root.join("Deleted.md").exists() && !root.join("New.md").exists());
+        assert!(
+            replaced
+                .iter()
+                .any(|(n, b)| n == "New.md" && b == b"uncommitted new chapter")
+        );
+        undo_restore(&root, &r, &mut none).unwrap();
+        assert_eq!(
+            fs::read_to_string(root.join("acts/One.fountain")).unwrap(),
+            "INT. CAFÉ - NIGHT 🎬\n"
+        );
+        assert_eq!(
+            fs::read_to_string(root.join("New.md")).unwrap(),
+            "uncommitted new chapter"
+        );
+        assert!(!root.join("Deleted.md").exists());
+        assert!(
+            restore(&root, &second, Some("acts/One.fountain"), &mut none)
+                .unwrap_err()
+                .contains("already matches")
+        );
+        // Undo never overwrites writing done after the restore.
+        let r = restore(&root, &first, Some("acts/One.fountain"), &mut none).unwrap();
+        fs::write(root.join("acts/One.fountain"), "newer writing").unwrap();
+        assert!(
+            undo_restore(&root, &r, &mut none)
+                .unwrap_err()
+                .contains("changed after")
+        );
+        assert_eq!(
+            fs::read_to_string(root.join("acts/One.fountain")).unwrap(),
+            "newer writing"
+        );
+        // Restoring never commits or moves the branch.
+        assert_eq!(log(&root, None).unwrap().len(), 2);
+        fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn restore_refuses_foreign_commits_links_and_checkpoint_failures() {
+        let root = folder();
+        init(&root).unwrap();
+        identity(&root, "Writer", "writer@example.invalid").unwrap();
+        fs::write(root.join("Story.md"), "one").unwrap();
+        let first = save(&root, "First");
+        fs::write(root.join("Story.md"), "two").unwrap();
+        assert!(restore(&root, &"0".repeat(40), None, &mut none).is_err());
+        // A failed safety checkpoint stops the restore before any disk change.
+        assert!(restore(&root, &first, None, &mut |_, _| Err("no history".into())).is_err());
+        assert_eq!(fs::read_to_string(root.join("Story.md")).unwrap(), "two");
+        #[cfg(unix)]
+        {
+            let outside = folder();
+            fs::create_dir(root.join("real")).unwrap();
+            fs::write(root.join("real/Linked.md"), "inside").unwrap();
+            let linked = save(&root, "Folder");
+            fs::remove_dir_all(root.join("real")).unwrap();
+            std::os::unix::fs::symlink(&outside, root.join("real")).unwrap();
+            assert!(
+                restore(&root, &linked, Some("real/Linked.md"), &mut none)
+                    .unwrap_err()
+                    .contains("symbolic link")
+            );
+            assert!(!outside.join("Linked.md").exists());
+            fs::remove_dir_all(outside).unwrap();
+        }
         fs::remove_dir_all(root).unwrap();
     }
 }
