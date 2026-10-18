@@ -115,10 +115,11 @@ try {
   await panel
     .getByRole("button", { name: "Review changes", exact: true })
     .click();
-  assert.match(
-    await page.getByLabel("Git changes", { exact: true }).innerText(),
-    /\+INT\. CAFÉ - NIGHT/,
-  );
+  // Review is fetched on demand; wait for the fresh diff to replace the old one.
+  await page
+    .getByLabel("Git changes", { exact: true })
+    .getByText("+INT. CAFÉ - NIGHT", { exact: true })
+    .waitFor();
   // Reject a commit when disk changed since the displayed review; keep the message.
   await writeFile(
     `${folder}/Script.fountain`,

@@ -41,6 +41,10 @@ async fn git_status(root: PathBuf) -> Result<river_service::git::Status, String>
     work(move || river_service::git::status(&root)).await
 }
 #[tauri::command]
+async fn git_review(root: PathBuf) -> Result<river_service::git::Reviewed, String> {
+    work(move || river_service::git::review_changes(&root)).await
+}
+#[tauri::command]
 async fn git_init(app: tauri::AppHandle, root: PathBuf) -> Result<(), String> {
     work(move || {
         let state = app.state::<Desktop>();
@@ -769,6 +773,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             take_opened_files,
             git_status,
+            git_review,
             git_init,
             git_identity,
             git_log,

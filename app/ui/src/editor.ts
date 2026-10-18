@@ -26,20 +26,6 @@ import {
 import { showMinimap } from "@replit/codemirror-minimap";
 import type { Analysis, Story } from "./types";
 import { writingSupport } from "./writing";
-export function byteOffsets(text: string): Uint32Array {
-  const size = new TextEncoder().encode(text).length;
-  const out = new Uint32Array(size + 1);
-  let byte = 0,
-    utf16 = 0;
-  for (const char of text) {
-    const n = new TextEncoder().encode(char).length;
-    out.fill(utf16, byte, byte + n);
-    byte += n;
-    utf16 += char.length;
-    out[byte] = utf16;
-  }
-  return out;
-}
 export const semantic = StateEffect.define<{
   analysis: Analysis;
   script: boolean;
@@ -51,13 +37,12 @@ const decorations = StateField.define<DecorationSet>({
     for (const effect of tr.effects) {
       if (!effect.is(semantic)) continue;
       const { analysis, script } = effect.value;
-      const map = byteOffsets(tr.state.doc.toString());
       const ranges: ReturnType<Decoration["range"]>[] = [];
       const used = new Set<number>();
       for (const el of analysis.elements) {
-        if (el.source.file !== 0) continue;
-        const start = map[Math.min(el.source.bytes.start, map.length - 1)],
-          end = map[Math.min(el.source.bytes.end, map.length - 1)];
+        const length = tr.state.doc.length;
+        const start = Math.min(el.from, length),
+          end = Math.min(el.to, length);
         const g = analysis.geometry;
         let geometry = g.action;
         if (
@@ -86,24 +71,16 @@ const decorations = StateField.define<DecorationSet>({
           if (line.to >= end) break;
           pos = line.to + 1;
         }
-        for (const span of el.spans) {
-          const classes = Object.entries(span.style)
+        for (const mark of el.marks ?? []) {
+          const classes = Object.entries(mark.style)
             .filter(([, v]) => v)
             .map(([key]) => `text-${key}`)
             .join(" ");
-          if (!classes) continue;
-          const hits = el.mapping.filter(
-            (m) =>
-              m.display.start < span.range.end &&
-              m.display.end > span.range.start &&
-              m.source.file === 0,
-          );
-          if (hits.length) {
-            const a = map[hits[0].source.bytes.start],
-              b = map[hits[hits.length - 1].source.bytes.end];
-            if (a < b)
-              ranges.push(Decoration.mark({ class: classes }).range(a, b));
-          }
+          const to = Math.min(mark.to, tr.state.doc.length);
+          if (classes && mark.from < to)
+            ranges.push(
+              Decoration.mark({ class: classes }).range(mark.from, to),
+            );
         }
       }
       value = Decoration.set(ranges, true);

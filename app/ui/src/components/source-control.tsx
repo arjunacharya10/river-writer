@@ -16,11 +16,12 @@ type Status = {
   initialized: boolean;
   branch: string;
   head: string | null;
-  tree: string;
   identity: { name: string; email: string } | null;
   blocked: string | null;
-  review: GitReview;
+  files: GitReview["files"];
 };
+/** A snapshot built on demand; commit only proceeds if the project still matches it. */
+type Reviewed = { head: string | null; tree: string; review: GitReview };
 export function SourceControl(props: {
   root: string;
   active: boolean;
@@ -35,7 +36,7 @@ export function SourceControl(props: {
   const [branchName, setBranchName] = createSignal("");
   const root = props.root;
   const [status, setStatus] = createSignal<Status>();
-  let reviewedChanges: Status | undefined;
+  let reviewedChanges: Reviewed | undefined;
   const [commits, setCommits] = createSignal<Commit[]>([]);
   const [message, setMessage] = createSignal("");
   const [name, setName] = createSignal("");
@@ -88,9 +89,9 @@ export function SourceControl(props: {
     }
   }
   async function commit() {
-    const reviewed = reviewedChanges ?? status();
-    if (!reviewed) return;
     await props.beforeCommit();
+    const reviewed =
+      reviewedChanges ?? (await call<Reviewed>("git_review", { root }));
     await call("git_commit", {
       root,
       head: reviewed.head,
@@ -231,28 +232,33 @@ export function SourceControl(props: {
                     !!s().blocked ||
                     !s().identity ||
                     !message().trim() ||
-                    !s().review.files.length
+                    !s().files.length
                   }
                 >
                   Commit all changes
                 </button>
               </form>
-              <h3>CHANGES · {s().review.files.length}</h3>
+              <h3>CHANGES · {s().files.length}</h3>
               <Show
-                when={s().review.files.length}
+                when={s().files.length}
                 fallback={<p class="muted">No changes to commit.</p>}
               >
                 <button
                   class="git-item"
                   disabled={busy() || reading()}
-                  onClick={() => {
-                    reviewedChanges = s();
-                    props.onReview("Uncommitted changes", s().review);
-                  }}
+                  onClick={() =>
+                    void act(async () => {
+                      const reviewed = await call<Reviewed>("git_review", {
+                        root,
+                      });
+                      reviewedChanges = reviewed;
+                      props.onReview("Uncommitted changes", reviewed.review);
+                    })
+                  }
                 >
                   Review changes
                 </button>
-                <For each={s().review.files}>
+                <For each={s().files}>
                   {(file) => (
                     <div class="git-file" title={file.path}>
                       <span>{file.path}</span>

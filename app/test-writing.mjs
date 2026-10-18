@@ -9,12 +9,11 @@ import {
 } from "./ui/src/writing.ts";
 const analysis = {
   elements: [
-    { kind: "cue", text: "MAYA (V.O.)", source: { file: 0 } },
-    { kind: "cue", text: "JON", source: { file: 0 } },
-    { kind: "cue", text: "MAYANA", source: { file: 0 } },
-    { kind: "cue", text: "INCLUDED NAME", source: { file: 1 } },
-    { kind: "scene", text: "INT. CAFÉ - NIGHT", source: { file: 0 } },
-    { kind: "scene", text: "EXT. RIVER - DAY", source: { file: 0 } },
+    { kind: "cue", text: "MAYA (V.O.)", from: 1e6, to: 1e6 },
+    { kind: "cue", text: "JON", from: 1e6, to: 1e6 },
+    { kind: "cue", text: "MAYANA", from: 1e6, to: 1e6 },
+    { kind: "scene", text: "INT. CAFÉ - NIGHT", from: 1e6, to: 1e6 },
+    { kind: "scene", text: "EXT. RIVER - DAY", from: 1e6, to: 1e6 },
   ],
 };
 function state(text, enabled = true, pos = text.length) {
@@ -121,7 +120,6 @@ for (const [partial, expected] of [
 ]) {
   const first = "EXT. CAFÉ - NIGHT";
   const text = first + "\n\n" + partial;
-  const encode = (value) => new TextEncoder().encode(value).length;
   let s = state(text);
   s = s.update({
     effects: writingContext.of({
@@ -131,15 +129,14 @@ for (const [partial, expected] of [
           {
             kind: "scene",
             text: first,
-            source: { file: 0, bytes: { start: 0, end: encode(first) } },
+            from: 0,
+            to: first.length,
           },
           {
             kind: "scene",
             text: partial,
-            source: {
-              file: 0,
-              bytes: { start: encode(first + "\n\n"), end: encode(text) },
-            },
+            from: first.length + 2,
+            to: text.length,
           },
         ],
       },

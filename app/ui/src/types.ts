@@ -8,19 +8,13 @@ export interface Story {
   template: TemplateId;
   dirty: boolean;
 }
-export interface Source {
-  file: number;
-  bytes: { start: number; end: number };
-}
+/** Positions are UTF-16 offsets in the editor text, computed by Rust. */
 export interface Element {
   kind: string;
-  text: string;
-  source: Source;
-  spans: {
-    range: { start: number; end: number };
-    style: Record<string, boolean>;
-  }[];
-  mapping: { display: { start: number; end: number }; source: Source }[];
+  from: number;
+  to: number;
+  text?: string;
+  marks?: { from: number; to: number; style: Record<string, boolean> }[];
 }
 export interface Geometry {
   x: number;
@@ -31,8 +25,8 @@ export interface Analysis {
   dirty: boolean;
   revision: number;
   elements: Element[];
-  outline: { text: string; kind: string; source: Source }[];
-  diagnostics: { severity: string; message: string; source: Source }[];
+  outline: { text: string; kind: string; at: number }[];
+  diagnostics: { severity: string; message: string; at: number }[];
   words: number;
   scenes: number;
   geometry: {

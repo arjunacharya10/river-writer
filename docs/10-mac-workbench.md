@@ -386,3 +386,19 @@ script syntax, and all browser suites. Not yet verified: a real Developer ID sig
 notarized build (needs the writer's notary profile and the x86_64 Rust target), and the
 Finder open flow in the native app (a manual check: double-click a `.fountain` file with
 River closed and with it open).
+
+## Performance pass (2026-10-18, #59)
+
+**Editor analysis.** `river_service::analyze` now returns `EditorElement`s: kind, `from`/`to`
+in UTF-16 units, style `marks`, and text only for cues and scene headings (needed for
+completions). Outline items and problems carry a UTF-16 `at`. Rust converts offsets with
+one prefix table per analysis; the UI no longer builds a byte table or ships the parser's
+per-character source mappings. Measured on the 120-page benchmark script (release host):
+reply 15.5 MB → 50 KB, sync round trip 351 ms → 17 ms. Pagination (≈38 ms) is unchanged.
+
+**Git polling.** `git::status` is now cheap: libgit2 status with the index stat cache, no
+hashing, no object writes, returning only changed paths. `git::review_changes` builds the
+snapshot tree and patch with a mempack backend, so review writes nothing to `.git`; the
+UI calls it for **Review changes** and, if no review is pending, at **Commit**. Commit
+still re-derives the tree on disk and refuses if it differs. A new test confirms five
+rounds of edits, polling and review leave `.git/objects` unchanged.

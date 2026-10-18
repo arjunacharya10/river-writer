@@ -55,6 +55,10 @@ fn main() {
                     args["message"].as_str().ok_or("Missing message")?,
                 )?)
                 .unwrap(),
+                "git_review" => serde_json::to_value(git::review_changes(Path::new(
+                    args["root"].as_str().ok_or("Missing root")?,
+                ))?)
+                .unwrap(),
                 "git_branches" => serde_json::to_value(git::branches(Path::new(
                     args["root"].as_str().ok_or("Missing root")?,
                 ))?)

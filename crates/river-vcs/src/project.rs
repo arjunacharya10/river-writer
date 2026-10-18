@@ -40,9 +40,17 @@ pub struct Status {
     pub initialized: bool,
     pub branch: String,
     pub head: Option<String>,
-    pub tree: String,
     pub identity: Option<Identity>,
     pub blocked: Option<String>,
+    /// Changed paths from Git's stat-cached status; nothing is hashed or written.
+    pub files: Vec<Change>,
+}
+/// A full snapshot of the working tree, built on demand for review and commit.
+#[derive(Serialize)]
+pub struct Reviewed {
+    pub head: Option<String>,
+    /// Commit only proceeds if the project still produces exactly this tree.
+    pub tree: String,
     pub review: Review,
 }
 #[derive(Serialize)]
@@ -120,20 +128,16 @@ fn review(
         truncated,
     })
 }
+/// Cheap enough to poll: uses the index's stat cache and writes nothing.
 pub fn status(root: &Path) -> Result<Status, String> {
     if !root.join(".git").exists() {
         return Ok(Status {
             initialized: false,
             branch: String::new(),
             head: None,
-            tree: String::new(),
             identity: None,
             blocked: None,
-            review: Review {
-                files: vec![],
-                patch: String::new(),
-                truncated: false,
-            },
+            files: vec![],
         });
     }
     let repo = open(root)?;
@@ -146,10 +150,37 @@ pub fn status(root: &Path) -> Result<Status, String> {
     } else {
         None
     };
-    let parent = head(&repo)?;
-    let old = parent.as_ref().map(|h| h.tree()).transpose().map_err(err)?;
-    let mut index = Index::new().map_err(err)?;
-    let tree = candidate(&repo, &mut index)?;
+    let mut options = git2::StatusOptions::new();
+    options
+        .include_untracked(true)
+        .recurse_untracked_dirs(true)
+        .include_ignored(false)
+        .exclude_submodules(true)
+        .renames_head_to_index(false)
+        .renames_index_to_workdir(false);
+    let files = repo
+        .statuses(Some(&mut options))
+        .map_err(err)?
+        .iter()
+        .filter_map(|entry| {
+            let path = entry.path()?.to_owned();
+            if path == "_river/river.json" {
+                return None;
+            }
+            let flags = entry.status();
+            let kind = if flags.intersects(git2::Status::WT_NEW | git2::Status::INDEX_NEW) {
+                "Added"
+            } else if flags.intersects(git2::Status::WT_DELETED | git2::Status::INDEX_DELETED) {
+                "Deleted"
+            } else {
+                "Modified"
+            };
+            Some(Change {
+                path,
+                kind: kind.into(),
+            })
+        })
+        .collect();
     let identity = repo.signature().ok().map(|s| Identity {
         name: s.name().unwrap_or_default().into(),
         email: s.email().unwrap_or_default().into(),
@@ -165,11 +196,26 @@ pub fn status(root: &Path) -> Result<Status, String> {
     Ok(Status {
         initialized: true,
         branch,
-        head: parent.as_ref().map(|h| h.id().to_string()),
-        tree: tree.to_string(),
+        head: head(&repo)?.map(|h| h.id().to_string()),
         identity,
         blocked,
-        review: review(&repo, old.as_ref(), &repo.find_tree(tree).map_err(err)?)?,
+        files,
+    })
+}
+/// Snapshot every non-ignored file and diff it against HEAD. Objects go to an
+/// in-memory store dropped with the repository handle, so review writes nothing.
+pub fn review_changes(root: &Path) -> Result<Reviewed, String> {
+    let repo = open(root)?;
+    let odb = repo.odb().map_err(err)?;
+    let _memory = odb.add_new_mempack_backend(1000).map_err(err)?;
+    let parent = head(&repo)?;
+    let old = parent.as_ref().map(|h| h.tree()).transpose().map_err(err)?;
+    let tree = candidate(&repo, &mut Index::new().map_err(err)?)?;
+    let review = review(&repo, old.as_ref(), &repo.find_tree(tree).map_err(err)?)?;
+    Ok(Reviewed {
+        head: parent.as_ref().map(|h| h.id().to_string()),
+        tree: tree.to_string(),
+        review,
     })
 }
 pub fn init(root: &Path) -> Result<(), String> {
@@ -688,7 +734,7 @@ mod tests {
         p
     }
     fn save(root: &Path, message: &str) -> String {
-        let s = status(root).unwrap();
+        let s = review_changes(root).unwrap();
         commit(root, s.head.as_deref(), &s.tree, message).unwrap()
     }
     #[test]
@@ -705,10 +751,12 @@ mod tests {
         fs::write(root.join("_river/river.json"), "{}").unwrap();
         let s = status(&root).unwrap();
         assert_eq!(s.branch, "main");
-        assert_eq!(s.review.files.len(), 3);
-        assert!(s.review.patch.contains("+INT. CAFÉ"));
+        assert_eq!(s.files.len(), 3);
+        let r = review_changes(&root).unwrap();
+        assert_eq!(r.review.files.len(), 3);
+        assert!(r.review.patch.contains("+INT. CAFÉ"));
         let first = save(&root, "First draft");
-        assert!(status(&root).unwrap().review.files.is_empty());
+        assert!(status(&root).unwrap().files.is_empty());
         fs::remove_file(root.join("Story.fountain")).unwrap();
         fs::write(root.join("_river/scratchpad.md"), "revised notes 🎬").unwrap();
         fs::write(root.join("New.md"), "new chapter").unwrap();
@@ -760,7 +808,7 @@ mod tests {
         index.add_path(Path::new("Story.md")).unwrap();
         index.write().unwrap();
         let old_index = fs::read(repo.path().join("index")).unwrap();
-        let s = status(&root).unwrap();
+        let s = review_changes(&root).unwrap();
         assert_eq!(old_index, fs::read(repo.path().join("index")).unwrap());
         fs::write(root.join("Story.md"), "new unseen edits").unwrap();
         assert!(
@@ -778,7 +826,7 @@ mod tests {
         );
         fs::remove_file(repo.path().join("index.lock")).unwrap();
         save(&root, "All working changes");
-        assert!(status(&root).unwrap().review.files.is_empty());
+        assert!(status(&root).unwrap().files.is_empty());
         fs::remove_dir_all(root).unwrap();
     }
     #[test]
@@ -796,7 +844,7 @@ mod tests {
         assert!(status(&root).unwrap().blocked.is_some());
         fs::write(repo.path().join("MERGE_HEAD"), &id).unwrap();
         assert!(status(&root).unwrap().blocked.is_some());
-        let s = status(&root).unwrap();
+        let s = review_changes(&root).unwrap();
         assert!(commit(&root, s.head.as_deref(), &s.tree, "Fail").is_err());
         fs::remove_dir_all(root).unwrap();
     }
@@ -974,7 +1022,7 @@ mod tests {
             "main draft"
         );
         assert!(!root.join("Extra.md").exists());
-        assert!(status(&root).unwrap().review.files.is_empty());
+        assert!(status(&root).unwrap().files.is_empty());
         assert_eq!(status(&root).unwrap().branch, "main");
         switch_branch(&root, "draft-2", &mut none).unwrap();
         assert_eq!(
@@ -983,6 +1031,46 @@ mod tests {
         );
         assert_eq!(log(&root, None).unwrap()[0].message, "Alternate");
         assert!(switch_branch(&root, "missing", &mut none).is_err());
+        fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn polling_and_review_write_no_git_objects() {
+        fn objects(root: &Path) -> usize {
+            fn walk(dir: &Path) -> usize {
+                fs::read_dir(dir).map_or(0, |entries| {
+                    entries
+                        .flatten()
+                        .map(|e| {
+                            if e.path().is_dir() {
+                                walk(&e.path())
+                            } else {
+                                1
+                            }
+                        })
+                        .sum()
+                })
+            }
+            walk(&root.join(".git/objects"))
+        }
+        let root = folder();
+        init(&root).unwrap();
+        identity(&root, "Writer", "writer@example.invalid").unwrap();
+        fs::write(root.join("Story.md"), "first").unwrap();
+        save(&root, "First");
+        let before = objects(&root);
+        for n in 0..5 {
+            fs::write(root.join("Story.md"), format!("draft {n} café")).unwrap();
+            fs::write(root.join("New.md"), format!("new {n}")).unwrap();
+            let s = status(&root).unwrap();
+            assert_eq!(s.files.len(), 2);
+            let r = review_changes(&root).unwrap();
+            assert!(r.review.patch.contains(&format!("+draft {n} café")));
+        }
+        assert_eq!(objects(&root), before);
+        // The in-memory review tree still commits exactly what was reviewed.
+        let r = review_changes(&root).unwrap();
+        commit(&root, r.head.as_deref(), &r.tree, "Second").unwrap();
+        assert!(status(&root).unwrap().files.is_empty());
         fs::remove_dir_all(root).unwrap();
     }
 }

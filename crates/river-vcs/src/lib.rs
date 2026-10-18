@@ -356,7 +356,7 @@ mod tests {
         let private = history.versions().unwrap()[0].id.clone();
         fs::write(project.join("Story.md"), "Public draft").unwrap();
         project::identity(&project, "Writer", "writer@example.invalid").unwrap();
-        let reviewed = project::status(&project).unwrap();
+        let reviewed = project::review_changes(&project).unwrap();
         project::commit(
             &project,
             reviewed.head.as_deref(),

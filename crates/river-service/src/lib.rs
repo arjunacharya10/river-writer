@@ -4,7 +4,7 @@ pub mod extras;
 pub mod projects;
 pub mod recovery;
 pub mod todos;
-use river_model::{Diagnostic, Kind, Publication, Script, SourceRange};
+use river_model::{Kind, Publication, Script};
 use river_templates::{Template, TemplateId};
 pub use river_vcs::Version as HistoryVersion;
 use serde::Serialize;
@@ -512,60 +512,135 @@ pub fn list_files(folder: &Path) -> Result<Vec<FileEntry>, String> {
     out.sort_by(|a, b| a.name.cmp(&b.name));
     Ok(out)
 }
+/// Editor positions are UTF-16 code units in the document text, as CodeMirror uses.
 #[derive(Serialize)]
 pub struct OutlineItem {
     pub text: String,
     pub kind: Kind,
-    pub source: SourceRange,
+    pub at: u32,
+}
+#[derive(Serialize)]
+pub struct Problem {
+    pub severity: river_model::Severity,
+    pub message: String,
+    pub at: u32,
+}
+/// A styled stretch of source text (bold, italic, ...), in UTF-16 positions.
+#[derive(Serialize)]
+pub struct Mark {
+    pub from: u32,
+    pub to: u32,
+    pub style: river_model::Style,
+}
+/// What the editor draws for one element. Only cues and scene headings carry
+/// text, for completions; everything else is positions and styles.
+#[derive(Serialize)]
+pub struct EditorElement {
+    pub kind: Kind,
+    pub from: u32,
+    pub to: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub marks: Vec<Mark>,
 }
 #[derive(Serialize)]
 pub struct Analysis {
     pub dirty: bool,
     pub revision: u64,
-    pub elements: Vec<river_model::Element>,
+    pub elements: Vec<EditorElement>,
     pub outline: Vec<OutlineItem>,
-    pub diagnostics: Vec<Diagnostic>,
+    pub diagnostics: Vec<Problem>,
     pub words: usize,
     pub scenes: usize,
     pub geometry: Template,
+}
+/// UTF-8 byte offset to UTF-16 position, for every byte boundary in `text`.
+fn utf16_positions(text: &str) -> Vec<u32> {
+    let mut table = vec![0u32; text.len() + 1];
+    let mut utf16 = 0u32;
+    for (byte, ch) in text.char_indices() {
+        table[byte..byte + ch.len_utf8()].fill(utf16);
+        utf16 += ch.len_utf16() as u32;
+    }
+    table[text.len()] = utf16;
+    table
 }
 pub fn analyze(doc: &Document) -> Analysis {
     let script = river_parse::parse(
         &doc.text,
         river_parse::Format::for_path(doc.path.as_deref().unwrap_or(Path::new("Untitled.md"))),
     );
-    let outline = script
-        .elements
-        .iter()
-        .filter(|e| matches!(e.kind, Kind::Scene | Kind::Section | Kind::Synopsis))
-        .map(|e| OutlineItem {
-            text: e.text.clone(),
+    let table = utf16_positions(&doc.text);
+    let at = |byte: usize| table[byte.min(doc.text.len())];
+    let mut elements = Vec::with_capacity(script.elements.len());
+    let (mut words, mut scenes, mut outline) = (0, 0, Vec::new());
+    for e in &script.elements {
+        if e.kind == Kind::Scene {
+            scenes += 1;
+        }
+        if matches!(e.kind, Kind::Scene | Kind::Section | Kind::Synopsis) {
+            outline.push(OutlineItem {
+                text: e.text.clone(),
+                kind: e.kind,
+                at: at(e.source.bytes.start),
+            });
+        }
+        if !matches!(
+            e.kind,
+            Kind::Note | Kind::Boneyard | Kind::Directive | Kind::Synopsis | Kind::PageBreak
+        ) {
+            words += e.text.split_whitespace().count();
+        }
+        if e.source.file != 0 {
+            continue;
+        }
+        // A styled display span covers the source from its first to its last
+        // mapped character, so hidden markup between them stays inside the mark.
+        let marks = e
+            .spans
+            .iter()
+            .filter(|span| span.style != river_model::Style::default())
+            .filter_map(|span| {
+                let mut hits = e.mapping.iter().filter(|m| {
+                    m.source.file == 0
+                        && m.display.start < span.range.end
+                        && m.display.end > span.range.start
+                });
+                let first = hits.next()?;
+                let last = hits.next_back().unwrap_or(first);
+                let (from, to) = (at(first.source.bytes.start), at(last.source.bytes.end));
+                (from < to).then_some(Mark {
+                    from,
+                    to,
+                    style: span.style,
+                })
+            })
+            .collect();
+        elements.push(EditorElement {
             kind: e.kind,
-            source: e.source.clone(),
+            from: at(e.source.bytes.start),
+            to: at(e.source.bytes.end),
+            text: matches!(e.kind, Kind::Cue | Kind::Scene).then(|| e.text.clone()),
+            marks,
+        });
+    }
+    let diagnostics = script
+        .diagnostics
+        .into_iter()
+        .filter(|d| d.source.file == 0)
+        .map(|d| Problem {
+            severity: d.severity,
+            message: d.message,
+            at: at(d.source.bytes.start),
         })
         .collect();
-    let scenes = script
-        .elements
-        .iter()
-        .filter(|e| e.kind == Kind::Scene)
-        .count();
-    let words = script
-        .elements
-        .iter()
-        .filter(|e| {
-            !matches!(
-                e.kind,
-                Kind::Note | Kind::Boneyard | Kind::Directive | Kind::Synopsis | Kind::PageBreak
-            )
-        })
-        .map(|e| e.text.split_whitespace().count())
-        .sum();
     Analysis {
         dirty: doc.dirty,
         revision: doc.revision,
-        elements: script.elements,
+        elements,
         outline,
-        diagnostics: script.diagnostics,
+        diagnostics,
         words,
         scenes,
         geometry: Template::get(doc.template).clone(),
@@ -791,5 +866,34 @@ mod tests {
         std::os::unix::fs::symlink(dir.join("a.md"), dir.join("alias.md")).unwrap();
         assert_eq!(list_files(&dir).unwrap().len(), 1);
         fs::remove_dir_all(dir).unwrap();
+    }
+    #[test]
+    fn analysis_uses_editor_positions_and_stays_small() {
+        let mut docs = Documents::default();
+        let doc = docs.new_document();
+        let text = "INT. CAFÉ 🎬 - NIGHT\n\nShe **runs**.\n\nMAYA\nHi.\n";
+        let doc = docs
+            .update(doc.id, 1, text.into(), TemplateId::Screenplay)
+            .unwrap();
+        // Untitled documents parse as Markdown; marks still map through hidden `**`.
+        let a = analyze(&doc);
+        let utf16: Vec<u16> = text.encode_utf16().collect();
+        for e in &a.elements {
+            assert!(e.from <= e.to && (e.to as usize) <= utf16.len());
+            for m in &e.marks {
+                assert!(e.from <= m.from && m.to <= e.to);
+            }
+        }
+        let bold = a
+            .elements
+            .iter()
+            .flat_map(|e| &e.marks)
+            .find(|m| m.style.bold)
+            .unwrap();
+        let slice = String::from_utf16(&utf16[bold.from as usize..bold.to as usize]).unwrap();
+        assert_eq!(slice, "runs");
+        let json = serde_json::to_string(&a).unwrap();
+        assert!(!json.contains("mapping"));
+        assert_eq!(utf16_positions("é🎬x"), vec![0, 0, 1, 1, 1, 1, 3, 4]);
     }
 }

@@ -13,7 +13,7 @@ import type { EditorState } from "@codemirror/state";
 import { openSearchPanel } from "@codemirror/search";
 import { isolateHistory } from "@codemirror/commands";
 import { call, commands, openedFiles } from "./bridge";
-import { stateFor, semantic, byteOffsets } from "./editor";
+import { stateFor, semantic } from "./editor";
 import { writingContext } from "./writing";
 import {
   Action,
@@ -787,10 +787,9 @@ function App() {
     const path = await call<string | null>("export_pdf", { id: d.id });
     if (path) setNotice(`Exported ${path.split("/").pop()}`);
   }
-  function jump(bytes: number) {
-    const doc = current();
-    if (!doc || !view) return;
-    const pos = byteOffsets(doc.text)[bytes] ?? 0;
+  function jump(at: number) {
+    if (!current() || !view) return;
+    const pos = Math.min(at, view.state.doc.length);
     view.dispatch({
       selection: { anchor: pos },
       effects: EditorView.scrollIntoView(pos, { y: "center" }),
@@ -1279,7 +1278,7 @@ function App() {
                     <div class="outline">
                       <For each={analysis()?.outline}>
                         {(item) => (
-                          <button onClick={() => jump(item.source.bytes.start)}>
+                          <button onClick={() => jump(item.at)}>
                             <Icon
                               name={
                                 item.kind === "scene"
@@ -1677,7 +1676,7 @@ function App() {
                 <div class="problems" aria-label="Problems">
                   <For each={analysis()?.diagnostics}>
                     {(d) => (
-                      <button onClick={() => jump(d.source.bytes.start)}>
+                      <button onClick={() => jump(d.at)}>
                         <Icon
                           name={d.severity === "Error" ? "error" : "warning"}
                         />
