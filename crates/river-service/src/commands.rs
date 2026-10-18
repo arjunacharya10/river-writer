@@ -160,6 +160,13 @@ impl Service {
                 DONE
             }
             "refresh_folder" => reply(crate::list_files(&arg::<PathBuf>(args, "path")?)?),
+            "create_file" => {
+                let _guard = docs()?;
+                reply(crate::create_story_file(
+                    &root()?,
+                    &arg::<String>(args, "name")?,
+                )?)
+            }
 
             // Todos and Scratchpad.
             "load_todos" => reply(todos::load(&root()?)?),

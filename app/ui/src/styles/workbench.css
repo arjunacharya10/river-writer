@@ -124,6 +124,27 @@
 .file.selected {
   background: var(--selection);
 }
+.sidebar-actions {
+  display: flex;
+  gap: 2px;
+}
+.new-file input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  padding: 1px 4px;
+  border: 1px solid var(--accent);
+  background: var(--editor);
+  color: inherit;
+  outline: none;
+}
+.new-file-error {
+  margin: 0 16px 4px 38px;
+  padding: 4px 6px;
+  font-size: 12px;
+  border: 1px solid var(--error);
+  background: var(--editor);
+}
 .outline button {
   width: 100%;
   display: flex;

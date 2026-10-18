@@ -403,6 +403,43 @@ pub fn list_files(folder: &Path) -> Result<Vec<FileEntry>, String> {
     out.sort_by(|a, b| a.name.cmp(&b.name));
     Ok(out)
 }
+/// Create an empty story file at the top of the project folder, as the Explorer's
+/// New File does. A name without `.md`/`.fountain` gets `.md`. Never replaces a file.
+pub fn create_story_file(folder: &Path, name: &str) -> Result<PathBuf, String> {
+    let name = name.trim();
+    if name.is_empty() {
+        return Err("Type a name for the new file.".into());
+    }
+    if name.contains(['/', '\\', ':', '\0']) {
+        return Err("Use a file name without slashes or colons.".into());
+    }
+    if name.starts_with('.') {
+        return Err("File names can't start with a dot.".into());
+    }
+    let mut file = folder.join(name);
+    if !story(&file) {
+        file = folder.join(format!("{name}.md"));
+    }
+    if file.file_name().is_some_and(|n| n.len() > 255) {
+        return Err("That name is too long.".into());
+    }
+    let shown = file
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .into_owned();
+    match fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&file)
+    {
+        Ok(_) => Ok(file),
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+            Err(format!("A file named {shown} already exists."))
+        }
+        Err(e) => Err(format!("Could not create {shown}: {e}")),
+    }
+}
 /// Editor positions are UTF-16 code units in the document text, as CodeMirror uses.
 #[derive(Serialize)]
 pub struct OutlineItem {
@@ -606,6 +643,33 @@ mod tests {
         ));
         fs::create_dir(&p).unwrap();
         p
+    }
+    #[test]
+    fn new_files_get_a_story_extension_and_never_replace_existing() {
+        let dir = dir();
+        let made = create_story_file(&dir, "  Act One ").unwrap();
+        assert_eq!(made, dir.join("Act One.md"));
+        assert_eq!(fs::read(&made).unwrap(), b"");
+        assert_eq!(
+            create_story_file(&dir, "Pilot.FOUNTAIN").unwrap(),
+            dir.join("Pilot.FOUNTAIN")
+        );
+        assert_eq!(
+            create_story_file(&dir, "notes.txt").unwrap(),
+            dir.join("notes.txt.md")
+        );
+        fs::write(dir.join("Keep.md"), "words").unwrap();
+        assert!(
+            create_story_file(&dir, "Keep")
+                .unwrap_err()
+                .contains("already exists")
+        );
+        assert_eq!(fs::read_to_string(dir.join("Keep.md")).unwrap(), "words");
+        for bad in ["", "   ", "acts/One", "../Escape", ".hidden", "a:b"] {
+            assert!(create_story_file(&dir, bad).is_err(), "{bad}");
+        }
+        assert!(!dir.parent().unwrap().join("Escape.md").exists());
+        fs::remove_dir_all(dir).unwrap();
     }
     #[test]
     fn save_preserves_encoding_and_rejects_external_changes() {

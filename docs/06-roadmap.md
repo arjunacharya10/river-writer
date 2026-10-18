@@ -37,7 +37,7 @@ Moved from v1 (#64):
 * Settings UI + `settings.json`/`keybindings.json`
 * Quick Open (⌘P, `@` scenes, `#` characters) and breadcrumbs
 * Project-wide search/replace
-* Explorer tree: folders, new/rename/delete, folder watching
+* Explorer tree: folders, new folder, rename/delete, folder watching (New File done, #67)
 * Native Print; A4 paper / Page Setup
 * Preview sync scroll and click-to-jump; Outline drag-to-reorder scenes
 * Split editor groups, pinned tabs; includes resolved from the project root

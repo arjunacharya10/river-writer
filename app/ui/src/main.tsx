@@ -366,6 +366,14 @@ function App() {
       view?.requestMeasure();
     }
   }
+  /** Explorer's New File: create an empty story in the project and open it. */
+  const [naming, setNaming] = createSignal(false);
+  async function createFile(name: string) {
+    const path = await call<string>("create_file", { root: folder(), name });
+    setNaming(false);
+    setFiles(await call<FileEntry[]>("refresh_folder", { path: folder() }));
+    await open(path);
+  }
   async function refreshRecent() {
     setRecent(await call<RecentProject[]>("recent_projects"));
   }
@@ -900,7 +908,15 @@ function App() {
               maxSize="420px"
               class="sidebar"
             >
-              <SidebarTitle view={sideView()} onOpenProject={run(openFolder)} />
+              <SidebarTitle
+                view={sideView()}
+                onOpenProject={run(openFolder)}
+                onNewFile={
+                  sideView() === "explorer" && folder()
+                    ? () => setNaming(true)
+                    : undefined
+                }
+              />
               <Show when={folder()} keyed>
                 {(root) => (
                   <SourceControl
@@ -964,6 +980,9 @@ function App() {
                   currentPath={current()?.path}
                   onOpen={(path) => run(() => open(path))()}
                   onOpenProject={run(openFolder)}
+                  naming={naming()}
+                  onCreate={createFile}
+                  onCancelCreate={() => setNaming(false)}
                 />
               </Show>
             </Split.Panel>

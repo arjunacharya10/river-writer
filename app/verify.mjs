@@ -167,6 +167,35 @@ try {
   await page.getByRole("button", { name: "INT. BOAT - NIGHT" }).waitFor();
   await page.getByRole("button", { name: "Explorer", exact: true }).click();
 
+  // Explorer New File: inline name, .md added, opens empty; never replaces a file.
+  const newFile = () =>
+    page.getByRole("button", { name: "New File…", exact: true }).click();
+  const nameField = page.getByLabel("New file name", { exact: true });
+  await newFile();
+  await nameField.fill("Scene Notes");
+  await nameField.press("Enter");
+  await page.getByRole("tab", { name: /Scene Notes.md/ }).waitFor();
+  await page.getByRole("button", { name: "Scene Notes.md", exact: true }).waitFor();
+  assert.equal(await readFile(`${folder}/Scene Notes.md`, "utf8"), "");
+  assert.equal(await nameField.count(), 0);
+  await newFile();
+  await nameField.fill("Scene Notes.md");
+  await nameField.press("Enter");
+  await page
+    .getByRole("alert")
+    .filter({ hasText: "A file named Scene Notes.md already exists." })
+    .waitFor();
+  await page.screenshot({ path: `${root}/app/output/new-file.png` });
+  await nameField.press("Escape");
+  assert.equal(await nameField.count(), 0);
+  await newFile();
+  await nameField.press("Escape");
+  assert.equal(await nameField.count(), 0);
+  await page
+    .getByRole("button", { name: "Close Scene Notes.md", exact: true })
+    .click();
+  await rm(`${folder}/Scene Notes.md`);
+
   await page.getByRole("button", { name: "Chapter.md", exact: true }).click();
   await page.getByRole("tab", { name: /Chapter.md/ }).waitFor();
   await page.getByRole("tab", { name: /Script.fountain/ }).click();
@@ -308,7 +337,7 @@ try {
   console.log(
     JSON.stringify({
       checks:
-        "project welcome, cancelled creation, project open, recents, session restore, open, edit, save, Rust preview, repeated pane toggles, minimum widths, window resizing, tooltips, outline, tabs, undo, templates, themes, palette, find, keyboard resize, dirty close, PDF, external changes, fonts, screenplay completions/capitals, manuscript typing, Todos CRUD/reorder/completion/conflict safety, Scratchpad autosave/recovery/conflict copy/session restore",
+        "project welcome, cancelled creation, project open, Explorer New File, recents, session restore, open, edit, save, Rust preview, repeated pane toggles, minimum widths, window resizing, tooltips, outline, tabs, undo, templates, themes, palette, find, keyboard resize, dirty close, PDF, external changes, fonts, screenplay completions/capitals, manuscript typing, Todos CRUD/reorder/completion/conflict safety, Scratchpad autosave/recovery/conflict copy/session restore",
       result: "passed",
     }),
   );

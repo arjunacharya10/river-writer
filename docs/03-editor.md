@@ -157,3 +157,6 @@ Closing a project returns here, preserving its saved tabs/layout for the next op
 
 Git diffs share the resizable right pane with page preview, one view at a time (#49).
 There is no local-history Timeline (#66).
+
+Explorer **New File…** (#67) creates an empty story at the project's top level from an
+inline name field, adding `.md` unless the name ends in `.md` or `.fountain`.

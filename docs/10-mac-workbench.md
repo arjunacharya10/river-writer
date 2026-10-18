@@ -516,3 +516,19 @@ disk untouched; River no longer reads or writes them, and writers may delete the
 Verified: VCS and service tests, both clippy runs, `verify`, `verify:git`,
 `verify:recovery` (now also asserting no history store is created and no history
 button exists) and `test:writing`; Mac app rebuilt.
+
+## Explorer New File (2026-10-18, #67)
+
+The Explorer header has a **New File…** button (shown when a project is open). It opens
+an inline name field at the top of the list, as in VS Code. Enter or clicking away creates
+the file; Escape, or an empty name, cancels. A name without `.md`/`.fountain` gets `.md`
+(so `.fountain` must be typed for a screenplay). The file is created empty at the
+project's top level and opened in a tab. Errors (existing file, slashes or colons,
+leading dot) show under the field, and clicking away after an error cancels. Folders are
+not created yet.
+
+`create_story_file` in `river-service` creates the file with `create_new`, so an existing
+file is never replaced; the `create_file` command holds the document lock. Covered by a
+service test (extension rules, existing files, invalid names, no escaping the folder) and
+by `verify` (create, open, duplicate-name error, Escape cancel). Screenshot: ignored
+`app/output/new-file.png`.
