@@ -59,8 +59,16 @@ const catalog = StateField.define<Catalog>({
       const characters: string[] = [],
         locations: string[] = [],
         times: string[] = [];
+      const cursorByte = new TextEncoder().encode(
+        tr.newDoc.sliceString(0, tr.newSelection.main.head),
+      ).length;
       for (const element of analysis.elements) {
         if (element.source.file !== 0) continue;
+        // Do not learn a provisional name/location/time from the paragraph
+        // currently being typed, then mistake it for an exact known match.
+        const range = element.source.bytes;
+        if (range && range.start <= cursorByte && cursorByte <= range.end)
+          continue;
         if (element.kind === "cue")
           characters.push(
             element.text

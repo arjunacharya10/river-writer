@@ -112,6 +112,41 @@ switched = switched.update({
   effects: writingContext.of({ enabled: true, analysis }),
 }).state;
 assert.equal(input(switched, ".").doc.toString(), "INT.");
+
+// A parser update during typing must not learn the incomplete heading as an
+// exact match and hide known, longer location/time suggestions.
+for (const [partial, expected] of [
+  ["INT. CA", "CAFÉ"],
+  ["INT. CAFÉ - NI", "NIGHT"],
+]) {
+  const first = "EXT. CAFÉ - NIGHT";
+  const text = first + "\n\n" + partial;
+  const encode = (value) => new TextEncoder().encode(value).length;
+  let s = state(text);
+  s = s.update({
+    effects: writingContext.of({
+      enabled: true,
+      analysis: {
+        elements: [
+          {
+            kind: "scene",
+            text: first,
+            source: { file: 0, bytes: { start: 0, end: encode(first) } },
+          },
+          {
+            kind: "scene",
+            text: partial,
+            source: {
+              file: 0,
+              bytes: { start: encode(first + "\n\n"), end: encode(text) },
+            },
+          },
+        ],
+      },
+    }),
+  }).state;
+  assert(complete(s).options.some((option) => option.label === expected));
+}
 console.log(
   "PASS: screenplay completions, Unicode/cursor mapping, scoped capitals, prose/comment/paste/IME protection, atomic Undo, syntax switching.",
 );
