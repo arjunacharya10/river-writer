@@ -1,10 +1,12 @@
 import { For, Show } from "solid-js";
+import { BranchMenu } from "./branch-menu";
 import { Icon } from "./controls";
 import type { Analysis } from "../types";
 
 export function StatusBar(props: {
   branch: string;
-  onBranch: () => void;
+  root: string;
+  switchBranch: (name: string) => Promise<void>;
   notice: string;
   /** Present when a story is open. */
   story: { analysis: Analysis | null } | null;
@@ -12,14 +14,11 @@ export function StatusBar(props: {
   return (
     <footer class="status-bar">
       <Show when={props.branch}>
-        <button
-          class="status-branch"
-          title="Source Control"
-          onClick={props.onBranch}
-        >
-          <Icon name="git-branch" />
-          {props.branch}
-        </button>
+        <BranchMenu
+          root={props.root}
+          branch={props.branch}
+          switchBranch={props.switchBranch}
+        />
       </Show>
       <span>{props.notice || "River Writer"}</span>
       <div class="status-spacer" />

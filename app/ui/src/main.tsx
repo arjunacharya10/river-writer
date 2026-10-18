@@ -921,7 +921,6 @@ function App() {
                     active={sidebar() && sideView() === "source-control"}
                     beforeCommit={beforeCommit}
                     onReview={git.show}
-                    switchBranch={git.switchBranch}
                     refreshKey={git.epoch()}
                     onBranch={git.setBranch}
                   />
@@ -1080,7 +1079,8 @@ function App() {
         </div>
         <StatusBar
           branch={folder() ? git.branch() : ""}
-          onBranch={() => showView("source-control")}
+          root={folder()}
+          switchBranch={git.switchBranch}
           notice={notice()}
           story={
             current()

@@ -136,9 +136,8 @@ is unreferenced, so Undo belongs to the current session. Ignored files, `.git` a
 symbolic-link paths, links and submodules in the commit are refused.
 
 ### Branches (2026-10-18, #55)
-Source Control lists local branches; the current one is checked and also appears in
-the status bar (click it to open Source Control). Clicking another branch switches to
-it. **Create and switch** makes a branch at the current commit and moves to it,
+The status-bar branch name opens a menu of local branches; the current one is checked.
+Choosing another switches to it. New branch… opens a name dialog (#70). **Create and switch** makes a branch at the current commit and moves to it,
 keeping any uncommitted writing. Switching to a branch on a different commit first
 requires committing, so writing is never lost or silently carried between drafts.
 Switching uses libgit2's safe checkout. Unsaved tabs block it; changed tabs, Scratchpad

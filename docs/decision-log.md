@@ -106,3 +106,5 @@ supersede older ones.
 | 68 | No Open Project icon in the sidebar | **Remove the Open Project icon from the sidebar header; Open Project is in the File menu (⇧⌘O), the command palette and the welcome screen. The Explorer header holds only New File….** | User request (2026-10-18): the icon was redundant next to New File. The "Open Project" button shown in the Explorer when no project is open stays |
 
 | 69 | Quiet activity and status bars | **Remove the Command Palette and Light/Dark activity icons and the Markdown/Fountain status label.** Palette remains in View and ⌘⇧P; theme switching remains in View and the palette. Follow Mac appearance until manually switched | User approved product cleanup (2026-10-18). |
+
+| 70 | Branch picker | **Move branches and New branch to a menu on the status-bar branch name.** Source Control holds commits, changes and history | User approved (2026-10-18). Supersedes #55 branch-list placement. New branches start at the current commit; branching from older commits remains unbuilt. |

@@ -55,10 +55,7 @@ try {
     await readFile(`${folder}/.git/info/exclude`, "utf8"),
     /\/_river\/river\.json/,
   );
-  assert.equal(
-    await panel.getByLabel("New branch name", { exact: true }).isDisabled(),
-    false,
-  );
+  assert.equal(await panel.getByLabel("New branch name").count(), 0);
   // The writer's own edit is the only change listed.
   await writeFile(
     `${folder}/Script.fountain`,
@@ -217,8 +214,12 @@ try {
   // Branches: create with uncommitted work, commit on it, switch back and forth.
   const statusBranch = page.locator(".status-branch");
   await until(async () => (await statusBranch.innerText()).includes("main"));
-  await panel.getByLabel("New branch name", { exact: true }).fill("draft-2");
-  await panel
+  await statusBranch.click();
+  await page
+    .getByRole("menuitem", { name: "New branch…", exact: true })
+    .click();
+  await page.getByLabel("New branch name", { exact: true }).fill("draft-2");
+  await page
     .getByRole("button", { name: "Create and switch", exact: true })
     .click();
   await until(async () => (await statusBranch.innerText()).includes("draft-2"));
@@ -226,7 +227,11 @@ try {
     await readFile(story, "utf8"),
     "Newer writing after the restore.\n",
   );
-  await panel.getByRole("button", { name: "✓ draft-2", exact: true }).waitFor();
+  await statusBranch.click();
+  await page
+    .getByRole("menuitem", { name: "✓ draft-2", exact: true })
+    .waitFor();
+  await page.keyboard.press("Escape");
   await panel
     .getByLabel("Commit message", { exact: true })
     .fill("Draft two ending");
@@ -234,7 +239,8 @@ try {
     .getByRole("button", { name: "Commit all changes", exact: true })
     .click();
   await panel.getByText("No changes to commit.", { exact: true }).waitFor();
-  await panel.getByRole("button", { name: "main", exact: true }).click();
+  await statusBranch.click();
+  await page.getByRole("menuitem", { name: "main", exact: true }).click();
   await until(async () => (await statusBranch.innerText()).includes("main"));
   await until(async () => /Later ending/.test(await readFile(story, "utf8")));
   await until(async () => /Later ending/.test(await editorText()));
@@ -243,7 +249,8 @@ try {
   // Uncommitted writing blocks switching to a diverged branch, and stays put.
   await writeFile(story, "Unfinished thought on main.\n");
   await panel.getByRole("button", { name: "Refresh Git", exact: true }).click();
-  await panel.getByRole("button", { name: "draft-2", exact: true }).click();
+  await statusBranch.click();
+  await page.getByRole("menuitem", { name: "draft-2", exact: true }).click();
   await page
     .getByRole("alert")
     .filter({ hasText: "Commit your changes before switching" })

@@ -27,15 +27,10 @@ export function SourceControl(props: {
   active: boolean;
   beforeCommit: () => Promise<void>;
   onReview: (title: string, review: GitReview, commit?: string) => void;
-  switchBranch: (name: string) => Promise<void>;
   onBranch: (name: string) => void;
   /** Bumped after River rewrites files (restore, switch), so counts update at once. */
   refreshKey: number;
 }) {
-  const [branches, setBranches] = createSignal<
-    { name: string; current: boolean }[]
-  >([]);
-  const [branchName, setBranchName] = createSignal("");
   const root = props.root;
   const [status, setStatus] = createSignal<Status>();
   let reviewedChanges: Reviewed | undefined;
@@ -63,13 +58,7 @@ export function SourceControl(props: {
       const log = next.initialized
         ? await call<Commit[]>("git_log", { root })
         : [];
-      const list = next.initialized
-        ? await call<{ name: string; current: boolean }[]>("git_branches", {
-            root,
-          })
-        : [];
       if (disposed) return;
-      setBranches(list);
       props.onBranch(next.initialized ? next.branch : "");
       if (!status() || status()?.head !== next.head) {
         setCommits(log);
@@ -268,57 +257,6 @@ export function SourceControl(props: {
                     </div>
                   )}
                 </For>
-              </Show>
-              <h3>BRANCHES</h3>
-              <For each={branches()}>
-                {(b) => (
-                  <button
-                    class={`git-item git-branch ${b.current ? "current" : ""}`}
-                    aria-current={b.current ? "true" : undefined}
-                    disabled={busy() || reading() || b.current}
-                    title={b.current ? "Current branch" : `Switch to ${b.name}`}
-                    onClick={() =>
-                      void act(async () => {
-                        await props.switchBranch(b.name);
-                        setNotice(`Switched to ${b.name}.`);
-                      })
-                    }
-                  >
-                    {b.current ? "✓ " : ""}
-                    {b.name}
-                  </button>
-                )}
-              </For>
-              <form
-                class="git-new-branch"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const name = branchName().trim();
-                  void act(async () => {
-                    await call("git_create_branch", { root, name });
-                    await props.switchBranch(name);
-                    setBranchName("");
-                    setNotice(`Created and switched to ${name}.`);
-                  });
-                }}
-              >
-                <input
-                  aria-label="New branch name"
-                  placeholder="New branch, e.g. draft-2"
-                  value={branchName()}
-                  onInput={(e) => setBranchName(e.currentTarget.value)}
-                  disabled={busy() || reading() || !s().head}
-                />
-                <button
-                  disabled={
-                    busy() || reading() || !s().head || !branchName().trim()
-                  }
-                >
-                  Create and switch
-                </button>
-              </form>
-              <Show when={!s().head}>
-                <p class="muted">Commit once to start new branches.</p>
               </Show>
               <h3>COMMITS</h3>
               <For each={commits()}>
