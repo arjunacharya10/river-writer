@@ -299,33 +299,36 @@ export function SourceControl(props: {
                   </button>
                 )}
               </For>
-              <Show when={s().head}>
-                <form
-                  class="git-new-branch"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const name = branchName().trim();
-                    void act(async () => {
-                      await call("git_create_branch", { root, name });
-                      await props.switchBranch(name);
-                      setBranchName("");
-                      setNotice(`Created and switched to ${name}.`);
-                    });
-                  }}
+              <form
+                class="git-new-branch"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const name = branchName().trim();
+                  void act(async () => {
+                    await call("git_create_branch", { root, name });
+                    await props.switchBranch(name);
+                    setBranchName("");
+                    setNotice(`Created and switched to ${name}.`);
+                  });
+                }}
+              >
+                <input
+                  aria-label="New branch name"
+                  placeholder="New branch, e.g. draft-2"
+                  value={branchName()}
+                  onInput={(e) => setBranchName(e.currentTarget.value)}
+                  disabled={busy() || reading() || !s().head}
+                />
+                <button
+                  disabled={
+                    busy() || reading() || !s().head || !branchName().trim()
+                  }
                 >
-                  <input
-                    aria-label="New branch name"
-                    placeholder="New branch, e.g. draft-2"
-                    value={branchName()}
-                    onInput={(e) => setBranchName(e.currentTarget.value)}
-                    disabled={busy() || reading()}
-                  />
-                  <button
-                    disabled={busy() || reading() || !branchName().trim()}
-                  >
-                    Create and switch
-                  </button>
-                </form>
+                  Create and switch
+                </button>
+              </form>
+              <Show when={!s().head}>
+                <p class="muted">Commit once to start new branches.</p>
               </Show>
               <h3>COMMITS</h3>
               <For each={commits()}>

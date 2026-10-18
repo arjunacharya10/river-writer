@@ -140,3 +140,12 @@ requires committing, so writing is never lost or silently carried between drafts
 Switching uses libgit2's safe checkout. Unsaved tabs block it; changed tabs, Scratchpad
 and Todos reload afterwards; private autosave history follows the active branch.
 Deleting, renaming and merging branches are not in River yet.
+
+### Git on by default (2026-10-18, #62)
+River projects always have Git. On open or create, `git::ensure_repository` creates a
+repository if the folder has none and commits what is already there as "Start project
+history" (the writer's Git identity, else "River Writer"). Changes therefore starts empty
+and shows only what the writer edits. The rule that keeps `_river/river.json` out of Git
+lives in `.git/info/exclude`, so River never touches `.gitignore`. Private history uses
+the same function, so the first autosave can no longer create a commit-less repository.
+New branches can be created immediately; with no commits the field shows a hint.

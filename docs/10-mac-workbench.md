@@ -441,3 +441,15 @@ Git diff pane, Timeline pane, status bar/problems.
 Verified by all browser suites plus a pixel comparison of their screenshots against a
 pre-refactor baseline. Not covered automatically: Tauri IPC itself; open a project,
 preview and export once in the Mac app to confirm.
+
+## Git on by default (2026-10-18, #62)
+
+`river_vcs::project::ensure_repository` runs when a project is opened or created (inside
+the document lock; failure only leaves the Initialize fallback) and from `History::open`.
+New repositories get `/_river/river.json` in `.git/info/exclude` and a starting snapshot
+written through the real index, so status is clean. The old `.gitignore` writer is gone.
+Source Control always shows the new-branch field. Verified by a VCS test (clean status,
+snapshot contents, untouched `.gitignore`, single exclude rule, immediate branching,
+adopting an existing repository) and by `verify:git`, which now starts from a folder
+without Git and checks the snapshot, the untouched `.gitignore` and that only the
+writer's edit is listed.

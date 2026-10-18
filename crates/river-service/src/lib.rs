@@ -90,11 +90,8 @@ impl Documents {
             return Ok(None);
         };
         let project = self.project.as_deref().filter(|p| path.starts_with(p));
-        let history = river_vcs::History::open(project, path, data)?;
-        if let Some(root) = project {
-            ignore_ui_state(root)?;
-        }
-        Ok(Some(history))
+        // Opening project history also ensures the project repository (#62).
+        river_vcs::History::open(project, path, data).map(Some)
     }
     pub fn local_history(&self, id: u64) -> Result<Vec<river_vcs::Version>, String> {
         self.local_history_before(id, None)
@@ -650,41 +647,11 @@ pub fn publication(
     river_paginate::paginate(engine, &script(doc, buffers)?, doc.template)
 }
 
-/// Keep River's per-machine UI state out of ordinary Git tooling. Story files,
-/// Scratchpad and Todos stay versioned. Tolerates CRLF and an existing rule.
-fn ignore_ui_state(root: &Path) -> Result<(), String> {
-    let ignore = root.join(".gitignore");
-    if ignore.is_symlink() {
-        return Err(".gitignore must not be a symbolic link".into());
-    }
-    let old = match fs::read(&ignore) {
-        Ok(bytes) => Some(bytes),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
-        Err(e) => return Err(e.to_string()),
-    };
-    let bytes = old.as_deref().unwrap_or_default();
-    if bytes
-        .split(|b| *b == b'\n')
-        .map(|line| line.trim_ascii())
-        .any(|line| line == b"/_river/river.json" || line == b"_river/river.json")
-    {
-        return Ok(());
-    }
-    let mut next = bytes.to_vec();
-    if !next.is_empty() && !next.ends_with(b"\n") {
-        next.push(b'\n');
-    }
-    next.extend_from_slice(b"\n# River UI state\n/_river/river.json\n");
-    atomic_write(&ignore, &next, old.as_deref())
-}
-/// Initialize only the chosen folder; keep UI state out of ordinary Git tooling too.
+/// The Initialize button: same as opening a project (#62). Only the chosen
+/// folder is used; a repository in a parent folder is never adopted.
 pub fn initialize_git(root: &Path) -> Result<(), String> {
     let root = root.canonicalize().map_err(|e| e.to_string())?;
-    if root.join(".gitignore").is_symlink() {
-        return Err(".gitignore must not be a symbolic link".into());
-    }
-    git::init(&root)?;
-    ignore_ui_state(&root)
+    git::ensure_repository(&root).map(|_| ())
 }
 
 #[cfg(test)]
@@ -721,9 +688,11 @@ mod tests {
         assert!(docs.autosave(doc.id, 2).is_err());
         assert_eq!(fs::read_to_string(&path).unwrap(), "external text");
         assert_eq!(docs.get(doc.id).unwrap().text, "my latest unsaved text");
+        // The writer's .gitignore is left alone; UI state is excluded locally (#62).
         let ignore = fs::read_to_string(dir.join(".gitignore")).unwrap();
-        assert!(ignore.starts_with("personal-notes/\n"));
-        assert!(ignore.contains("/_river/river.json"));
+        assert!(!ignore.contains("_river"));
+        let exclude = fs::read_to_string(dir.join(".git/info/exclude")).unwrap();
+        assert!(exclude.contains("/_river/river.json"));
         let untitled = docs.new_document();
         docs.update(untitled.id, 1, "untitled".into(), untitled.template)
             .unwrap();
@@ -883,23 +852,5 @@ mod tests {
         let json = serde_json::to_string(&a).unwrap();
         assert!(!json.contains("mapping"));
         assert_eq!(utf16_positions("é🎬x"), vec![0, 0, 1, 1, 1, 1, 3, 4]);
-    }
-    #[test]
-    fn ui_state_ignore_rule_is_added_once_including_crlf() {
-        let root = dir();
-        fs::write(root.join(".gitignore"), "notes/\r\n/_river/river.json\r\n").unwrap();
-        ignore_ui_state(&root).unwrap();
-        assert_eq!(
-            fs::read_to_string(root.join(".gitignore")).unwrap(),
-            "notes/\r\n/_river/river.json\r\n"
-        );
-        fs::write(root.join(".gitignore"), "notes/").unwrap();
-        ignore_ui_state(&root).unwrap();
-        ignore_ui_state(&root).unwrap();
-        assert_eq!(
-            fs::read_to_string(root.join(".gitignore")).unwrap(),
-            "notes/\n\n# River UI state\n/_river/river.json\n"
-        );
-        fs::remove_dir_all(root).unwrap();
     }
 }

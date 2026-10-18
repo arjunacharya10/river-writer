@@ -318,7 +318,11 @@ impl Service {
         if let Some(config) = self.shell.config_dir() {
             let _ = projects::remember(&config, &project);
         }
-        lock(&self.documents)?.set_project(&project.path)?;
+        let mut docs = lock(&self.documents)?;
+        // Every project has Git from the start (#62). A failure here leaves the
+        // Initialize button in Source Control rather than blocking the project.
+        let _ = git::ensure_repository(&project.path);
+        docs.set_project(&project.path)?;
         reply(project)
     }
 

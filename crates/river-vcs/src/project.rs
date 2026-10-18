@@ -231,6 +231,73 @@ pub fn init(root: &Path) -> Result<(), String> {
     Repository::init_opts(root, &options).map_err(err)?;
     Ok(())
 }
+/// Keep River's per-machine UI state out of Git without touching the writer's
+/// `.gitignore`: the rule lives in the repository's local `info/exclude`.
+fn exclude_ui_state(repo: &Repository) -> Result<(), String> {
+    let info = repo.path().join("info");
+    let exclude = info.join("exclude");
+    let old = match fs::read_to_string(&exclude) {
+        Ok(text) => text,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(e) => return Err(err(e)),
+    };
+    if old
+        .lines()
+        .map(str::trim)
+        .any(|line| line == "/_river/river.json" || line == "_river/river.json")
+    {
+        return Ok(());
+    }
+    let mut next = old;
+    if !next.is_empty() && !next.ends_with('\n') {
+        next.push('\n');
+    }
+    next.push_str("# River UI state (this machine only)\n/_river/river.json\n");
+    fs::create_dir_all(&info).map_err(err)?;
+    fs::write(&exclude, next).map_err(err)
+}
+/// Every River project has Git. A new repository starts with a snapshot of the
+/// files already there ("Start project history"), so Changes lists only what the
+/// writer edits afterwards. An existing repository is adopted as it is.
+/// Returns whether a repository was created.
+pub fn ensure_repository(root: &Path) -> Result<bool, String> {
+    if root.join(".git").exists() {
+        exclude_ui_state(&open(root)?)?;
+        return Ok(false);
+    }
+    init(root)?;
+    let repo = open(root)?;
+    exclude_ui_state(&repo)?;
+    // The on-disk index must match the snapshot, or status would show it staged.
+    let mut index = repo.index().map_err(err)?;
+    index
+        .add_all(["*"], IndexAddOption::DEFAULT, None)
+        .map_err(err)?;
+    if index.get_path(Path::new("_river/river.json"), 0).is_some() {
+        index
+            .remove_path(Path::new("_river/river.json"))
+            .map_err(err)?;
+    }
+    index.write().map_err(err)?;
+    let tree = repo
+        .find_tree(index.write_tree().map_err(err)?)
+        .map_err(err)?;
+    // River made this commit, so it signs it unless the writer has a Git identity.
+    let signature = repo
+        .signature()
+        .or_else(|_| Signature::now("River Writer", "river@localhost"))
+        .map_err(err)?;
+    repo.commit(
+        Some("HEAD"),
+        &signature,
+        &signature,
+        "Start project history",
+        &tree,
+        &[],
+    )
+    .map_err(err)?;
+    Ok(true)
+}
 pub fn identity(root: &Path, name: &str, email: &str) -> Result<(), String> {
     let (name, email) = (name.trim(), email.trim());
     if name.is_empty()
@@ -1071,6 +1138,41 @@ mod tests {
         let r = review_changes(&root).unwrap();
         commit(&root, r.head.as_deref(), &r.tree, "Second").unwrap();
         assert!(status(&root).unwrap().files.is_empty());
+        fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn new_repositories_start_clean_with_a_snapshot_and_local_ignore() {
+        let root = folder();
+        fs::create_dir(root.join("_river")).unwrap();
+        fs::write(root.join("Story.md"), "existing chapter").unwrap();
+        fs::write(root.join("_river/todos.md"), "- [ ] Task").unwrap();
+        fs::write(root.join("_river/river.json"), "{}").unwrap();
+        assert!(ensure_repository(&root).unwrap());
+        // Nothing River created is a pending change, and .gitignore is untouched.
+        assert!(status(&root).unwrap().files.is_empty());
+        assert!(!root.join(".gitignore").exists());
+        let history = log(&root, None).unwrap();
+        assert_eq!(history.len(), 1);
+        assert_eq!(history[0].message, "Start project history");
+        let snapshot = commit_diff(&root, &history[0].id).unwrap();
+        assert!(snapshot.files.iter().any(|f| f.path == "Story.md"));
+        assert!(snapshot.files.iter().any(|f| f.path == "_river/todos.md"));
+        assert!(!snapshot.files.iter().any(|f| f.path == "_river/river.json"));
+        // Only the writer's edits appear afterwards; branches are available at once.
+        fs::write(root.join("Story.md"), "edited chapter").unwrap();
+        let changed: Vec<_> = status(&root)
+            .unwrap()
+            .files
+            .into_iter()
+            .map(|f| f.path)
+            .collect();
+        assert_eq!(changed, vec!["Story.md"]);
+        create_branch(&root, "draft-2").unwrap();
+        // Adopting an existing repository changes nothing but the local ignore.
+        assert!(!ensure_repository(&root).unwrap());
+        assert_eq!(log(&root, None).unwrap().len(), 1);
+        let exclude = fs::read_to_string(root.join(".git/info/exclude")).unwrap();
+        assert_eq!(exclude.matches("/_river/river.json").count(), 1);
         fs::remove_dir_all(root).unwrap();
     }
 }

@@ -30,15 +30,8 @@ impl History {
     pub fn open(project: Option<&Path>, file: &Path, data: &Path) -> Result<Self, String> {
         let (root, branch, alternate, key) =
             if let Some(project) = project.filter(|p| file.starts_with(p)) {
-                let main = if project.join(".git").exists() {
-                    Repository::open(project).map_err(err)?
-                } else {
-                    {
-                        let mut options = git2::RepositoryInitOptions::new();
-                        options.initial_head("main");
-                        Repository::init_opts(project, &options).map_err(err)?
-                    }
-                };
+                project::ensure_repository(project)?;
+                let main = Repository::open(project).map_err(err)?;
                 if main.is_bare() {
                     return Err(err("Choose a working project folder"));
                 }

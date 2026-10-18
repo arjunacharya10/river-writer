@@ -11,9 +11,10 @@ import { tmpdir } from "node:os";
 import { root, startBackend, openPage, until } from "./test-harness.mjs";
 import assert from "node:assert/strict";
 const folder = await mkdtemp(`${tmpdir()}/river-git-ui-`);
+// Existing writing in a folder that has never used Git.
 await writeFile(
   `${folder}/Script.fountain`,
-  "INT. CAFÉ - DAY\n\nA first draft.\n",
+  "INT. CAFÉ - DAWN\n\nAn outline.\n",
 );
 await writeFile(`${folder}/.gitignore`, ".test-config/\nprivate.md\n");
 await writeFile(`${folder}/private.md`, "Private notes");
@@ -35,12 +36,35 @@ try {
     name: "Source Control",
     exact: true,
   });
+  // Git starts on its own: one snapshot, nothing pending, .gitignore untouched.
+  await panel.getByText("No changes to commit.", { exact: true }).waitFor();
+  assert.equal(
+    await panel.getByRole("button", { name: "Initialize Git" }).count(),
+    0,
+  );
   await panel
-    .getByRole("button", { name: "Initialize Git", exact: true })
-    .click();
-  await panel
-    .getByRole("button", { name: "Commit all changes", exact: true })
+    .getByRole("button")
+    .filter({ hasText: "Start project history" })
     .waitFor();
+  assert.equal(
+    await readFile(`${folder}/.gitignore`, "utf8"),
+    ".test-config/\nprivate.md\n",
+  );
+  assert.match(
+    await readFile(`${folder}/.git/info/exclude`, "utf8"),
+    /\/_river\/river\.json/,
+  );
+  assert.equal(
+    await panel.getByLabel("New branch name", { exact: true }).isDisabled(),
+    false,
+  );
+  // The writer's own edit is the only change listed.
+  await writeFile(
+    `${folder}/Script.fountain`,
+    "INT. CAFÉ - DAY\n\nA first draft.\n",
+  );
+  await panel.getByRole("button", { name: "Refresh Git", exact: true }).click();
+  await panel.getByText("CHANGES · 1", { exact: true }).waitFor();
   await appendFile(`${folder}/.git/config`, "\n[user]\nname =\nemail =\n");
   await panel.getByRole("button", { name: "Refresh Git", exact: true }).click();
   await panel.getByLabel("Git name", { exact: true }).fill("Test Writer");
@@ -68,7 +92,7 @@ try {
     .getByRole("button", { name: "Commit all changes", exact: true })
     .click();
   await panel.getByText("No changes to commit.", { exact: true }).waitFor();
-  assert.equal((await invoke("git_log", { root: folder })).length, 1);
+  assert.equal((await invoke("git_log", { root: folder })).length, 2);
   await mkdir(`${folder}/_river`, { recursive: true });
   await writeFile(`${folder}/_river/todos.md`, "- [ ] Rewrite ending\n");
   await writeFile(
@@ -103,7 +127,7 @@ try {
     await panel.getByLabel("Commit message", { exact: true }).inputValue(),
     "Rework ending",
   );
-  assert.equal((await invoke("git_log", { root: folder })).length, 1);
+  assert.equal((await invoke("git_log", { root: folder })).length, 2);
   await panel
     .getByRole("button", { name: "Review changes", exact: true })
     .click();
@@ -111,7 +135,7 @@ try {
     .getByRole("button", { name: "Commit all changes", exact: true })
     .click();
   await panel.getByText("No changes to commit.", { exact: true }).waitFor();
-  assert.equal((await invoke("git_log", { root: folder })).length, 2);
+  assert.equal((await invoke("git_log", { root: folder })).length, 3);
   await panel.getByRole("button").filter({ hasText: "First draft" }).click();
   await diff.getByText("First draft", { exact: true }).waitFor();
   assert.match(
@@ -139,7 +163,7 @@ try {
     .waitFor();
   assert.match(await readFile(story, "utf8"), /A first draft/);
   await until(async () => /A first draft/.test(await editorText()));
-  assert.equal((await invoke("git_log", { root: folder })).length, 2);
+  assert.equal((await invoke("git_log", { root: folder })).length, 3);
   await page.screenshot({ path: `${root}/app/output/git-restore.png` });
   await page.getByRole("button", { name: "Undo restore", exact: true }).click();
   await until(async () => /Later ending/.test(await readFile(story, "utf8")));
@@ -188,7 +212,7 @@ try {
     await readFile(story, "utf8"),
     "Newer writing after the restore.\n",
   );
-  assert.equal((await invoke("git_log", { root: folder })).length, 2);
+  assert.equal((await invoke("git_log", { root: folder })).length, 3);
   // Branches: create with uncommitted work, commit on it, switch back and forth.
   const statusBranch = page.locator(".status-branch");
   await until(async () => (await statusBranch.innerText()).includes("main"));
@@ -213,7 +237,7 @@ try {
   await until(async () => (await statusBranch.innerText()).includes("main"));
   await until(async () => /Later ending/.test(await readFile(story, "utf8")));
   await until(async () => /Later ending/.test(await editorText()));
-  assert.equal((await invoke("git_log", { root: folder })).length, 2);
+  assert.equal((await invoke("git_log", { root: folder })).length, 3);
   await page.screenshot({ path: `${root}/app/output/git-branches.png` });
   // Uncommitted writing blocks switching to a diverged branch, and stays put.
   await writeFile(story, "Unfinished thought on main.\n");
@@ -229,7 +253,7 @@ try {
   await page.screenshot({ path: `${root}/app/output/source-control.png` });
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: initialize, local identity, ignored files, ordinary commits, notes/tasks, side-pane diff, stale-review rejection, commit history, file/project restore, undo and edit-after-restore protection, branch create/switch/status bar and dirty-switch refusal.",
+    "PASS: Git on by default with a starting snapshot and untouched .gitignore, local identity, ignored files, ordinary commits, notes/tasks, side-pane diff, stale-review rejection, commit history, file/project restore, undo and edit-after-restore protection, branch create/switch/status bar and dirty-switch refusal.",
   );
 } catch (e) {
   console.error(await page.locator("body").innerText());
