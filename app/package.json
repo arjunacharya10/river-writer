@@ -7,7 +7,8 @@
     "dev": "vite --config ui/vite.config.ts --host 127.0.0.1",
     "build": "tsc --noEmit -p ui && vite build --config ui/vite.config.ts",
     "tauri": "tauri",
-    "verify": "node verify.mjs"
+    "verify": "node verify.mjs",
+    "verify:recovery": "node verify-recovery.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.1",

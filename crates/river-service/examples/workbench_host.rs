@@ -9,6 +9,8 @@ use std::{
 fn main() {
     let folder = std::env::args().nth(1).expect("test folder");
     let mut docs = Documents::default();
+    let recovery =
+        recovery::Recovery::new(Path::new(&folder).join(".test-config/recovery")).unwrap();
     let mut engine = river_text::TextEngine::new();
     let mut previews = HashMap::<u64, (u64, river_model::Publication)>::new();
     let mut serial = 0;
@@ -19,6 +21,11 @@ fn main() {
         let id = args["id"].as_u64().unwrap_or(0);
         let result = (|| -> Result<Value, String> {
             Ok(match req["name"].as_str().unwrap() {
+                "recovery_drafts" => serde_json::to_value(recovery.pending()?).unwrap(),
+                "recover_draft" => serde_json::to_value(
+                    recovery.restore(&mut docs, args["key"].as_str().ok_or("Missing key")?)?,
+                )
+                .unwrap(),
                 "new_document" => serde_json::to_value(docs.new_document()).unwrap(),
                 "open_document" => serde_json::to_value(
                     docs.open(Path::new(
@@ -67,6 +74,7 @@ fn main() {
                         args["text"].as_str().unwrap().into(),
                         serde_json::from_value(args["template"].clone()).unwrap(),
                     )?;
+                    recovery.protect(&d)?;
                     serde_json::to_value(analyze(&d)).unwrap()
                 }
                 "analyze_document" => serde_json::to_value(analyze(docs.get(id)?)).unwrap(),
@@ -82,12 +90,18 @@ fn main() {
                     let target = format!("{folder}/Saved.md");
                     let save_as =
                         args["saveAs"].as_bool().unwrap_or(false) || docs.get(id)?.path.is_none();
-                    serde_json::to_value(docs.save(id, save_as.then(|| Path::new(&target)))?)
-                        .unwrap()
+                    let doc = docs.save(id, save_as.then(|| Path::new(&target)))?;
+                    recovery.protect(&doc)?;
+                    serde_json::to_value(doc).unwrap()
                 }
                 "external_change" => json!(docs.external_change(id)?),
-                "reload_document" => serde_json::to_value(docs.reload(id)?).unwrap(),
+                "reload_document" => {
+                    let doc = docs.reload(id)?;
+                    recovery.protect(&doc)?;
+                    serde_json::to_value(doc).unwrap()
+                }
                 "close_document" => {
+                    recovery.forget(id)?;
                     docs.close(id);
                     previews.remove(&id);
                     Value::Null

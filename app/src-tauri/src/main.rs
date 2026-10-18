@@ -1,3 +1,4 @@
+use river_service::recovery::{Draft, Recovery};
 use river_service::{Document, Documents};
 use river_templates::TemplateId;
 use serde::Serialize;
@@ -158,7 +159,17 @@ async fn sync_document(
 ) -> Result<river_service::Analysis, String> {
     work(move || {
         let state = app.state::<Desktop>();
-        let doc = lock(&state.documents)?.update(id, revision, text, template)?;
+        let mut docs = lock(&state.documents)?;
+        // A failed journal write can be retried without replaying an edit.
+        let current = docs.get(id)?;
+        let doc =
+            if current.revision == revision && current.text == text && current.template == template
+            {
+                current.clone()
+            } else {
+                docs.update(id, revision, text, template)?
+            };
+        app.state::<Recovery>().protect(&doc)?;
         Ok(river_service::analyze(&doc))
     })
     .await
@@ -215,7 +226,9 @@ async fn save_document(
             None
         };
         let mut docs = lock(&state.documents)?;
-        Ok(Some(docs.save(id, target.as_deref())?))
+        let doc = docs.save(id, target.as_deref())?;
+        app.state::<Recovery>().protect(&doc)?;
+        Ok(Some(doc))
     })
     .await
 }
@@ -233,12 +246,34 @@ async fn external_change(app: tauri::AppHandle, id: u64) -> Result<bool, String>
 }
 #[tauri::command]
 async fn reload_document(app: tauri::AppHandle, id: u64) -> Result<Document, String> {
-    work(move || lock(&app.state::<Desktop>().documents)?.reload(id)).await
+    work(move || {
+        let state = app.state::<Desktop>();
+        let mut docs = lock(&state.documents)?;
+        let doc = docs.reload(id)?;
+        app.state::<Recovery>().protect(&doc)?;
+        Ok(doc)
+    })
+    .await
+}
+#[tauri::command]
+async fn recovery_drafts(app: tauri::AppHandle) -> Result<Vec<Draft>, String> {
+    work(move || app.state::<Recovery>().pending()).await
+}
+#[tauri::command]
+async fn recover_draft(app: tauri::AppHandle, key: String) -> Result<Document, String> {
+    work(move || {
+        let state = app.state::<Desktop>();
+        let mut docs = lock(&state.documents)?;
+        app.state::<Recovery>().restore(&mut docs, &key)
+    })
+    .await
 }
 #[tauri::command]
 fn close_document(app: tauri::AppHandle, id: u64) -> Result<(), String> {
     let state = app.state::<Desktop>();
-    lock(&state.documents)?.close(id);
+    let mut docs = lock(&state.documents)?;
+    app.state::<Recovery>().forget(id)?;
+    docs.close(id);
     lock(&state.previews)?.remove(&id);
     Ok(())
 }
@@ -382,6 +417,7 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .manage(Desktop::default())
         .setup(|app| {
+            app.manage(Recovery::new(app.path().app_data_dir()?.join("recovery"))?);
             let item =
                 |id: &str, text: &str, key: &str| MenuItem::with_id(app, id, text, true, Some(key));
             let app_menu = Submenu::with_items(
@@ -487,6 +523,8 @@ fn main() {
             open_project,
             save_project_session,
             sync_document,
+            recovery_drafts,
+            recover_draft,
             analyze_document,
             save_document,
             persist_template,

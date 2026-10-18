@@ -812,3 +812,28 @@ kbd {
     padding: 20px;
   }
 }
+
+.recovery-notice {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  max-width: min(720px, 90vw);
+  max-height: 35vh;
+  overflow: auto;
+  padding: 12px 16px;
+  background: var(--panel, #252526);
+  color: var(--text, #eee);
+  border: 1px solid var(--border, #666);
+  border-radius: 6px;
+  box-shadow: 0 4px 20px #0004;
+}
+.recovery-notice button {
+  padding: 6px 10px;
+  cursor: pointer;
+}

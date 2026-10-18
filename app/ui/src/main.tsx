@@ -37,6 +37,24 @@ import {
 import "@vscode/codicons/dist/codicon.css";
 import "./style.css";
 function App() {
+  const [recoveries, setRecoveries] = createSignal<
+    { key: string; path: string | null }[]
+  >([]);
+  const [recovering, setRecovering] = createSignal(false);
+  async function recoverDraft(key: string) {
+    setRecovering(true);
+    try {
+      const doc = await call<Story>("recover_draft", { key });
+      setWelcome(false);
+      await add(doc);
+      setRecoveries((drafts) => drafts.filter((draft) => draft.key !== key));
+      setNotice("Recovered as an unsaved copy. Save to choose its location.");
+    } catch (e) {
+      fail(e);
+    } finally {
+      setRecovering(false);
+    }
+  }
   const [welcome, setWelcome] = createSignal(true),
     [recent, setRecent] = createSignal<RecentProject[]>([]),
     [projectBusy, setProjectBusy] = createSignal(false);
@@ -418,6 +436,7 @@ function App() {
           return;
       }
       await rememberSession();
+      await clearWorkspace();
       await call("quit_confirmed");
     } finally {
       quitting = false;
@@ -621,6 +640,9 @@ function App() {
       sessionTimer = setTimeout(() => void rememberSession().catch(fail), 600);
   });
   onMount(() => {
+    void call<{ key: string; path: string | null }[]>("recovery_drafts")
+      .then(setRecoveries)
+      .catch(fail);
     void refreshRecent().catch(fail);
     view = new EditorView({
       parent: host,
@@ -692,6 +714,21 @@ function App() {
   });
   return (
     <>
+      <Show when={recoveries().length > 0}>
+        <aside class="recovery-notice" aria-label="Recovered drafts">
+          <span>River found writing from an interrupted session.</span>
+          <For each={recoveries()}>
+            {(draft) => (
+              <button
+                disabled={recovering() || projectBusy()}
+                onClick={() => void recoverDraft(draft.key)}
+              >
+                Recover {draft.path?.split("/").at(-1) ?? "Untitled"}
+              </button>
+            )}
+          </For>
+        </aside>
+      </Show>
       <Show when={welcome()}>
         <ProjectWelcome
           recent={recent()}

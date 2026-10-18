@@ -12,6 +12,8 @@ gate development or release. Linux: later or never.
 * Git: commit (no staging), log, diff (scene/paragraph/word), restore/revert, branch +
   checkout, remote + push/pull/fetch, clone
 * Local autosave history (never pushed); automatic local backups
+  * Crash recovery for dirty named and untitled drafts implemented (doc 10); automatic
+    disk saves, private Git Timeline and independent backups remain pending.
 * Themes: Light and Dark only, following the system appearance
 
 ## Version 1.1

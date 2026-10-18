@@ -1,5 +1,6 @@
 //! Desktop orchestration without a Tauri dependency. Editor text uses LF/UTF-8.
 pub mod projects;
+pub mod recovery;
 use river_model::{Diagnostic, Kind, Publication, Script, SourceRange};
 use river_templates::{Template, TemplateId};
 use serde::Serialize;

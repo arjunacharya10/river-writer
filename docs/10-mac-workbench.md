@@ -103,7 +103,8 @@ complete automated Mac interaction suite.
   a different app can still race a write between that check and the final rename.
 * Extras, settings UI, Git/history/autosave/backups, FDX, print, Mac file associations,
   full font-license presentation, signed packaging and other v1 polish remain later
-  phases. Until local history/backups land, unsaved text is in memory only.
+  phases. Crash recovery now protects unsaved text as described below; version history
+  and independent backups are still pending.
 * Development icon/identity only. No public push has been made; the MIT license and no-business-model decision are now settled (#40).
 
 ## Preview toggle fix (2026-10-18)
@@ -139,3 +140,30 @@ existing-folder open, recents, tab/active-file/layout restoration and dirty-proj
 protection alongside the writing checks. Eight service tests cover document safety,
 project creation and state/recents boundaries. Native WKWebView launch and cancellation
 of the New Project dialog were checked. Screenshots are in ignored `app/output/`.
+
+
+## Crash recovery (2026-10-18)
+
+The first draft-protection slice journals dirty named and untitled documents in the
+local app data directory's `recovery/`, outside the project and Git. Each acknowledged
+editor sync writes atomically and flushes the journal; on macOS the directory entry
+is flushed too. The existing editor sync runs after 120 ms idle, so edits still in
+that debounce window or an in-flight write can be lost on an abrupt termination.
+Journal failures surface as errors; writing remains available in memory.
+
+After an interrupted session, startup offers each recovered draft. Recovery opens an
+unsaved copy with its template, never overwrites the original story, and transfers
+journal protection before deleting the previous entry. Saving, reloading from disk,
+or explicitly discarding a tab clears that tab's journal. A cancelled close retains
+it. Confirmed quitting now closes documents through the same cleanup path.
+
+This is crash recovery, not automatic saving to the original story, a Timeline, or
+an independent backup. Next in the existing flow: automatic disk saves and private
+Git history, then writing polish and preview navigation. Explorer creation tools
+remain later work.
+
+Verification: service restart tests cover Unicode, untitled and named drafts, external
+edits, saved/discarded cleanup and invalid identifiers. `app/verify-recovery.mjs` kills
+only a disposable service process, relaunches it, recovers both drafts through the UI,
+continues writing, and verifies saving clears protection without touching a newer
+external source. The full existing workbench regression suite also passes.
