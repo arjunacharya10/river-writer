@@ -345,8 +345,8 @@ Packages are the official `@codemirror/*` modules unless noted; community packag
   heading line decorations (larger/bold), emphasis marks with dimmed markers.
 * **VS Code parity:** VS Code keymap (community keymap package or our own keymap
   table), search panel themed like VS Code's find widget (`@codemirror/search`),
-  multiple cursors (built in), bracket/quote auto-close, minimap (community add-on, e.g.
-  `@replit/codemirror-minimap`), themes generated from the Light/Dark Modern palettes.
+  multiple cursors (built in), bracket/quote auto-close, minimap via **`@replit/codemirror-minimap`** (MIT, Replit;
+  decision #28 — verify maintenance at adoption), themes generated from the Light/Dark Modern palettes.
 * Editor behaviours: auto-uppercase cues and scene headings as you type, Tab to cycle
   element type (optional, Final Draft habit), typewriter scrolling in Zen mode.
 * **Writing surface, not page:** no line-number gutter; a slim gutter only for change
