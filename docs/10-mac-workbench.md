@@ -371,7 +371,7 @@ ignored `app/output/git-branches.png`. FDX moved to v1.1 (#54).
 
 ## Mac release polish (2026-10-18, #56/#57)
 
-Identity is now `app.riverwriter.mac` with an original icon and macOS 13 minimum. The
+Identity is now `app.riverwriter.mac` with the River icon (#58) and macOS 13 minimum. The
 generated Info.plist was inspected: `.fountain` is matched by extension only at Default
 rank; Markdown uses `net.daringfireball.markdown` at Alternate rank. An early config with
 a `text/plain` MIME type produced `public.plain-text` and was corrected before commit.

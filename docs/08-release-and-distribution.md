@@ -103,8 +103,8 @@ flowchart LR
 
 ## Local release build (implemented, #56/#57)
 Identity: bundle ID **`app.riverwriter.mac`**, product name River Writer, category
-Productivity, macOS 13+, hardened runtime, original icon from `app/assets/river-icon.svg`
-(`pnpm --dir app tauri icon assets/river-icon.svg -o src-tauri/icons`, keeping only the
+Productivity, macOS 13+, hardened runtime, the River icon from `app/assets/river-writer-icon.png` (#58)
+(`pnpm --dir app tauri icon assets/river-writer-icon.png -o src-tauri/icons`, keeping only the
 macOS sizes). Bundles: `.app` and `.dmg`. The MIT license and Courier Prime OFL ship inside.
 
 File types: `.fountain` by extension (Default rank; the writer can still choose another
