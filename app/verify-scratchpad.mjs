@@ -1,14 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile, writeFile, readdir } from "node:fs/promises";
-async function until(check) {
-  for (let n = 0; n < 100; n++) {
-    try {
-      if (await check()) return;
-    } catch {}
-    await new Promise((resolve) => setTimeout(resolve, 50));
-  }
-  throw Error("Timed out waiting for scratchpad persistence");
-}
+import { until } from "./test-harness.mjs";
 export async function verifyScratchpad(page, folder, root) {
   assert.equal(
     await page.getByRole("button", { name: "Bin", exact: true }).count(),

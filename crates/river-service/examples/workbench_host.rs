@@ -174,10 +174,6 @@ fn main() {
                     )?;
                     Value::Null
                 }
-                "open_folder" => {
-                    docs.set_project(Path::new(&folder))?;
-                    json!([folder, list_files(Path::new(&folder))?])
-                }
                 "refresh_folder" => serde_json::to_value(list_files(Path::new(
                     args["path"].as_str().unwrap_or(&folder),
                 ))?)

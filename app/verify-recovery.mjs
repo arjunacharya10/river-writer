@@ -1,51 +1,16 @@
 import { chromium } from "playwright";
-import { spawn } from "node:child_process";
-import { createInterface } from "node:readline";
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { fileURLToPath } from "node:url";
-import { once } from "node:events";
+import { startBackend, openPage, until } from "./test-harness.mjs";
 import assert from "node:assert/strict";
-const root = fileURLToPath(new URL("../", import.meta.url));
 const folder = await mkdtemp(`${tmpdir()}/river-recovery-ui-`);
 const source = `${folder}/Script.fountain`;
 const journals = `${folder}/.test-config/recovery`;
 await writeFile(source, "Original story");
-let backend,
-  serial = 0;
-const pending = new Map();
-function start() {
-  backend = spawn(`${root}/target/debug/examples/workbench_host`, [folder], {
-    stdio: ["pipe", "pipe", "inherit"],
-  });
-  createInterface({ input: backend.stdout }).on("line", (line) => {
-    const reply = JSON.parse(line),
-      request = pending.get(reply.request);
-    pending.delete(reply.request);
-    reply.error
-      ? request.reject(Error(reply.error))
-      : request.resolve(reply.value);
-  });
-}
-function invoke(name, args = {}) {
-  return new Promise((resolve, reject) => {
-    const request = ++serial;
-    pending.set(request, { resolve, reject });
-    backend.stdin.write(JSON.stringify({ request, name, args }) + "\n");
-  });
-}
-async function crash() {
-  const exited = once(backend, "exit");
-  backend.kill("SIGKILL");
-  await exited;
-}
-async function until(check) {
-  for (let n = 0; n < 100; n++) {
-    if (await check()) return;
-    await new Promise((resolve) => setTimeout(resolve, 50));
-  }
-  throw Error("Timed out waiting for durable recovery");
-}
+let backend;
+const start = () => (backend = startBackend(folder));
+const invoke = (name, args) => backend.invoke(name, args);
+const crash = () => backend.crash();
 const browser = await chromium.launch({ headless: true, channel: "chrome" });
 try {
   start();
@@ -67,18 +32,7 @@ try {
   await crash();
   await writeFile(source, "Newer external edit");
   start();
-  const page = await browser.newPage();
-  const errors = [];
-  page.on("pageerror", (e) => errors.push(String(e)));
-  await page.exposeBinding("riverInvoke", (_, name, args) =>
-    invoke(name, args),
-  );
-  await page.addInitScript(() => {
-    window.__RIVER_TEST__ = {
-      invoke: (name, args) => window.riverInvoke(name, args),
-    };
-  });
-  await page.goto("http://127.0.0.1:1421");
+  const { page, errors } = await openPage(browser, invoke);
   await page
     .getByRole("button", { name: "Recover Script.fountain", exact: true })
     .click();
@@ -212,7 +166,6 @@ try {
   );
 } finally {
   await browser.close();
-  if (backend && backend.exitCode === null && backend.signalCode === null)
-    await crash();
+  if (backend) await crash();
   await rm(folder, { recursive: true, force: true });
 }

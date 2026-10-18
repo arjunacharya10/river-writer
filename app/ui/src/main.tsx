@@ -77,6 +77,7 @@ function App() {
     label: string;
   } | null>(null);
   const [extrasEpoch, setExtrasEpoch] = createSignal(0);
+  const [gitEpoch, setGitEpoch] = createSignal(0);
   const [gitBranch, setGitBranch] = createSignal("");
   async function switchBranch(name: string) {
     const root = folder();
@@ -128,6 +129,7 @@ function App() {
     }
     setExternal(false);
     setExtrasEpoch((n) => n + 1);
+    setGitEpoch((n) => n + 1);
     if (folder())
       setFiles(await call<FileEntry[]>("refresh_folder", { path: folder() }));
     if (previewOpen()) void updatePreview();
@@ -961,6 +963,16 @@ function App() {
     if (previewOpen() && !restoring) void updatePreview();
     if (!restoring) queueMicrotask(() => view?.focus());
   }
+  // Status messages are transient: clear each one after a few seconds.
+  createEffect(
+    on(notice, (text) => {
+      if (!text) return;
+      const timer = setTimeout(() => {
+        if (notice() === text) setNotice("");
+      }, 5000);
+      onCleanup(() => clearTimeout(timer));
+    }),
+  );
   createEffect(
     on(folder, (root) => {
       setGitBranch("");
@@ -1137,7 +1149,6 @@ function App() {
                 setSideView("explorer");
               }}
             />
-            <Action label="Find in file" icon="search" onClick={find} />
             <Action
               label="Outline"
               icon="list-tree"
@@ -1222,6 +1233,7 @@ function App() {
                     beforeCommit={beforeCommit}
                     onReview={showGitDiff}
                     switchBranch={switchBranch}
+                    refreshKey={gitEpoch()}
                     onBranch={setGitBranch}
                   />
                 )}
@@ -1714,7 +1726,6 @@ function App() {
           <Show when={current()}>
             <span>{analysis()?.words ?? "—"} words</span>
             <span>{analysis()?.scenes ?? "—"} scenes</span>
-            <span>UTF-8</span>
             <span>
               {current()?.path?.endsWith(".fountain") ? "Fountain" : "Markdown"}
             </span>

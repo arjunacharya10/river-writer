@@ -2,13 +2,10 @@ import { chromium } from "playwright";
 import { verifyWriting } from "./verify-writing.mjs";
 import { verifyTodos } from "./verify-todos.mjs";
 import { verifyScratchpad } from "./verify-scratchpad.mjs";
-import { spawn } from "node:child_process";
-import { createInterface } from "node:readline";
 import { mkdtemp, readFile, writeFile, mkdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { fileURLToPath } from "node:url";
+import { root, startBackend, openPage } from "./test-harness.mjs";
 import assert from "node:assert/strict";
-const root = fileURLToPath(new URL("../", import.meta.url));
 const folder = await mkdtemp(`${tmpdir()}/river-workbench-`);
 await mkdir(`${root}/app/output`, { recursive: true });
 const source =
@@ -18,60 +15,13 @@ await writeFile(
   `${folder}/Chapter.md`,
   "# Chapter One\n\nCafé by the river.\n",
 );
-const backend = spawn(
-  `${root}/target/debug/examples/workbench_host`,
-  [folder],
-  { stdio: ["pipe", "pipe", "inherit"] },
-);
-const requests = new Map();
-let request = 0;
-const failures = [];
-const calls = [];
-createInterface({ input: backend.stdout }).on("line", (line) => {
-  const reply = JSON.parse(line),
-    pending = requests.get(reply.request);
-  requests.delete(reply.request);
-  reply.error
-    ? pending.reject(Error(reply.error))
-    : pending.resolve(reply.value);
-});
-backend.on("exit", (code) => {
-  for (const p of requests.values()) p.reject(Error(`Backend exited ${code}`));
-});
-const invoke = (name, args = {}) =>
-  new Promise((resolve, reject) => {
-    calls.push({ name, id: args.id, revision: args.revision });
-    const id = ++request;
-    requests.set(id, { resolve, reject });
-    backend.stdin.write(JSON.stringify({ request: id, name, args }) + "\n");
-  });
+const backend = startBackend(folder);
+const { invoke, calls } = backend;
+let failures = [];
 const browser = await chromium.launch({ headless: true, channel: "chrome" });
 let page;
 try {
-  page = await browser.newPage({
-    viewport: { width: 1280, height: 840 },
-  });
-  page.setDefaultTimeout(10000);
-  page.on("pageerror", (e) => failures.push(String(e)));
-  page.on("response", (r) => {
-    if (r.status() >= 400) failures.push(`${r.status()} ${r.url()}`);
-  });
-  await page.exposeBinding("riverInvoke", (_, name, args) =>
-    invoke(name, args),
-  );
-  await page.addInitScript(() => {
-    window.__RIVER_TEST__ = {
-      invoke: async (name, args) => {
-        if (window.__cancelNext === name) {
-          window.__cancelNext = null;
-          return null;
-        }
-        const result = await window.riverInvoke(name, args);
-        return name === "render_page" ? new Uint8Array(result).buffer : result;
-      },
-    };
-  });
-  await page.goto("http://127.0.0.1:1421/");
+  ({ page, errors: failures } = await openPage(browser, invoke));
   await page.getByRole("heading", { name: "River Writer" }).waitFor();
   await page.getByText("Your projects will appear here.").waitFor();
   assert.equal(
@@ -377,6 +327,6 @@ try {
   throw error;
 } finally {
   await browser.close();
-  backend.stdin.end();
+  backend.stop();
   await rm(folder, { recursive: true, force: true });
 }

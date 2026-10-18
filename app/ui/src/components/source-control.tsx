@@ -29,6 +29,8 @@ export function SourceControl(props: {
   onReview: (title: string, review: GitReview, commit?: string) => void;
   switchBranch: (name: string) => Promise<void>;
   onBranch: (name: string) => void;
+  /** Bumped after River rewrites files (restore, switch), so counts update at once. */
+  refreshKey: number;
 }) {
   const [branches, setBranches] = createSignal<
     { name: string; current: boolean }[]
@@ -108,6 +110,16 @@ export function SourceControl(props: {
       (active) => {
         if (active) void refresh();
       },
+    ),
+  );
+  createEffect(
+    on(
+      () => props.refreshKey,
+      () => {
+        reviewedChanges = undefined;
+        void refresh();
+      },
+      { defer: true },
     ),
   );
   const timer = setInterval(() => {

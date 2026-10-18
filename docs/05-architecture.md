@@ -568,7 +568,7 @@ sample documents.
 
 ---
 
-Phase-0 progress (2026-10-17): typesetting trial implemented in `spikes/typeset/`.
+Phase-0 progress (2026-10-17): typesetting trial implemented in `spikes/typeset/` (since removed).
 On Apple M5 / macOS, 120 synthetic pages (265,680 glyphs) fully shape/wrap into a
 display list in 56.67 ms median / 62.85 ms worst (10 warm samples). Independent PDF
 renders match preview geometry within 1 pixel at 144 dpi; anti-aliasing differs.
@@ -580,8 +580,7 @@ native Tauri/WebKit window: 4,920-line document, typing transaction + forced lay
 p95 5–6 ms, with minimap enabled. Keyboard input and undo also checked natively.
 Browser tests cover source-preserving template changes, search and geometry.
 Full production pagination remains unvalidated; Windows is outside current scope. See the
-[typesetting notes](../spikes/typeset/NOTES.md) and
-[editor notes](../spikes/editor/NOTES.md) for reproduction and limitations.
+typesetting and editor notes in git history (`spikes/`, removed after commit `5e44904`).
 
 Phase-1 progress (2026-10-17): the production Rust workspace and `river` CLI now
 export real source files using all four templates, with source mapping, inline styles,

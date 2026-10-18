@@ -167,21 +167,6 @@ async fn open_document(
     .await
 }
 #[tauri::command]
-async fn open_folder(
-    app: tauri::AppHandle,
-) -> Result<Option<(PathBuf, Vec<river_service::FileEntry>)>, String> {
-    work(move || {
-        let Some(path) = app.dialog().file().blocking_pick_folder() else {
-            return Ok(None);
-        };
-        let path = path.into_path().map_err(|e| e.to_string())?;
-        let entries = river_service::list_files(&path)?;
-        lock(&app.state::<Desktop>().documents)?.set_project(&path)?;
-        Ok(Some((path, entries)))
-    })
-    .await
-}
-#[tauri::command]
 async fn recent_projects(
     app: tauri::AppHandle,
 ) -> Result<Vec<river_service::projects::RecentProject>, String> {
@@ -786,7 +771,6 @@ fn main() {
             git_undo_restore,
             new_document,
             open_document,
-            open_folder,
             refresh_folder,
             settle_scratchpad,
             load_scratchpad,

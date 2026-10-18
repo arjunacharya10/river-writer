@@ -1,6 +1,4 @@
 import { chromium } from "playwright";
-import { spawn } from "node:child_process";
-import { createInterface } from "node:readline";
 import {
   mkdtemp,
   writeFile,
@@ -10,9 +8,8 @@ import {
   mkdir,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { fileURLToPath } from "node:url";
+import { root, startBackend, openPage, until } from "./test-harness.mjs";
 import assert from "node:assert/strict";
-const root = fileURLToPath(new URL("../", import.meta.url));
 const folder = await mkdtemp(`${tmpdir()}/river-git-ui-`);
 await writeFile(
   `${folder}/Script.fountain`,
@@ -20,47 +17,14 @@ await writeFile(
 );
 await writeFile(`${folder}/.gitignore`, ".test-config/\nprivate.md\n");
 await writeFile(`${folder}/private.md`, "Private notes");
-const backend = spawn(
-  `${root}/target/debug/examples/workbench_host`,
-  [folder],
-  {
-    stdio: ["pipe", "pipe", "inherit"],
-    env: {
-      ...process.env,
-      GIT_CONFIG_GLOBAL: "/dev/null",
-      GIT_CONFIG_NOSYSTEM: "1",
-    },
-  },
-);
-let serial = 0;
-const pending = new Map();
-createInterface({ input: backend.stdout }).on("line", (line) => {
-  const r = JSON.parse(line),
-    p = pending.get(r.request);
-  pending.delete(r.request);
-  r.error ? p.reject(Error(r.error)) : p.resolve(r.value);
+const backend = startBackend(folder, {
+  GIT_CONFIG_GLOBAL: "/dev/null",
+  GIT_CONFIG_NOSYSTEM: "1",
 });
-const invoke = (name, args = {}) =>
-  new Promise((resolve, reject) => {
-    const request = ++serial;
-    pending.set(request, { resolve, reject });
-    backend.stdin.write(JSON.stringify({ request, name, args }) + "\n");
-  });
+const { invoke } = backend;
 const browser = await chromium.launch({ headless: true, channel: "chrome" });
-const page = await browser.newPage({ viewport: { width: 1280, height: 840 } });
-page.setDefaultTimeout(10000);
-const errors = [];
-page.on("pageerror", (e) => errors.push(String(e)));
+const { page, errors } = await openPage(browser, invoke);
 try {
-  await page.exposeBinding("riverInvoke", (_, name, args) =>
-    invoke(name, args),
-  );
-  await page.addInitScript(() => {
-    window.__RIVER_TEST__ = {
-      invoke: (name, args) => window.riverInvoke(name, args),
-    };
-  });
-  await page.goto("http://127.0.0.1:1421");
   await page
     .getByRole("button", { name: "Open Project…", exact: true })
     .click();
@@ -164,13 +128,6 @@ try {
   // Restore one file from a commit, with an open tab, then undo it.
   const story = `${folder}/Script.fountain`;
   const editorText = () => page.locator(".cm-content").innerText();
-  const until = async (check) => {
-    for (let n = 0; n < 100; n++) {
-      if (await check()) return;
-      await new Promise((r) => setTimeout(r, 50));
-    }
-    throw Error("Timed out waiting for restore");
-  };
   await diff
     .getByRole("button", { name: "Restore Script.fountain", exact: true })
     .click();
@@ -279,6 +236,6 @@ try {
   throw e;
 } finally {
   await browser.close();
-  backend.stdin.end();
+  backend.stop();
   await rm(folder, { recursive: true, force: true });
 }

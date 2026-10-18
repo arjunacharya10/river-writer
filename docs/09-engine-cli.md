@@ -124,5 +124,5 @@ incremental page invalidation**. Both PDF/raster times are excluded from layout 
 * Scene/character indexes, semantic editor tokens, incremental parse/re-pagination,
   project-level configuration and application services come with later integration.
 * No git, production workbench, autosave, file watcher or native print UI in these crates.
-  The `spikes/` editor remains a disposable experiment. The production shell will use
+  The phase-0 trials were removed after the production app replaced them. The shell uses
   Kobalte/Corvu with River wrappers and native Mac menus/dialogs (decision #37).

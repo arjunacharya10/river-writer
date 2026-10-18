@@ -6,7 +6,7 @@ formatted pages. It's a focused, anti-bloat take on Highland Pro: craft first, n
 no accounts, no AI, no plugins.
 
 ## Read first
-1. `docs/decision-log.md` — every decision (59 so far) with reasoning and reversals.
+1. `docs/decision-log.md` — every decision (60 so far) with reasoning and reversals.
    **Locked decisions are not to be relitigated** unless the user raises them.
 2. `docs/01-product-brief.md` (principles), then `02`–`10` as relevant.
 3. Formatting-engine behaviour (parser rules, template values, pagination,
@@ -34,12 +34,12 @@ no accounts, no AI, no plugins.
   checks (but keep the door open; doc 08).
 
 ## Current status and next step
-Product definition complete (59 decisions). Engine CLI and the first production Mac
+Product definition complete (60 decisions). Engine CLI and the first production Mac
 workbench are implemented. `app/` uses Kobalte/Corvu/CodeMirror with native menus,
 a project welcome screen (New/Open/Recent), saved project tab/layout restoration,
 real story-file IO, Rust-driven outline and page preview/PDF. `river-service` stays
 independent of Tauri. See `docs/09-engine-cli.md` and `docs/10-mac-workbench.md` for
-commands, verification and boundaries. The editor spike remains disposable.
+commands, verification and boundaries.
 
 Next: finish shell/preview phases (incremental updates, watchers, generated IPC types,
 preview polish), settings, then Git polish (revert, branch delete/merge)

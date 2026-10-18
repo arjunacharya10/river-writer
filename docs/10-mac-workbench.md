@@ -402,3 +402,18 @@ snapshot tree and patch with a mempack backend, so review writes nothing to `.gi
 UI calls it for **Review changes** and, if no review is pending, at **Commit**. Commit
 still re-derives the tree on disk and refuses if it differs. A new test confirms five
 rounds of edits, polling and review leave `.git/objects` unchanged.
+
+## Pruning pass (2026-10-18, #60)
+
+Removed: `spikes/` (last present in `5e44904`), the dead `open_folder` command, the
+search activity icon (find-in-file stays on ⌘F, Edit → Find and the palette) and the
+status bar's UTF-8 label. Status messages fade after 5 s; errors persist until dismissed.
+`ignore_ui_state` is the single writer of the `/_river/river.json` ignore rule, matching
+existing rules with CRLF or trailing spaces so it is never appended twice. Source Control
+takes a `refreshKey` bumped after River rewrites files, so counts update without waiting
+for the 3 s poll. `app/test-harness.mjs` holds the shared service/page/`until` setup for
+`verify`, `verify:git`, `verify:recovery` and the Scratchpad checks.
+
+Still open from the review: split `main.tsx` and `style.css` by area, one shared command
+table for Tauri and the test host, caching the private-history repository per file, and
+history retention.
