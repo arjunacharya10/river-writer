@@ -6,10 +6,12 @@ import {
   createEffect,
   onMount,
   onCleanup,
+  on,
 } from "solid-js";
 import { EditorView } from "@codemirror/view";
 import type { EditorState } from "@codemirror/state";
 import { openSearchPanel } from "@codemirror/search";
+import { isolateHistory } from "@codemirror/commands";
 import { call, commands } from "./bridge";
 import { stateFor, semantic, byteOffsets } from "./editor";
 import {
@@ -37,6 +39,113 @@ import {
 import "@vscode/codicons/dist/codicon.css";
 import "./style.css";
 function App() {
+  type Version = { id: string; timestamp: number; bytes: number };
+  const [historyOpen, setHistoryOpen] = createSignal(false);
+  const [versions, setVersions] = createSignal<Version[]>([]);
+  const [historyVersion, setHistoryVersion] = createSignal("");
+  const [historyText, setHistoryText] = createSignal("");
+  const [historyBusy, setHistoryBusy] = createSignal(false);
+  const [historyMore, setHistoryMore] = createSignal(false);
+  let historyRequest = 0;
+  let historyRead = 0;
+  const autosaveTimers = new Map<number, ReturnType<typeof setTimeout>>();
+  const closing = new Set<number>();
+  function cancelAutosave(id: number) {
+    clearTimeout(autosaveTimers.get(id));
+    autosaveTimers.delete(id);
+  }
+  function scheduleAutosave(id: number) {
+    cancelAutosave(id);
+    autosaveTimers.set(
+      id,
+      setTimeout(() => {
+        autosaveTimers.delete(id);
+        if (!quitting && !projectBusy() && !closing.has(id))
+          void autosave(id).catch((e) =>
+            fail(
+              `Could not automatically save ${nameOf(tabs().find((d) => d.id === id) ?? ({ path: null } as Story))}: ${e}`,
+            ),
+          );
+      }, 1000),
+    );
+  }
+  async function autosave(id: number) {
+    await sync(id);
+    const doc = tabs().find((d) => d.id === id);
+    if (!doc?.path || !doc.dirty || closing.has(id)) return;
+    const task = (queues.get(id) ?? Promise.resolve())
+      .catch(() => {})
+      .then(() => {
+        if (closing.has(id)) return null;
+        return call<Story | null>("autosave_document", {
+          id,
+          revision: doc.revision,
+        });
+      });
+    queues.set(id, task);
+    const result = await task;
+    if (!result) return;
+    const local = tabs().find((d) => d.id === id);
+    if (!local) return;
+    patch(id, { dirty: local.revision !== result.revision });
+    if (active() === id) setNotice("Saved automatically");
+    if (historyOpen() && active() === id) await loadHistory();
+  }
+  async function loadHistory(older = false) {
+    const doc = current();
+    const ticket = ++historyRequest;
+    if (!doc?.path) {
+      setVersions([]);
+      setHistoryBusy(false);
+      setHistoryMore(false);
+      return;
+    }
+    setHistoryBusy(true);
+    try {
+      const items = await call<Version[]>("local_history", {
+        id: doc.id,
+        before: older ? versions().at(-1)?.id : null,
+      });
+      if (ticket === historyRequest && active() === doc.id) {
+        setVersions((previous) => (older ? [...previous, ...items] : items));
+        setHistoryMore(items.length === 200);
+      }
+    } finally {
+      if (ticket === historyRequest) setHistoryBusy(false);
+    }
+  }
+  async function inspectVersion(version: string) {
+    const doc = current();
+    if (!doc) return;
+    const ticket = ++historyRead;
+    setHistoryVersion("");
+    const text = await call<string>("history_text", { id: doc.id, version });
+    if (ticket !== historyRead || active() !== doc.id) return;
+    setHistoryText(text);
+    setHistoryVersion(version);
+  }
+  async function restoreVersion() {
+    const doc = current(),
+      version = historyVersion();
+    if (!doc || !version) return;
+    await sync(doc.id);
+    const text = await call<string>("prepare_restore", {
+      id: doc.id,
+      revision: doc.revision,
+      version,
+    });
+    if (active() !== doc.id || current()?.revision !== doc.revision)
+      throw Error("The story changed. Choose the version again.");
+    if (view && view.state.doc.toString() !== text) {
+      view.dispatch({
+        annotations: isolateHistory.of("full"),
+        changes: { from: 0, to: view.state.doc.length, insert: text },
+      });
+      view.focus();
+    }
+    setNotice("Version restored. Undo returns to your previous text.");
+    await loadHistory();
+  }
   const [recoveries, setRecoveries] = createSignal<
     { key: string; path: string | null }[]
   >([]);
@@ -185,6 +294,7 @@ function App() {
     patch(id, { text, revision: doc.revision + 1, dirty: true });
     setNotice("");
     schedule(id);
+    scheduleAutosave(id);
   }
   function select(id: number) {
     openIntent++;
@@ -271,16 +381,25 @@ function App() {
       });
   }
   async function mayLeave() {
+    for (const id of autosaveTimers.keys()) cancelAutosave(id);
     for (const d of tabs()) {
       if (
         d.dirty &&
         !(await call<boolean>("confirm_discard", { name: nameOf(d) }))
-      )
+      ) {
+        for (const doc of tabs()) if (doc.dirty) scheduleAutosave(doc.id);
         return false;
+      }
     }
     return true;
   }
   async function clearWorkspace() {
+    for (const id of autosaveTimers.keys()) cancelAutosave(id);
+    setHistoryVersion("");
+    setHistoryText("");
+    setVersions([]);
+    historyRequest++;
+    historyRead++;
     clearTimeout(refreshTimer);
     previewRequest++;
     await Promise.all([...queues.values()].map((p) => p.catch(() => {})));
@@ -388,7 +507,10 @@ function App() {
     patch(doc.id, {
       path: result.path,
       dirty: local?.revision !== result.revision,
-      template: result.template,
+      template:
+        local?.revision === result.revision
+          ? result.template
+          : (local?.template ?? result.template),
     });
     setNotice("Saved");
     setExternal(false);
@@ -406,27 +528,36 @@ function App() {
   async function close(id: number) {
     const doc = tabs().find((d) => d.id === id);
     if (!doc) return;
-    if (
-      doc.dirty &&
-      !(await call<boolean>("confirm_discard", { name: nameOf(doc) }))
-    )
-      return;
-    await queues.get(id)?.catch(() => {});
-    await call("close_document", { id });
-    const remaining = tabs().filter((d) => d.id !== id);
-    states.delete(id);
-    scrolls.delete(id);
-    sent.delete(id);
-    queues.delete(id);
-    setTabs(remaining);
-    if (active() === id) {
-      loaded = null;
-      setActive(remaining.at(-1)?.id ?? null);
+    cancelAutosave(id);
+    closing.add(id);
+    try {
+      if (
+        doc.dirty &&
+        !(await call<boolean>("confirm_discard", { name: nameOf(doc) }))
+      ) {
+        scheduleAutosave(id);
+        return;
+      }
+      await queues.get(id)?.catch(() => {});
+      await call("close_document", { id });
+      const remaining = tabs().filter((d) => d.id !== id);
+      states.delete(id);
+      scrolls.delete(id);
+      sent.delete(id);
+      queues.delete(id);
+      setTabs(remaining);
+      if (active() === id) {
+        loaded = null;
+        setActive(remaining.at(-1)?.id ?? null);
+      }
+    } finally {
+      closing.delete(id);
     }
   }
   async function quit() {
     if (quitting) return;
     quitting = true;
+    for (const id of autosaveTimers.keys()) cancelAutosave(id);
     try {
       for (const d of tabs()) {
         if (
@@ -440,6 +571,7 @@ function App() {
       await call("quit_confirmed");
     } finally {
       quitting = false;
+      for (const doc of tabs()) if (doc.dirty) scheduleAutosave(doc.id);
     }
   }
   async function reload() {
@@ -706,12 +838,23 @@ function App() {
       clearInterval(interval);
       clearTimeout(refreshTimer);
       clearTimeout(sessionTimer);
+      for (const id of autosaveTimers.keys()) cancelAutosave(id);
       window.removeEventListener("keydown", key);
       window.removeEventListener("focus", poll);
       system.removeEventListener("change", theme);
       view?.destroy();
     });
   });
+  createEffect(
+    on([active, historyOpen], ([, open]) => {
+      historyRead++;
+      setHistoryVersion("");
+      setHistoryText("");
+      setVersions([]);
+      setHistoryMore(false);
+      if (open) void loadHistory().catch(fail);
+    }),
+  );
   return (
     <>
       <Show when={recoveries().length > 0}>
@@ -917,6 +1060,12 @@ function App() {
                         onClick={togglePreview}
                       />
                       <Action
+                        label="Toggle local history"
+                        icon="history"
+                        active={historyOpen()}
+                        onClick={() => setHistoryOpen(!historyOpen())}
+                      />
+                      <Action
                         label="Export PDF"
                         icon="export"
                         onClick={run(exportPdf)}
@@ -1022,6 +1171,70 @@ function App() {
                     )}
                   </For>
                 </div>
+              </Show>
+              <Show when={historyOpen()}>
+                <section class="timeline" aria-label="Local history">
+                  <header>
+                    <strong>TIMELINE · LOCAL HISTORY</strong>
+                    <Action
+                      label="Close local history"
+                      icon="close"
+                      onClick={() => setHistoryOpen(false)}
+                    />
+                  </header>
+                  <div class="timeline-body">
+                    <div class="timeline-list">
+                      <For each={versions()}>
+                        {(version) => (
+                          <button
+                            class={
+                              historyVersion() === version.id ? "selected" : ""
+                            }
+                            aria-pressed={historyVersion() === version.id}
+                            onClick={run(() => inspectVersion(version.id))}
+                          >
+                            {new Date(
+                              version.timestamp * 1000,
+                            ).toLocaleString()}{" "}
+                            · {version.bytes} bytes
+                          </button>
+                        )}
+                      </For>
+                      <Show when={historyMore()}>
+                        <button
+                          disabled={historyBusy()}
+                          onClick={run(() => loadHistory(true))}
+                        >
+                          Load older versions
+                        </button>
+                      </Show>
+                      <Show when={!versions().length}>
+                        <p class="muted">
+                          {historyBusy()
+                            ? "Loading…"
+                            : current()?.path
+                              ? "Saved versions will appear here."
+                              : "Save this draft to start local history."}
+                        </p>
+                      </Show>
+                    </div>
+                    <div class="timeline-version">
+                      <Show
+                        when={historyVersion()}
+                        fallback={
+                          <p class="muted">
+                            Choose a version to read its text.
+                          </p>
+                        }
+                      >
+                        <button onClick={run(restoreVersion)}>
+                          Restore this version
+                        </button>
+                        <pre aria-label="Version text">{historyText()}</pre>
+                      </Show>
+                    </div>
+                  </div>
+                </section>
               </Show>
             </Split.Panel>
             <SplitVisibility

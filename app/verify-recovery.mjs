@@ -120,9 +120,83 @@ try {
     "My untitled draft continued",
   );
   assert.equal(await readFile(source, "utf8"), "Newer external edit");
+  // A named draft saves after idle typing, including when its tab is inactive.
+  await page.locator(".cm-content").click();
+  await page.keyboard.press("ControlOrMeta+End");
+  await page.keyboard.insertText(" automatically");
+  await page.getByRole("tab", { name: /Untitled.md/ }).click();
+  await until(
+    async () =>
+      (await readFile(`${folder}/Saved.md`, "utf8")) ===
+      "My untitled draft continued automatically",
+  );
+  await page.getByRole("tab", { name: /Saved.md/ }).click();
+  await page
+    .getByRole("button", { name: "Toggle local history", exact: true })
+    .click();
+  const timeline = page.getByRole("region", { name: "Local history" });
+  await timeline.waitFor();
+  await until(
+    async () => (await timeline.locator(".timeline-list button").count()) === 2,
+  );
+  await timeline.locator(".timeline-list button").last().click();
+  await until(
+    async () =>
+      (await page.getByLabel("Version text").innerText()) ===
+      "My untitled draft continued",
+  );
+  await page
+    .getByRole("button", { name: "Restore this version", exact: true })
+    .click();
+  await until(
+    async () =>
+      (await page.locator(".cm-content").innerText()) ===
+      "My untitled draft continued",
+  );
+  await until(
+    async () =>
+      (await readFile(`${folder}/Saved.md`, "utf8")) ===
+      "My untitled draft continued",
+  );
+  // Restoring uses an editor transaction, so Undo restores the newer writing.
+  await page.keyboard.press("ControlOrMeta+z");
+  await until(
+    async () =>
+      (await page.locator(".cm-content").innerText()) ===
+      "My untitled draft continued automatically",
+  );
+  await until(
+    async () =>
+      (await readFile(`${folder}/Saved.md`, "utf8")) ===
+      "My untitled draft continued automatically",
+  );
+  // An external edit blocks autosave and leaves our own writing in recovery.
+  await writeFile(`${folder}/Saved.md`, "External replacement");
+  await page.locator(".cm-content").click();
+  await page.keyboard.press("ControlOrMeta+End");
+  await page.keyboard.insertText(" private changes");
+  await page
+    .getByRole("alert")
+    .filter({ hasText: "Could not automatically save" })
+    .waitFor();
+  assert.equal(
+    await readFile(`${folder}/Saved.md`, "utf8"),
+    "External replacement",
+  );
+  await until(async () => {
+    const files = await readdir(journals);
+    const drafts = await Promise.all(
+      files
+        .filter((f) => f.endsWith(".json"))
+        .map(async (f) =>
+          JSON.parse(await readFile(`${journals}/${f}`, "utf8")),
+        ),
+    );
+    return drafts.some((d) => d.text.endsWith(" private changes"));
+  });
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: abrupt service termination, named and untitled recovery, external edit preserved, continued writing journaled, saving clears recovery.",
+    "PASS: abrupt service termination, named and untitled recovery, external edit preserved, continued writing journaled, saving clears recovery, inactive-tab autosave, Timeline preview/restore/undo, external-change protection.",
   );
 } finally {
   await browser.close();

@@ -5,8 +5,10 @@ use serde::{Deserialize, Serialize};
 use std::{
     fs,
     path::PathBuf,
+    sync::atomic::{AtomicU64, Ordering},
     time::{SystemTime, UNIX_EPOCH},
 };
+static SERIAL: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Draft {
@@ -35,7 +37,11 @@ impl Recovery {
             .as_nanos();
         Ok(Self {
             root,
-            session: format!("{}-{stamp}", std::process::id()),
+            session: format!(
+                "{}-{stamp}-{}",
+                std::process::id(),
+                SERIAL.fetch_add(1, Ordering::Relaxed)
+            ),
         })
     }
     fn key(&self, id: u64) -> String {
@@ -132,11 +138,12 @@ mod tests {
     use super::*;
     fn root() -> PathBuf {
         std::env::temp_dir().join(format!(
-            "river-recovery-{}",
+            "river-recovery-{}-{}",
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
-                .as_nanos()
+                .as_nanos(),
+            SERIAL.fetch_add(1, Ordering::Relaxed)
         ))
     }
     #[test]

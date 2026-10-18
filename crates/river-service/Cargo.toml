@@ -14,3 +14,4 @@ river-text = { path = "../river-text" }
 river-paginate = { path = "../river-paginate" }
 river-pdf = { path = "../river-pdf" }
 river-render = { path = "../river-render" }
+river-vcs = { path = "../river-vcs" }

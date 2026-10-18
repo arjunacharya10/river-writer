@@ -9,6 +9,7 @@ use std::{
 fn main() {
     let folder = std::env::args().nth(1).expect("test folder");
     let mut docs = Documents::default();
+    docs.enable_history(Path::new(&folder).join(".test-config"));
     let recovery =
         recovery::Recovery::new(Path::new(&folder).join(".test-config/recovery")).unwrap();
     let mut engine = river_text::TextEngine::new();
@@ -76,6 +77,28 @@ fn main() {
                     )?;
                     recovery.protect(&d)?;
                     serde_json::to_value(analyze(&d)).unwrap()
+                }
+                "autosave_document" => {
+                    let doc =
+                        docs.autosave(id, args["revision"].as_u64().ok_or("Missing revision")?)?;
+                    if let Some(doc) = &doc {
+                        recovery.protect(doc)?;
+                        docs.persist_saved_template(id)?;
+                    }
+                    serde_json::to_value(doc).unwrap()
+                }
+                "local_history" => {
+                    serde_json::to_value(docs.local_history_before(id, args["before"].as_str())?)
+                        .unwrap()
+                }
+                "history_text" => json!(
+                    docs.history_text(id, args["version"].as_str().ok_or("Missing version")?)?
+                ),
+                "prepare_restore" => {
+                    docs.before_restore(id, args["revision"].as_u64().ok_or("Missing revision")?)?;
+                    json!(
+                        docs.history_text(id, args["version"].as_str().ok_or("Missing version")?)?
+                    )
                 }
                 "analyze_document" => serde_json::to_value(analyze(docs.get(id)?)).unwrap(),
                 "persist_saved_template" => {

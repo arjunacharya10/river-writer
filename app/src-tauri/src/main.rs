@@ -260,6 +260,54 @@ async fn recovery_drafts(app: tauri::AppHandle) -> Result<Vec<Draft>, String> {
     work(move || app.state::<Recovery>().pending()).await
 }
 #[tauri::command]
+async fn autosave_document(
+    app: tauri::AppHandle,
+    id: u64,
+    revision: u64,
+) -> Result<Option<Document>, String> {
+    work(move || {
+        let state = app.state::<Desktop>();
+        let mut docs = lock(&state.documents)?;
+        let doc = docs.autosave(id, revision)?;
+        if let Some(doc) = &doc {
+            app.state::<Recovery>().protect(doc)?;
+            docs.persist_saved_template(id)?;
+        }
+        Ok(doc)
+    })
+    .await
+}
+#[tauri::command]
+async fn local_history(
+    app: tauri::AppHandle,
+    id: u64,
+    before: Option<String>,
+) -> Result<Vec<river_service::HistoryVersion>, String> {
+    work(move || {
+        lock(&app.state::<Desktop>().documents)?.local_history_before(id, before.as_deref())
+    })
+    .await
+}
+#[tauri::command]
+async fn history_text(app: tauri::AppHandle, id: u64, version: String) -> Result<String, String> {
+    work(move || lock(&app.state::<Desktop>().documents)?.history_text(id, &version)).await
+}
+#[tauri::command]
+async fn prepare_restore(
+    app: tauri::AppHandle,
+    id: u64,
+    revision: u64,
+    version: String,
+) -> Result<String, String> {
+    work(move || {
+        let state = app.state::<Desktop>();
+        let docs = lock(&state.documents)?;
+        docs.before_restore(id, revision)?;
+        docs.history_text(id, &version)
+    })
+    .await
+}
+#[tauri::command]
 async fn recover_draft(app: tauri::AppHandle, key: String) -> Result<Document, String> {
     work(move || {
         let state = app.state::<Desktop>();
@@ -418,6 +466,7 @@ fn main() {
         .manage(Desktop::default())
         .setup(|app| {
             app.manage(Recovery::new(app.path().app_data_dir()?.join("recovery"))?);
+            lock(&app.state::<Desktop>().documents)?.enable_history(app.path().app_data_dir()?);
             let item =
                 |id: &str, text: &str, key: &str| MenuItem::with_id(app, id, text, true, Some(key));
             let app_menu = Submenu::with_items(
@@ -525,6 +574,10 @@ fn main() {
             sync_document,
             recovery_drafts,
             recover_draft,
+            autosave_document,
+            local_history,
+            history_text,
+            prepare_restore,
             analyze_document,
             save_document,
             persist_template,

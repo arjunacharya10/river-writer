@@ -837,3 +837,61 @@ kbd {
   padding: 6px 10px;
   cursor: pointer;
 }
+
+.timeline {
+  flex: 0 0 240px;
+  min-height: 150px;
+  max-height: 40vh;
+  border-top: 1px solid var(--border);
+  overflow: hidden;
+  background: var(--editor);
+}
+.timeline > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 12px;
+  height: 34px;
+  font-size: 11px;
+}
+.timeline-body {
+  display: flex;
+  height: calc(100% - 34px);
+  min-height: 0;
+}
+.timeline-list {
+  width: 260px;
+  flex-shrink: 0;
+  overflow: auto;
+  border-right: 1px solid var(--border);
+}
+.timeline-list button {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.timeline-list button:hover {
+  background: var(--hover);
+}
+.timeline-list button.selected {
+  background: var(--selection);
+}
+.timeline-version {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 8px 12px;
+}
+.timeline-version pre {
+  font-family: "Courier Prime", monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.timeline .muted {
+  padding: 0 12px;
+}

@@ -1,0 +1,10 @@
+[package]
+name = "river-vcs"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+git2 = { version = "0.20", default-features = false }
+serde.workspace = true

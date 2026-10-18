@@ -12,8 +12,10 @@ gate development or release. Linux: later or never.
 * Git: commit (no staging), log, diff (scene/paragraph/word), restore/revert, branch +
   checkout, remote + push/pull/fetch, clone
 * Local autosave history (never pushed); automatic local backups
-  * Crash recovery for dirty named and untitled drafts implemented (doc 10); automatic
-    disk saves, private Git Timeline and independent backups remain pending.
+  * Implemented: crash recovery, one-second idle disk saves, private per-branch Git
+    history, Timeline preview/restore with Undo (doc 10). Remaining: retention
+    compaction, real commits in Timeline,
+    independent backups.
 * Themes: Light and Dark only, following the system appearance
 
 ## Version 1.1
@@ -36,7 +38,8 @@ services, non-creative templates.
 1. One unified syntax for screen and prose, or Fountain + Markdown kept separate?
    (Current lean: separate.)
 2. Open Highland `.highland` files as a migration path? (ZIP → TextBundle → `text.fountain`/`text.md`)
-3. Exact autosave interval and retention.
+3. History retention/compaction implementation. The disk-save interval is settled
+   at 1 second idle; checkpoints protect each disk replacement (#42).
 
 ## Closed decisions: license and business model (#40)
 * **License: MIT.** The repository's `LICENSE` contains the grant.

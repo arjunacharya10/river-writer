@@ -101,10 +101,10 @@ complete automated Mac interaction suite.
 * Save As does not replace an existing file. Mixed-newline files normalize to their
   detected convention. Save protection compares contents before replacement;
   a different app can still race a write between that check and the final rename.
-* Extras, settings UI, Git/history/autosave/backups, FDX, print, Mac file associations,
-  full font-license presentation, signed packaging and other v1 polish remain later
-  phases. Crash recovery now protects unsaved text as described below; version history
-  and independent backups are still pending.
+* Extras, settings UI, full Git operations, history compaction, independent backups,
+  FDX, print, Mac file associations, signed packaging and other v1 polish remain
+  later phases. Crash recovery, automatic disk saves and local Timeline are implemented
+  as described below.
 * Development icon/identity only. No public push has been made; the MIT license and no-business-model decision are now settled (#40).
 
 ## Preview toggle fix (2026-10-18)
@@ -127,8 +127,8 @@ The app now starts with New Project / Open Project / Recent Projects (#39).
 session persistence; native Tauri commands own name/location/folder dialogs. New projects
 contain one empty named `.md` file. Existing folders open their saved story tabs/active
 file, cursors, scroll positions, sidebar/preview, splits and theme. `_river/river.json`
-keeps this UI state without replacing existing template/unknown keys. No story text is
-autosaved. Unsaved text can cancel closing/switching projects.
+keeps UI state without replacing existing template/unknown keys. Story autosaving
+was added separately below (#42). Unsaved text can cancel closing/switching projects.
 
 Recent folders live in the local app configuration's `projects.json`. Only paths,
 names and last-opened timestamps are recorded. Missing locations remain visible, and
@@ -157,13 +157,47 @@ journal protection before deleting the previous entry. Saving, reloading from di
 or explicitly discarding a tab clears that tab's journal. A cancelled close retains
 it. Confirmed quitting now closes documents through the same cleanup path.
 
-This is crash recovery, not automatic saving to the original story, a Timeline, or
-an independent backup. Next in the existing flow: automatic disk saves and private
-Git history, then writing polish and preview navigation. Explorer creation tools
-remain later work.
+This journal protects unsaved text independently of the automatic disk saves and
+Timeline added below. Independent backups remain pending. Next in the existing flow:
+writing polish and preview navigation. Explorer creation tools remain later work.
 
 Verification: service restart tests cover Unicode, untitled and named drafts, external
 edits, saved/discarded cleanup and invalid identifiers. `app/verify-recovery.mjs` kills
 only a disposable service process, relaunches it, recovers both drafts through the UI,
 continues writing, and verifies saving clears protection without touching a newer
 external source. The full existing workbench regression suite also passes.
+
+
+## Automatic saving and local Timeline (2026-10-18)
+
+Named story files save after 1 second of idle typing, including inactive tabs.
+Untitled drafts never trigger a save dialog automatically. Autosave uses the same
+encoding-preserving, atomic, external-change-checked save path as Cmd+S. Stale
+revisions are rejected. A history error blocks replacement and leaves the draft
+available in memory/recovery. Successful saves clear that recovery journal. Closing
+flows cancel pending timers; queued saves finish before documents are released.
+
+`river-vcs` has no Tauri dependency and uses libgit2 with transport features disabled.
+On first history access it adopts the exact project Git repository or initializes
+one, preserving existing ignore rules while excluding `_river/river.json`. A bare
+private repository at `.git/river-autosave/` uses a separate branch keyed to each
+main branch (or detached HEAD). Its alternates read main objects; all new autosave
+objects stay in the private repository. No author-identity setup is needed for these
+private snapshots. Standalone files use app-data history keyed by source path.
+
+Before each disk replacement, both the old bytes and changed new bytes are protected.
+The editor title bar's history button opens a Timeline bottom panel for the current
+file, showing versions in batches of 200 with a text preview. Restore first checkpoints
+the current buffer, then replaces editor text through an isolated undo transaction;
+normal autosaving applies afterward. Changing tabs invalidates pending history reads.
+
+Still pending: retention compaction/collection, real
+commits in Timeline and independent backups. No snapshots are deleted in this slice.
+History cannot protect against loss of the drive holding the project/app data.
+
+Verification: 13 service tests plus 5 VCS tests cover encoding, revisions, external
+edits, history failure safety, previous-content restoration, per-file/per-branch
+isolation, linked worktrees, paginated history, standalone storage, restart
+persistence and a real local mirror push.
+The expanded recovery UI test covers inactive-tab autosave, Timeline preview/restore,
+Undo and conflict recovery; the full workbench regression suite passes as well.

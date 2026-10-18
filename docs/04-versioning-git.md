@@ -88,3 +88,18 @@ BRANCHES
 ● main
 ○ darker-ending                [Diff] [Merge]
 ```
+
+
+### Implemented draft protection (2026-10-18, #42)
+Named files save after one second of idle typing. Private history checkpoints the
+previous disk text and each changed saved text before replacement, deduplicating
+unchanged content. This supersedes the proposed 90-second/1–2-minute history timing.
+The Timeline bottom panel previews per-file versions in batches of 200 and restores
+through an undoable editor edit, preserving the current buffer first.
+
+The private repository reads main objects through alternates; its own new objects
+and refs stay private. An independent local `git push --mirror` regression test
+checks that neither the private commit nor its draft blob reaches the remote.
+Standalone files use app data. Untitled drafts use crash recovery until named.
+Real commits in Timeline, retention compaction/collection and
+independent backups are still planned. Existing snapshots are not pruned yet.

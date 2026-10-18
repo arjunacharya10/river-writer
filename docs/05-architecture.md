@@ -449,13 +449,25 @@ No grammar or spelling beyond the system spellchecker in the editor.
   one autosave branch per real branch. *(Earlier plan: private refs
   `refs/river/autosave/<branch>` in the main repository; replaced to remove any
   `--mirror` leak risk.)*
-* Created after ~90 s of idle when content changed; message `autosave`.
+* **Implemented default (#42):** named files save after 1 s of idle typing. Before
+  replacement, checkpoint the previous disk bytes and the changed saved bytes;
+  identical content is deduplicated. Message: `autosave`. This supersedes the
+  proposed ~90 s history interval so intervening disk saves remain recoverable.
+  Untitled text uses crash recovery until the writer chooses a filename.
 * **Never pushed:** it isn't part of the main repository's refs, so no push (including
   `git push --mirror` from the CLI) can include it; a fresh clone has commits but no autosaves.
-* **Retention:** a compaction job rewrites the autosave chain to keep all of today,
+* **Retention (planned; not implemented yet):** a compaction job rewrites the autosave chain to keep all of today,
   hourly for 7 days, daily for 30 days, weekly beyond. Unreferenced objects are
   collected by periodic `gc`.
-* Surfaced in the **Timeline** view merged with real commits, per file.
+* Surfaced in the **Timeline** bottom panel per file: preview a saved version and
+  restore it as an isolated, undoable editor edit. The current buffer is checkpointed
+  before restoration. Merging real commits into Timeline remains planned. The current
+  list loads 200 versions at a time; Load older versions exposes the remaining history.
+* `river-vcs` uses libgit2 without transport features for this local-only slice. It
+  adopts the exact project repository or initializes one on first history access;
+  `_river/river.json` is ignored without changing the user’s other ignore rules.
+  Standalone-file history lives in app data keyed by canonical source path. Linked
+  Git worktrees use their own administrative directory and shared main object store.
 
 ### 12.4 Diff (river-diff)
 * Text diff engine: `imara-diff` or `similar` (Histogram/Myers).
