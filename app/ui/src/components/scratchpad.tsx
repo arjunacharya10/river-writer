@@ -52,7 +52,11 @@ export function ScratchpadPanel(props: {
     if (!latest) return Promise.resolve();
     const value = text();
     return enqueue(() =>
-      call<void>("protect_scratchpad", { root, text: value }),
+      call<void>("protect_scratchpad", {
+        root,
+        text: value,
+        expected: latest!.revision,
+      }),
     );
   }
   function save() {

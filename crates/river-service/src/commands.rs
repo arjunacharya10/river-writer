@@ -185,7 +185,10 @@ impl Service {
                 let path = extras::scratch_path(&root)?;
                 if extras::scratchpad(&root)?.text == text {
                     self.recovery.forget_note(&path)?;
-                } else {
+                } else if extras::scratchpad(&root)?.revision
+                    != arg::<Option<String>>(args, "expected")?
+                    || self.recovery.has_note(&path)?
+                {
                     self.recovery.protect_note(&path, &text)?;
                 }
                 DONE
@@ -194,12 +197,17 @@ impl Service {
                 let _guard = docs()?;
                 let (root, text) = (root()?, arg::<String>(args, "text")?);
                 let path = extras::scratch_path(&root)?;
-                self.recovery.protect_note(&path, &text)?;
-                let saved = extras::save_scratchpad(
+                let saved = match extras::save_scratchpad(
                     &root,
                     arg::<Option<String>>(args, "expected")?.as_deref(),
                     &text,
-                )?;
+                ) {
+                    Ok(saved) => saved,
+                    Err(error) => {
+                        self.recovery.protect_note(&path, &text)?;
+                        return Err(error);
+                    }
+                };
                 self.recovery.forget_note(&path)?;
                 reply(saved)
             }
@@ -265,7 +273,13 @@ impl Service {
             "autosave_document" => {
                 let id = id()?;
                 let mut docs = docs()?;
-                let doc = docs.autosave(id, arg(args, "revision")?)?;
+                let doc = match docs.autosave(id, arg(args, "revision")?) {
+                    Ok(doc) => doc,
+                    Err(error) => {
+                        self.recovery.protect_blocked(docs.get(id)?)?;
+                        return Err(error);
+                    }
+                };
                 if let Some(doc) = &doc {
                     self.recovery.protect(doc)?;
                     docs.persist_saved_template(id)?;
@@ -352,7 +366,14 @@ impl Service {
         } else {
             None
         };
-        let doc = lock(&self.documents)?.save(id, target.as_deref())?;
+        let mut docs = lock(&self.documents)?;
+        let doc = match docs.save(id, target.as_deref()) {
+            Ok(doc) => doc,
+            Err(error) => {
+                self.recovery.protect_blocked(docs.get(id)?)?;
+                return Err(error);
+            }
+        };
         self.recovery.protect(&doc)?;
         reply(doc)
     }

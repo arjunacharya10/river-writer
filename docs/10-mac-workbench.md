@@ -535,3 +535,5 @@ by `verify` (create, open, duplicate-name error, Escape cancel). Screenshot: ign
 `app/output/new-file.png`.
 
 Activity-bar global Palette/theme icons and the status-bar format label were removed (#69). Palette and theme actions remain in the native View menu and command palette.
+
+Crash recovery now journals untitled drafts and blocked saves (including later edits) only (#71). Named files and Scratchpad otherwise rely on one-second autosave; a crash before that save can lose recent edits. Existing journals remain recoverable.

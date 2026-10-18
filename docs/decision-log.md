@@ -108,3 +108,5 @@ supersede older ones.
 | 69 | Quiet activity and status bars | **Remove the Command Palette and Light/Dark activity icons and the Markdown/Fountain status label.** Palette remains in View and ⌘⇧P; theme switching remains in View and the palette. Follow Mac appearance until manually switched | User approved product cleanup (2026-10-18). |
 
 | 70 | Branch picker | **Move branches and New branch to a menu on the status-bar branch name.** Source Control holds commits, changes and history | User approved (2026-10-18). Supersedes #55 branch-list placement. New branches start at the current commit; branching from older commits remains unbuilt. |
+
+| 71 | Narrow crash recovery | **Journal untitled drafts and blocked saves only, including subsequent edits until saved/discarded.** Ordinary named-file and Scratchpad edits rely on one-second autosave | User approved (2026-10-18). Supersedes #41 protection of every unsaved named edit. A crash before autosave can lose recent named-file edits. Existing recovery drafts remain readable. |

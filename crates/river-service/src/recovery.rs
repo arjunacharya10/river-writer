@@ -57,6 +57,18 @@ impl Recovery {
         if !doc.dirty {
             return self.forget(doc.id);
         }
+        // Named writing normally goes straight to disk through autosave. Keep
+        // journaling after a blocked save, including subsequent edits.
+        if let Some(path) = &doc.path {
+            let blocked = fs::read(path).ok().as_ref() != doc.disk.as_ref()
+                || self.path(&self.key(doc.id))?.exists();
+            if !blocked {
+                return Ok(());
+            }
+        }
+        self.protect_blocked(doc)
+    }
+    pub fn protect_blocked(&self, doc: &Document) -> Result<(), String> {
         self.write(Draft {
             key: self.key(doc.id),
             path: doc.path.clone(),
@@ -69,6 +81,9 @@ impl Recovery {
         let mut hash = std::collections::hash_map::DefaultHasher::new();
         path.hash(&mut hash);
         format!("{}-0-{}", self.session, hash.finish())
+    }
+    pub fn has_note(&self, path: &std::path::Path) -> Result<bool, String> {
+        Ok(self.path(&self.note_key(path))?.exists())
     }
     pub fn protect_note(&self, path: &std::path::Path, text: &str) -> Result<(), String> {
         self.write(Draft {
@@ -177,6 +192,9 @@ mod tests {
             .update(doc.id, 1, "unsaved café 🎬".into(), TemplateId::Screenplay)
             .unwrap();
         recovery.protect(&doc).unwrap();
+        assert_eq!(fs::read_dir(&root).unwrap().count(), 0);
+        fs::write(&source, "outside edit").unwrap();
+        recovery.protect(&doc).unwrap();
         let blank = docs.new_document();
         recovery
             .protect(
@@ -215,7 +233,7 @@ mod tests {
         let doc = docs
             .update(doc.id, 1, String::new(), TemplateId::Manuscript)
             .unwrap();
-        recovery.protect(&doc).unwrap();
+        recovery.protect_blocked(&doc).unwrap();
         let restarted = Recovery::new(root.clone()).unwrap();
         let key = restarted.pending().unwrap()[0].key.clone();
         let doc = restarted.restore(&mut Documents::default(), &key).unwrap();

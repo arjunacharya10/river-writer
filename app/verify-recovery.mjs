@@ -22,6 +22,17 @@ try {
     text: "Unsaved café 🎬",
     template: "screenplay",
   });
+  assert.equal((await readdir(journals)).length, 0);
+  await writeFile(source, "Outside edit before autosave");
+  await assert.rejects(
+    invoke("autosave_document", { id: doc.id, revision: 1 }),
+  );
+  await invoke("sync_document", {
+    id: doc.id,
+    revision: 2,
+    text: "Unsaved café 🎬 continued after blocked save",
+    template: "screenplay",
+  });
   const untitled = await invoke("new_document");
   await invoke("sync_document", {
     id: untitled.id,
