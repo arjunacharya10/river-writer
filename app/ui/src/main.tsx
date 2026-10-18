@@ -14,6 +14,7 @@ import { openSearchPanel } from "@codemirror/search";
 import { isolateHistory } from "@codemirror/commands";
 import { call, commands } from "./bridge";
 import { stateFor, semantic, byteOffsets } from "./editor";
+import { writingContext } from "./writing";
 import {
   Action,
   Icon,
@@ -233,10 +234,17 @@ function App() {
     patch(id, { dirty: a.dirty });
     setAnalysis(a);
     view?.dispatch({
-      effects: semantic.of({
-        analysis: a,
-        script: current()?.template !== "manuscript",
-      }),
+      effects: [
+        semantic.of({
+          analysis: a,
+          script: current()?.template !== "manuscript",
+        }),
+        writingContext.of({
+          enabled:
+            current()?.path?.toLowerCase().endsWith(".fountain") ?? false,
+          analysis: a,
+        }),
+      ],
     });
   }
   async function sync(id: number) {

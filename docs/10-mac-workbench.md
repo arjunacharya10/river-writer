@@ -88,7 +88,8 @@ complete automated Mac interaction suite.
 
 * This is a baseline for phases 2/3, not completion of those phases: incremental
   parsing/pagination, rope patches, generated IPC types, file-system watchers,
-  completion, broader syntax highlighting and project-wide search remain.
+  project-wide completion, broader syntax highlighting and project-wide search remain.
+  Current-script writing assistance is implemented below (#43).
 * Preview currently renders whole pages, not tiles. Changed revisions rerender
   visible pages; bounded tile caching, zoom, editor/page sync scroll, accessible
   selectable page text and production performance budgets remain unverified.
@@ -201,3 +202,36 @@ isolation, linked worktrees, paginated history, standalone storage, restart
 persistence and a real local mirror push.
 The expanded recovery UI test covers inactive-tab autosave, Timeline preview/restore,
 Undo and conflict recovery; the full workbench regression suite passes as well.
+
+
+## Screenplay typing assistance (2026-10-18)
+
+`app/ui/src/writing.ts` adds CodeMirror’s official autocomplete extension. Per-document
+Rust analysis supplies character names and scene locations; built-in prefixes/time
+terms cover new scripts. No suggestions are fetched or generated over a network.
+Characters from included files are not added in this first slice.
+
+At a paragraph start in `.fountain`, `@ma` becomes `@MA` and offers matching known
+characters; capitalized prefixes also offer names and scene-heading prefixes.
+Recognized headings capitalize ordinary typed text. Location and time suggestions
+replace only their respective heading part. Mouse, Tab or Enter accept; Escape
+dismisses; Control-Space manually requests completion. Completed names and times
+leave Enter free to create the next line. No element-cycle Tab mode was added.
+
+Automatic assistance stays out of dialogue, ordinary lowercase action, notes and
+boneyard. Comment boundaries follow the parser’s non-nesting/escaped-opener rules.
+Pasted/multiline and IME composition transactions are not capitalized. Capitalization
+is part of the original typing transaction, including Unicode length changes and
+mid-line caret mapping, so Undo remains predictable. Markdown files stay prose even
+with a screenplay page template; Save As updates the writing mode through analysis.
+Template changes alone never rewrite existing source. Courier Prime remains fixed.
+
+Verification: `pnpm --dir app test:writing` checks completion contexts, Unicode and
+caret positions, exact matches, comment/paste/composition boundaries, syntax switching
+and atomic Undo with real CodeMirror state. The expanded workbench browser test
+checks a character suggestion, dialogue continuation, location/time acceptance via
+Tab/Enter, typed capitals and Markdown isolation. The autosave/recovery/Timeline
+suite also passes. A popup screenshot is in ignored `app/output/writing-completion.png`.
+These composition checks use editor transactions; native Mac IME smoke coverage
+remains part of the platform verification work. Preview zoom/navigation is next
+in the agreed flow; Zen mode, broader syntax polish and other v1 editor work remain.

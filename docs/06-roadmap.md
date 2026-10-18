@@ -5,6 +5,8 @@ Ships on **macOS only** (principle 7, decision #36). Windows is deferred and doe
 gate development or release. Linux: later or never.
 * VS Code workbench: activity bar, Explorer, Search, Source Control, Outline, editor groups/tabs,
   command palette, quick open, breadcrumbs, minimap, status bar, settings.json, VS Code keymap, Zen mode
+* Writing assistance: current-script character/location suggestions, scene prefixes
+  and times, scoped capitalization implemented (#43); broader editor polish remains.
 * Live paginated preview; PDF export; title page
 * Templates: Screenplay (+ multi-cam), Stage Play, Novel/Manuscript
 * FDX import/export

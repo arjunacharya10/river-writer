@@ -25,6 +25,7 @@ import {
 } from "@codemirror/search";
 import { showMinimap } from "@replit/codemirror-minimap";
 import type { Analysis, Story } from "./types";
+import { writingSupport } from "./writing";
 export function byteOffsets(text: string): Uint32Array {
   const size = new TextEncoder().encode(text).length;
   const out = new Uint32Array(size + 1);
@@ -125,6 +126,7 @@ export function stateFor(
       highlightSelectionMatches(),
       EditorView.lineWrapping,
       decorations,
+      writingSupport(doc.path?.toLowerCase().endsWith(".fountain") ?? false),
       keymap.of([
         ...defaultKeymap,
         ...historyKeymap,

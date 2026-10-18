@@ -895,3 +895,26 @@ kbd {
 .timeline .muted {
   padding: 0 12px;
 }
+
+.cm-tooltip-autocomplete {
+  background: var(--sidebar) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 4px;
+  box-shadow: 0 4px 14px #0003;
+}
+.cm-tooltip-autocomplete ul {
+  max-width: min(420px, 85vw);
+}
+.cm-tooltip-autocomplete ul li {
+  padding: 5px 10px !important;
+}
+.cm-tooltip-autocomplete ul li[aria-selected="true"] {
+  background: var(--selection) !important;
+  color: var(--text) !important;
+}
+.cm-completionDetail {
+  color: var(--muted);
+  margin-left: 16px;
+  font-size: 11px;
+}

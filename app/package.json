@@ -8,9 +8,11 @@
     "build": "tsc --noEmit -p ui && vite build --config ui/vite.config.ts",
     "tauri": "tauri",
     "verify": "node verify.mjs",
-    "verify:recovery": "node verify-recovery.mjs"
+    "verify:recovery": "node verify-recovery.mjs",
+    "test:writing": "node test-writing.mjs"
   },
   "dependencies": {
+    "@codemirror/autocomplete": "^6",
     "@codemirror/commands": "^6.11.1",
     "@codemirror/language": "^6.13.1",
     "@codemirror/search": "^6.7.2",

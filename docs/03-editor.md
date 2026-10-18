@@ -99,9 +99,15 @@ bar**. They never open as tabs.
 ## Writing behaviour inside the editor
 * Fountain/Markdown language modes with highlighting and auto-formatting following
   `~/rea/HIGHLAND_SPEC.md` §4 (cues, scene headers, parentheticals, transitions).
-* IntelliSense-style autocomplete: character names, scene-header parts (INT./EXT.,
-  locations, times of day).
-* Autocapitalize scene headers and cues.
+* **Implemented (#43):** CodeMirror autocomplete for the current `.fountain` file’s
+  character names and locations, plus standard scene prefixes/times. Keyboard or
+  mouse acceptance; Tab/Enter accept, Escape dismisses, Control-Space requests suggestions.
+* **Implemented (#43):** ordinary typing capitalizes recognized scene headings
+  and explicitly forced `@` cue names at paragraph boundaries. Automatic character
+  suggestions require capitals or `@`; lowercase action is not guessed to be a cue.
+  Exact character/time matches allow Enter to continue writing. Paste and IME
+  composition are preserved, as are notes/boneyard and Markdown prose. The editor
+  extension follows the file syntax, independently of the chosen page template.
 * Rename character (like Rename Symbol, F2) across cues, dialogue mentions, title page.
 * Gutter: **no line numbers**; a slim strip for change bars since the last commit (click to
   peek or revert) and fold arrows for scenes/sections.
