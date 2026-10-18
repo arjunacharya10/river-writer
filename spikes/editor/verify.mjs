@@ -3,10 +3,16 @@ import {mkdir,writeFile} from 'node:fs/promises';
 import {chromium} from 'playwright';
 const browser=await chromium.launch({headless:true,channel:"chrome"});
 const page=await browser.newPage({viewport:{width:1200,height:850},colorScheme:'dark'});
-const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+const errors=[];page.on('pageerror',e=>errors.push(String(e)));page.on('response',r=>{if(r.status()>=400)errors.push(`${r.status()} ${r.url()}`)});
 await page.goto('http://127.0.0.1:1420/');
 await page.waitForFunction(()=>!!window.trial);
-await page.evaluate(()=>document.fonts.ready);
+await page.evaluate(async()=>{
+ for(const face of ['normal 400','normal 700','italic 400','italic 700']) {
+   const loaded=await document.fonts.load(`${face} 16px "Courier Prime"`);
+   if(!loaded.length)throw new Error('Courier Prime did not load');
+ }
+ await document.fonts.ready;
+});
 await mkdir(new URL('./output/',import.meta.url),{recursive:true});
 const report=await page.evaluate(()=>window.trial.runChecks());
 // Actual keyboard events, in addition to the deterministic transaction benchmark.

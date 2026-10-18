@@ -26,15 +26,17 @@ DOM layout, not physical keystroke-to-photon latency. The minimap stays enabled.
 
 | Check | Native Tauri / WebKit | Headless Chrome |
 |---|---:|---:|
-| Typing median | 4 ms | 3.6 ms |
-| Typing p95 | 5 ms (5–6 ms observed over runs) | 4.1 ms |
+| Typing median | 4 ms | 3.7 ms |
+| Typing p95 | 5 ms (5–6 ms observed over runs) | 4.3 ms |
 | Frame interval p95 | 17 ms | 16.7 ms |
 | Scroll jump + next frame p95 | 18 ms | 17 ms |
 
 Undo/redo, inserted character count, unchanged source during styling, dialogue
 indent, action width and dialogue width pass. Browser interaction checks also
 exercise actual keyboard input, undo, search, and source-preserving template
-changes; there are no console errors. Native keyboard typing and Command-Z were
+changes; there are no console or failed-resource errors. All four Courier Prime faces
+are explicitly loaded before browser checks; the dev server allows access only
+to the trial folder, shared geometry file and bundled fonts. Native keyboard typing and Command-Z were
 also checked through macOS accessibility automation and restored the original text.
 
 Native measurements require the app to remain visible/foreground; WebKit throttles
