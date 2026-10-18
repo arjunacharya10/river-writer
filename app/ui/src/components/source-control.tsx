@@ -43,10 +43,16 @@ export function SourceControl(props: {
   const [notice, setNotice] = createSignal("");
   const [more, setMore] = createSignal(false);
   let disposed = false;
-  const [reading, setReading] = createSignal(false);
+  // Background checks never disable the panel; only the writer's own actions do.
+  let reading = false,
+    again = false;
   async function refresh() {
-    if (reading() || busy() || disposed) return;
-    setReading(true);
+    if (busy() || disposed) return;
+    if (reading) {
+      again = true;
+      return;
+    }
+    reading = true;
     try {
       let next = await call<Status>("git_status", { root });
       // Projects always have Git (#62). If setup did not happen on open, do it
@@ -68,11 +74,15 @@ export function SourceControl(props: {
     } catch (e) {
       if (!disposed) setError(String(e));
     } finally {
-      setReading(false);
+      reading = false;
+      if (again) {
+        again = false;
+        void refresh();
+      }
     }
   }
   async function act(job: () => Promise<void>) {
-    if (busy() || reading()) return;
+    if (busy()) return;
     setBusy(true);
     setError("");
     setNotice("");
@@ -135,7 +145,7 @@ export function SourceControl(props: {
         <Action
           label="Refresh Git"
           icon="refresh"
-          disabled={busy() || reading()}
+          disabled={busy()}
           onClick={() => {
             reviewedChanges = undefined;
             setError("");
@@ -185,7 +195,7 @@ export function SourceControl(props: {
                     required
                     value={name()}
                     onInput={(e) => setName(e.currentTarget.value)}
-                    disabled={busy() || reading()}
+                    disabled={busy()}
                   />
                   <input
                     aria-label="Git email"
@@ -194,11 +204,9 @@ export function SourceControl(props: {
                     required
                     value={email()}
                     onInput={(e) => setEmail(e.currentTarget.value)}
-                    disabled={busy() || reading()}
+                    disabled={busy()}
                   />
-                  <button disabled={busy() || reading()}>
-                    Save Git identity
-                  </button>
+                  <button disabled={busy()}>Save Git identity</button>
                 </form>
               </Show>
               <form
@@ -212,14 +220,13 @@ export function SourceControl(props: {
                   placeholder="Describe what you changed…"
                   value={message()}
                   onInput={(e) => setMessage(e.currentTarget.value)}
-                  disabled={busy() || reading()}
+                  disabled={busy()}
                   rows={3}
                 />
                 <button
                   class="primary"
                   disabled={
                     busy() ||
-                    reading() ||
                     !!s().blocked ||
                     !s().identity ||
                     !message().trim() ||
@@ -236,7 +243,7 @@ export function SourceControl(props: {
               >
                 <button
                   class="git-item"
-                  disabled={busy() || reading()}
+                  disabled={busy()}
                   onClick={() =>
                     void act(async () => {
                       const reviewed = await call<Reviewed>("git_review", {
@@ -263,7 +270,7 @@ export function SourceControl(props: {
                 {(c) => (
                   <button
                     class="git-item"
-                    disabled={busy() || reading()}
+                    disabled={busy()}
                     title={`${c.id}\n${c.author}`}
                     onClick={() =>
                       void act(async () => {
@@ -289,7 +296,7 @@ export function SourceControl(props: {
               </Show>
               <Show when={more()}>
                 <button
-                  disabled={busy() || reading()}
+                  disabled={busy()}
                   onClick={() =>
                     void act(async () => {
                       const older = await call<Commit[]>("git_log", {

@@ -56,6 +56,12 @@ try {
     /\/_river\/river\.json/,
   );
   assert.equal(await panel.getByLabel("New branch name").count(), 0);
+  // Background Git checks never disable the panel (no flicker, no lost typing).
+  await panel.getByRole("button", { name: "Refresh Git", exact: true }).click();
+  assert.equal(
+    await panel.getByLabel("Commit message", { exact: true }).isDisabled(),
+    false,
+  );
   // The writer's own edit is the only change listed.
   await writeFile(
     `${folder}/Script.fountain`,
