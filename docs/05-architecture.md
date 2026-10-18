@@ -13,7 +13,7 @@ time** (maturity, licenses, current versions). Behaviour references point to
 | **Preview = print**, exactly | One layout engine in Rust produces page geometry; both preview and PDF draw from it. The webview never lays out page text itself. |
 | Plain files are the source of truth | `.fountain`/`.md` on disk; all derived data (parse trees, pages) is cache. |
 | Offline; network only on push/pull/fetch/clone | No HTTP plugin, no updater, no telemetry; git networking lives in Rust and runs only on explicit commands. |
-| Feels exactly like VS Code | Monaco editor + a VS Code-faithful workbench (doc 03). |
+| Feels exactly like VS Code | VS Code-faithful workbench (doc 03) + CodeMirror 6 editor with a VS Code keymap/theme. |
 | Fast on long scripts and novels | Incremental parse and pagination; background work off the UI thread. |
 | Small, native-feeling app | Tauri 2 (system webview), Rust core. |
 
@@ -38,7 +38,7 @@ Performance budgets (targets on an M-series Mac / mid-range PC):
 flowchart LR
   subgraph Webview["Webview (TypeScript)"]
     WB[Workbench UI<br/>activity bar, side bar, tabs,<br/>panel, status bar, palette]
-    MON[Monaco editors<br/>+ diff editor]
+    MON[CodeMirror 6 editors<br/>+ merge/diff view]
     PV[Preview view<br/>page tiles]
     SB[Side-bar views<br/>Scratchpad / Todos / Bin /<br/>Outline / SCM / Search]
   end
@@ -93,7 +93,7 @@ river-writer/
 │   └── river-service/            orchestration: DocumentStore, LanguageService, PreviewService
 ├── app/
 │   ├── src-tauri/                Tauri shell: commands, events, protocols, capabilities, menus
-│   └── ui/                       TypeScript workbench + Monaco integration
+│   └── ui/                       TypeScript workbench + CodeMirror 6 integration
 ├── fonts/                        bundled fonts (+ license files)
 └── fixtures/                     golden test corpus (scripts, novels, expected pages/PDF renders)
 ```
@@ -317,27 +317,46 @@ struct Page { number: Option<String>, size: SizePt, ops: Vec<DrawOp>, src: Range
 
 ## 8. Editor integration (webview)
 
-### 8.1 Monaco
-* **Language modes** `fountain` and `river-markdown`:
-  * a **Monarch tokenizer** in TypeScript for instant highlighting (scene headings, cues,
-    parentheticals, transitions, notes, boneyard, emphasis), approximating the parser;
-  * **semantic tokens from Rust** (accurate classification, e.g. whether an uppercase
-    line really is a cue) applied on top after each parse;
-  * folding ranges (sections/scenes), breadcrumbs and outline symbols from Rust;
-  * completion provider: character names, scene-heading prefixes, locations and times
-    (from the project's character/location index);
-  * diagnostics → Monaco markers + Problems panel;
-  * rename provider (F2) for characters, done in Rust across all project files.
+### 8.1 CodeMirror 6 (decision #27)
+Packages are the official `@codemirror/*` modules unless noted; community packages are
+**to be verified** (maintenance, license) before adoption.
+
+* **Language support** for `fountain` and `river-markdown`:
+  * a fast client-side highlighter for instant feedback: a Lezer grammar or a
+    `StreamLanguage` tokenizer approximating the Rust parser (scene headings, cues,
+    parentheticals, transitions, notes, boneyard, emphasis);
+  * **authoritative element classification from Rust** after each parse (e.g. whether an
+    uppercase line really is a cue), applied as decorations and overriding the
+    client-side guess;
+  * folding (`foldService`) for sections/scenes; outline and breadcrumbs from Rust;
+  * autocomplete (`@codemirror/autocomplete`): character names, scene-heading prefixes,
+    locations, times of day (from the project index);
+  * diagnostics (`@codemirror/lint`) → inline markers + the Problems panel;
+  * rename character (F2) as a River command, executed in Rust across project files.
+* **Script look (Screenplay / Multi-cam / Stage Play):** a `ViewPlugin` maps each line's
+  element type (from Rust, with the client-side guess as interim) to a **line
+  decoration** (`Decoration.line({class})`). CSS custom properties per template set
+  `padding-left`, `max-width` (in `ch`, editor font Courier Prime) and `text-align`, e.g.
+  `.cm-el-dialogue { padding-left: 10ch; max-width: 45ch }`. **Mark decorations** dim
+  forcing characters and render emphasis; the document text is never modified.
+  Values derive from the active template (`element_left`/`element_width` × 8.5″ × 10 ch/in),
+  so the editor and the PDF share one geometry source.
+* **Manuscript:** no structural indents; a centered ~72 ch column, proportional serif,
+  heading line decorations (larger/bold), emphasis marks with dimmed markers.
+* **VS Code parity:** VS Code keymap (community keymap package or our own keymap
+  table), search panel themed like VS Code's find widget (`@codemirror/search`),
+  multiple cursors (built in), bracket/quote auto-close, minimap (community add-on, e.g.
+  `@replit/codemirror-minimap`), themes generated from the Light/Dark Modern palettes.
 * Editor behaviours: auto-uppercase cues and scene headings as you type, Tab to cycle
   element type (optional, Final Draft habit), typewriter scrolling in Zen mode.
-* **Writing surface, not page:** `lineNumbers: off`; soft-wrap at a centered column
-  (`editor.textWidth`, default ~72 ch, or fill) unrelated to page lines; no page markers;
-  glyph margin used only for change bars and folding. Editor font is independent of
-  the template font.
+* **Writing surface, not page:** no line-number gutter; a slim gutter only for change
+  bars and folding; no page markers, headers, footers or page numbers. Editor font is
+  independent of the template font.
 
 ### 8.2 Text synchronization (webview ↔ Rust)
-* **Monaco holds the live buffer** for responsiveness. Each change sends a compact delta
-  `{doc_id, version, changes:[{range, text}]}` to Rust (batched per animation frame).
+* **CodeMirror holds the live buffer** for responsiveness. Each transaction's `ChangeSet`
+  is sent to Rust as a compact delta `{doc_id, version, changes:[{from, to, insert}]}`
+  (batched per animation frame).
 * Rust keeps a **rope mirror** (`ropey`) per open document, applies deltas, verifies
   `version`, and re-syncs with a full-text resend on mismatch.
 * Language results come back tagged with the version they were computed for; stale
@@ -449,7 +468,7 @@ No grammar or spelling beyond the system spellchecker in the editor.
      content similarity (Jaccard on word shingles); classify added/removed/moved/edited.
   2. **Paragraph:** within matched scenes, align blocks.
   3. **Word:** within changed blocks, word-level diff using word segmentation.
-* Output drives Monaco's diff editor (custom decorations for word changes and scene
+* Output drives the CodeMirror merge view (`@codemirror/merge`: side-by-side and unified), with custom decorations for word changes and scene
   badges) and the **page diff** (v1.1: changed pages flagged by comparing display-list
   hashes plus mapped source ranges).
 
@@ -529,9 +548,9 @@ sample documents.
 
 | Phase | Deliverable | Exit criteria |
 |---|---|---|
-| **0. Spikes** (1–2 wks) | Typesetting spike with **Parley + krilla**: Courier screenplay + serif prose → PDF + raster from one display list | Preview pixels = PDF render; 120 pages < 150 ms incremental |
+| **0. Spikes** (1–2 wks) | Typesetting spike with **Parley + krilla**: Courier screenplay + serif prose → PDF + raster from one display list. Editor spike: CodeMirror 6 script look (line decorations from template geometry) + VS Code keymap | Preview pixels = PDF render; 120 pages < 150 ms incremental |
 | **1. Engine CLI** | `river-parse`, `-templates`, `-layout`, `-paginate`, `-pdf`, CLI export | Golden pagination tests pass for all 4 templates |
-| **2. Shell** | Tauri app, workbench skeleton (activity bar, Explorer, tabs, status bar, palette), Monaco + Fountain/Markdown modes, document sync, save/watch | Edit + save + reopen; highlighting; outline |
+| **2. Shell** | Tauri app, workbench skeleton (activity bar, Explorer, tabs, status bar, palette), CodeMirror 6 + Fountain/Markdown support + script look, document sync, save/watch | Edit + save + reopen; highlighting; outline |
 | **3. Preview** | Tile renderer, custom protocol, sync scroll, template dropdown + preview icon | Live preview within budget |
 | **4. Extras & settings** | Scratchpad/Todos/Bin views, settings editor, keybindings, Light/Dark themes, Zen mode | Feature-complete UI for v1 |
 | **5. VCS** | Commit/log/diff/branch/checkout/restore, autosave history + Timeline, remotes push/pull/fetch/clone | Never-push-autosave test passes; credentials work for SSH + HTTPS |
@@ -557,11 +576,12 @@ sample documents.
 | Risk | Mitigation |
 |---|---|
 | Typesetting quality (prose justification, hyphenation) | Phase-0 spike; Knuth–Plass for justified text; golden visual tests |
-| Webview differences (WebKit vs WebView2 vs WebKitGTK) affecting Monaco/UI | Monaco is cross-browser tested; keep UI CSS conservative; E2E tests per OS |
+| Webview differences (WebKit vs WebView2 vs WebKitGTK) affecting the editor/UI | CodeMirror 6 is cross-browser tested; keep UI CSS conservative; E2E tests per OS |
 | libgit2 credential edge cases (SSH agents, 2FA tokens) | Lean on OS keychains + credential helpers; clear error messages; device-flow sign-in in v1.1 |
 | Autosave store corrupted/deleted | It's a disposable safety net in `.git/river-autosave/`; real history is unaffected |
 | Large projects (multi-file novels with 100+ chapters) | Per-file parse caches, project-level indices built lazily, pagination only for the previewed file / includes |
 | Scope creep toward "VS Code features" | Doc 01 principles; "Never" list in doc 06; no extension host |
+| CodeMirror falls short of VS Code polish (find widget, minimap, keymap details) | Theme/keymap work budgeted in phase 2; community add-ons verified or replaced by small in-house modules |
 
 ---
 

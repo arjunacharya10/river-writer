@@ -60,19 +60,38 @@ bar**. They never open as tabs.
 | Extensions | None |
 
 ## The editor is a writing surface, not a page
-* **Line breaks in the editor are irrelevant to the page.** Text soft-wraps at a
-  comfortable, centered column with default side margins (`editor.textWidth`, default
-  ~72 characters, or `fill`). Page geometry is a preview/PDF concern only.
-* **No line numbers** (`lineNumbers: off`). Navigation is by scene: Outline,
+* **Pages are irrelevant to the editor.** No page breaks, headers, footers or page
+  numbers. Page geometry is a preview/PDF concern only. Text soft-wraps inside a
+  centered column with default side margins.
+* **No line numbers.** Navigation is by scene: Outline,
   breadcrumbs, minimap, `⌘P` → `@scene`, "Go to Scene", "Go to Page" (via the preview
   mapping), and clicking a preview page jumps to the text.
 * **No page information in the editor:** no page-break markers or page numbers
   (Highland's "show page numbers in editor" is deliberately not copied). Page count and
   runtime appear in the preview toolbar.
-* **Gentle highlighting, one left edge:** scene headings bold, cues accented,
-  parentheticals and notes muted, boneyard dimmed, emphasis rendered inline with its
-  markers visible. No screenplay indentation in the editor ("script look" is a possible
-  later option).
+* **The editor still looks like what you're writing, without pages:**
+  * **Screenplay / Multi-cam / Stage Play → script look** (structure, not pages):
+
+    | Element | In the editor |
+    |---|---|
+    | Scene heading | Flush left, uppercase, bold |
+    | Action | Flush left, full script width (~60 characters) |
+    | Character cue | Indented ~2.0″ (≈20 ch), uppercase |
+    | Parenthetical | Indented ~1.4″, width ~29 ch |
+    | Dialogue | Indented ~1.0″, **wraps at ~35 ch** |
+    | Transition | Right-aligned |
+    | Centered `> <` | Centered |
+    | Lyrics | Dialogue indent, italic |
+    | Notes / boneyard / synopses | Muted / dimmed, flush left |
+
+    Indents and widths come from the **same template data as the PDF** (Courier =
+    10 ch/inch, so template inches convert to columns). Purely visual: **no spaces are
+    inserted into the file.** Forcing characters (`@ . ! > ~`) are shown dimmed. Dual
+    dialogue (`^`) shows sequentially with a side marker; side-by-side is preview-only.
+    Bonus: screenplay lines wrap in the editor where they'll wrap on the page.
+  * **Manuscript → plain writing surface:** one left edge, ~72-character column, readable
+    serif, gentle highlighting (headings larger/bold, emphasis rendered inline with
+    dimmed markers, notes muted, boneyard dimmed).
 * **Editor font is independent of the page font:** default Courier Prime for
   `.fountain`, a readable serif for `.md` (settings). Pages always use the template font.
 * Problems and search results reference scene/paragraph, not line numbers.
@@ -90,7 +109,11 @@ bar**. They never open as tabs.
   scenes, unused characters. Never grammar.
 
 ## Implementation notes
-* **Monaco** (MIT) for the editor and diff editor gives the identical editing feel.
+* **CodeMirror 6** (MIT) for the editor and the diff/merge view (decision #27). Chosen
+  over Monaco because the script look needs per-line indent/width/alignment and
+  Manuscript needs good proportional-font typography; CodeMirror does both natively via
+  line decorations + CSS (the same approach Obsidian uses for Live Preview). VS Code feel
+  comes from the workbench (built by us either way), a VS Code keymap and theming.
 * Workbench chrome rebuilt in the Tauri webview to VS Code's layout, using **Codicons**.
 * **Do not fork VS Code/Code-OSS**: it's Electron and brings the extension host,
   which conflicts with Tauri and the no-extensions principle.
