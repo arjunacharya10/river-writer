@@ -168,6 +168,86 @@ async fn update_todos(
     .await
 }
 #[tauri::command]
+async fn load_scratchpad(root: PathBuf) -> Result<river_service::extras::Scratchpad, String> {
+    work(move || river_service::extras::scratchpad(&root)).await
+}
+#[tauri::command]
+async fn protect_scratchpad(
+    app: tauri::AppHandle,
+    root: PathBuf,
+    text: String,
+) -> Result<(), String> {
+    work(move || {
+        let state = app.state::<Desktop>();
+        let _guard = lock(&state.documents)?;
+        let path = river_service::extras::scratch_path(&root)?;
+        if river_service::extras::scratchpad(&root)?.text == text {
+            app.state::<Recovery>().forget_note(&path)
+        } else {
+            app.state::<Recovery>().protect_note(&path, &text)
+        }
+    })
+    .await
+}
+#[tauri::command]
+async fn save_scratchpad(
+    app: tauri::AppHandle,
+    root: PathBuf,
+    expected: Option<String>,
+    text: String,
+) -> Result<river_service::extras::Scratchpad, String> {
+    work(move || {
+        let state = app.state::<Desktop>();
+        let _guard = lock(&state.documents)?;
+        let path = river_service::extras::scratch_path(&root)?;
+        app.state::<Recovery>().protect_note(&path, &text)?;
+        let saved = river_service::extras::save_scratchpad(&root, expected.as_deref(), &text)?;
+        app.state::<Recovery>().forget_note(&path)?;
+        Ok(saved)
+    })
+    .await
+}
+#[tauri::command]
+async fn settle_scratchpad(
+    app: tauri::AppHandle,
+    root: PathBuf,
+    expected: Option<String>,
+) -> Result<(), String> {
+    work(move || {
+        let state = app.state::<Desktop>();
+        let _guard = lock(&state.documents)?;
+        if river_service::extras::scratchpad(&root)?.revision != expected {
+            return Err("Scratchpad changed again. Reload to see the latest text.".into());
+        }
+        app.state::<Recovery>()
+            .forget_note(&river_service::extras::scratch_path(&root)?)
+    })
+    .await
+}
+#[tauri::command]
+async fn copy_scratchpad(
+    app: tauri::AppHandle,
+    root: PathBuf,
+    text: String,
+) -> Result<bool, String> {
+    work(move || {
+        let Some(path) = app
+            .dialog()
+            .file()
+            .set_title("Save Scratchpad Copy")
+            .set_directory(root)
+            .set_file_name("Scratchpad copy.md")
+            .add_filter("Markdown", &["md"])
+            .blocking_save_file()
+        else {
+            return Ok(false);
+        };
+        river_service::extras::save_copy(&path.into_path().map_err(|e| e.to_string())?, &text)?;
+        Ok(true)
+    })
+    .await
+}
+#[tauri::command]
 async fn sync_document(
     app: tauri::AppHandle,
     id: u64,
@@ -585,6 +665,11 @@ fn main() {
             open_document,
             open_folder,
             refresh_folder,
+            settle_scratchpad,
+            load_scratchpad,
+            protect_scratchpad,
+            save_scratchpad,
+            copy_scratchpad,
             load_todos,
             update_todos,
             recent_projects,

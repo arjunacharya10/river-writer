@@ -43,7 +43,7 @@ Out: comics/graphic novels, essays, academic/MLA, wikis, bulletins, speeches, ar
 * Includes (`{{INCLUDE: …}}`) for chapter-per-file projects
 * Characters list (names, counts, rename)
 * Two themes only: **Light** and **Dark** (modelled on VS Code's Light/Dark Modern), following the system appearance (more can come later)
-* **Scratchpad, todos, bin**, each just a plain-text dump (see doc 02)
+* **Scratchpad and todos**, each just a plain-text dump (see doc 02)
 * Git-based versioning with standard git vocabulary (see doc 04)
 * **UI exactly like VS Code** (see doc 03)
 * Automatic local backups
@@ -63,7 +63,7 @@ tables/checklists/code blocks/footnotes in story formats.
 | Cloud versions / revisions | Git: commits, branches, diff, merge, tags (doc 04) |
 | Revision mode | Revision marks = the diff since a tag, rendered as colored pages and asterisks |
 | Sprints/goals/milestones | Optional daily word-goal ring, off by default |
-| Scratchpad + Bin + Todos | Plain-text files in `_river/` |
+| Scratchpad + Todos | Plain-text files in `_river/` |
 | Backups | Automatic local backups to a chosen folder |
 
 ## Where it wins

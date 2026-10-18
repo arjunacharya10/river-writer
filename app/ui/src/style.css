@@ -1043,3 +1043,35 @@ kbd {
   font-size: 12px;
   text-align: center;
 }
+
+.scratchpad-panel {
+  display: flex;
+  flex-direction: column;
+  height: calc(100% - 38px);
+  min-height: 0;
+}
+.scratchpad-panel textarea {
+  flex: 1;
+  min-height: 180px;
+  width: 100%;
+  padding: 12px 16px;
+  resize: none;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font:
+    16px/1.55 "Courier Prime",
+    monospace;
+  outline-offset: -2px;
+}
+.extras-error {
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--error);
+  line-height: 1.5;
+}
+.extras-error button {
+  display: block;
+  margin-top: 6px;
+  text-decoration: underline;
+}

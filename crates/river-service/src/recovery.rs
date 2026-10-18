@@ -57,20 +57,39 @@ impl Recovery {
         if !doc.dirty {
             return self.forget(doc.id);
         }
-        let key = self.key(doc.id);
+        self.write(Draft {
+            key: self.key(doc.id),
+            path: doc.path.clone(),
+            text: doc.text.clone(),
+            template: doc.template,
+        })
+    }
+    fn note_key(&self, path: &std::path::Path) -> String {
+        use std::hash::{Hash, Hasher};
+        let mut hash = std::collections::hash_map::DefaultHasher::new();
+        path.hash(&mut hash);
+        format!("{}-0-{}", self.session, hash.finish())
+    }
+    pub fn protect_note(&self, path: &std::path::Path, text: &str) -> Result<(), String> {
+        self.write(Draft {
+            key: self.note_key(path),
+            path: Some(path.to_path_buf()),
+            text: text.into(),
+            template: TemplateId::Manuscript,
+        })
+    }
+    pub fn forget_note(&self, path: &std::path::Path) -> Result<(), String> {
+        self.remove(&self.note_key(path))
+    }
+    fn write(&self, draft: Draft) -> Result<(), String> {
+        let key = &draft.key;
         let path = self.path(&key)?;
         let previous = match fs::read(&path) {
             Ok(bytes) => Some(bytes),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
             Err(e) => return Err(e.to_string()),
         };
-        let bytes = serde_json::to_vec(&Draft {
-            key,
-            path: doc.path.clone(),
-            text: doc.text.clone(),
-            template: doc.template,
-        })
-        .map_err(|e| e.to_string())?;
+        let bytes = serde_json::to_vec(&draft).map_err(|e| e.to_string())?;
         atomic_write(&path, &bytes, previous.as_deref())?;
         // Persist the directory entry too, so a completed journal survives a restart.
         #[cfg(unix)]
@@ -215,6 +234,38 @@ mod tests {
         );
         fs::remove_dir_all(root).unwrap();
         fs::remove_file(source).unwrap();
+    }
+    #[test]
+    fn scratchpad_journals_recover_without_touching_the_original() {
+        let folder = root();
+        fs::create_dir_all(&folder).unwrap();
+        let notes = folder.join("scratchpad.md");
+        fs::write(&notes, "saved notes").unwrap();
+        let journal = folder.join("recovery");
+        let recovery = Recovery::new(journal.clone()).unwrap();
+        recovery
+            .protect_note(&notes, "unsaved café notes 🎬")
+            .unwrap();
+        let restarted = Recovery::new(journal.clone()).unwrap();
+        let drafts = restarted.pending().unwrap();
+        assert_eq!(drafts.len(), 1);
+        let restored = restarted
+            .restore(&mut Documents::default(), &drafts[0].key)
+            .unwrap();
+        assert_eq!(restored.text, "unsaved café notes 🎬");
+        assert!(restored.path.is_none());
+        assert_eq!(fs::read_to_string(&notes).unwrap(), "saved notes");
+        recovery.protect_note(&notes, "").unwrap();
+        recovery.forget_note(&notes).unwrap();
+        assert!(
+            Recovery::new(journal)
+                .unwrap()
+                .pending()
+                .unwrap()
+                .iter()
+                .all(|draft| draft.path.as_ref() != Some(&notes))
+        );
+        fs::remove_dir_all(folder).unwrap();
     }
     #[test]
     fn saved_and_explicitly_discarded_drafts_do_not_return() {

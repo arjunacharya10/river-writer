@@ -17,7 +17,7 @@ trademarks and are not used.)
 │──│ │left?     │ │  MARA                             ░░  │ │                    │
 │✎ │ │…         │ │  (whispering)                     ░░  │ │                    │
 │☑ │ └──────────┘ ├────────────────────────────────────────┴──────────────────────┤
-│🗑 │              │ PANEL:  PROBLEMS │ TIMELINE │ STATS                           │
+│  │              │ PANEL:  PROBLEMS │ TIMELINE │ STATS                           │
 │⚙ │              │  ⚠ Cue "JON" also written as "JOHN" (12 places)               │
 ├──┴──────────────┴───────────────────────────────────────────────────────────────┤
 │ ⎇ main ↑2 ↓0 · ⚠ 1 · 23,410 words · 58 scenes · Fountain                         │
@@ -25,20 +25,19 @@ trademarks and are not used.)
 ```
 
 Activity bar (top to bottom): Explorer 📁 · Search 🔍 · Source Control ⎇ · Outline ☰ ·
-Characters 👤 │ **Scratchpad ✎ · Todos ☑ · Bin 🗑** │ Settings ⚙.
+Characters 👤 │ **Scratchpad ✎ · Todos ☑** │ Settings ⚙.
 
 **Rule: editor tabs are only for story files** (`.fountain` / `.md` the writer creates).
-The scratchpad, todos and bin each have an activity-bar icon and open **in the left side
+The scratchpad and todos each have an activity-bar icon and open **in the left side
 bar**. They never open as tabs.
 
 ## Mapping
 | VS Code area | River |
 |---|---|
-| Activity bar | Explorer · Search · Source Control · Outline (scenes) · Characters · **Scratchpad · Todos · Bin** · Settings |
+| Activity bar | Explorer · Search · Source Control · Outline (scenes) · Characters · **Scratchpad · Todos** · Settings |
 | Explorer | Story files only (`.fountain`, `.md`, folders of chapters). `_river/` is hidden (like `files.exclude`) |
-| **Scratchpad view** | Side bar: one plain-text editing area, autosaved to `_river/scratchpad.md`. No toolbar. |
+| **Scratchpad view** | Implemented (#48): one plain-text sidebar writing area, autosaved to `_river/scratchpad.md`, with recovery and external-change protection. No toolbar or story tab. |
 | **Todos view** | Implemented (#46): simple task sidebar backed by `_river/todos.md`. Quick entry, inline edit, complete/reopen, collapsed completed list, delete, drag/keyboard reorder. No dates, reminders, priorities or subtasks. |
-| **Bin view** | Side bar: list of cut snippets (`_river/bin/*`), newest first. Select text → "Send to Bin" (also right-click / command). Click a snippet to expand it inline in the side bar; drag it into the editor to reuse; delete. |
 | Outline | Scenes, sections, synopses, notes; drag to reorder scenes |
 | Timeline view | Local autosave history + git commits for the current file |
 | Search | Project find/replace with regex and include/exclude; extra toggles: dialogue only, character, notes |

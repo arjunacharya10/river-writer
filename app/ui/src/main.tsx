@@ -27,6 +27,7 @@ import {
 import { ProjectWelcome } from "./components/welcome";
 import { PagePreview } from "./components/preview";
 import { TodosPanel } from "./components/todos";
+import { ScratchpadPanel } from "./components/scratchpad";
 import {
   nameOf,
   type Story,
@@ -41,11 +42,22 @@ import {
 import "@vscode/codicons/dist/codicon.css";
 import "./style.css";
 function App() {
-  let flushTodos: () => Promise<void> = async () => {};
-  function registerTodoFlush(flush: () => Promise<void>) {
-    flushTodos = flush;
+  const extraFlushers = new Set<() => Promise<void>>();
+  async function flushExtras() {
+    await Promise.all([...extraFlushers].map((flush) => flush()));
+  }
+  function registerExtrasFlush(flush: () => Promise<void>) {
+    extraFlushers.add(flush);
     return () => {
-      if (flushTodos === flush) flushTodos = async () => {};
+      queueMicrotask(() => {
+        void flush().then(
+          () => extraFlushers.delete(flush),
+          (error) => {
+            extraFlushers.delete(flush);
+            fail(error);
+          },
+        );
+      });
     };
   }
   type Version = { id: string; timestamp: number; bytes: number };
@@ -232,7 +244,7 @@ function App() {
     sent = new Map<number, number>(),
     queues = new Map<number, Promise<unknown>>();
   const current = () => tabs().find((d) => d.id === active());
-  const todoRoot = () => {
+  const extrasRoot = () => {
     const path = current()?.path;
     return folder() || (path ? path.slice(0, path.lastIndexOf("/")) : "");
   };
@@ -331,11 +343,11 @@ function App() {
     select(doc.id);
   }
   async function newFile() {
-    await flushTodos();
+    await flushExtras();
     await add(await call<Story>("new_document"));
   }
   async function open(path?: string) {
-    await flushTodos();
+    await flushExtras();
     // Selecting an already-open story is immediate; a delayed open response must
     // not steal focus back after the writer switches to another tab.
     const existing = path ? tabs().find((doc) => doc.path === path) : undefined;
@@ -403,7 +415,7 @@ function App() {
       });
   }
   async function mayLeave() {
-    await flushTodos();
+    await flushExtras();
     for (const id of autosaveTimers.keys()) cancelAutosave(id);
     for (const d of tabs()) {
       if (
@@ -469,7 +481,7 @@ function App() {
       const saved = project.session;
       setSidebar(saved.sidebar);
       setSideView(
-        ["outline", "todos"].includes(saved.sideView)
+        ["outline", "todos", "scratchpad"].includes(saved.sideView)
           ? saved.sideView
           : "explorer",
       );
@@ -553,7 +565,7 @@ function App() {
     return true;
   }
   async function close(id: number) {
-    await flushTodos();
+    await flushExtras();
     const doc = tabs().find((d) => d.id === id);
     if (!doc) return;
     cancelAutosave(id);
@@ -587,7 +599,7 @@ function App() {
     quitting = true;
     for (const id of autosaveTimers.keys()) cancelAutosave(id);
     try {
-      await flushTodos();
+      await flushExtras();
       for (const d of tabs()) {
         if (
           d.dirty &&
@@ -672,6 +684,14 @@ function App() {
   };
   const allCommands: Command[] = [
     {
+      id: "scratchpad",
+      label: "View: Scratchpad",
+      run: () => {
+        setSideView("scratchpad");
+        setSidebar(true);
+      },
+    },
+    {
       id: "new-project",
       label: "Project: New Project…",
       key: "⇧⌘N",
@@ -752,8 +772,11 @@ function App() {
       return;
     }
     if (welcome() && id !== "quit") return;
-    if (id === "save" && document.activeElement?.closest(".todos-panel")) {
-      run(flushTodos)();
+    if (
+      id === "save" &&
+      document.activeElement?.closest(".todos-panel, .scratchpad-panel")
+    ) {
+      run(flushExtras)();
       return;
     }
     if (id === "quit") {
@@ -951,6 +974,15 @@ function App() {
               }}
             />
             <Action
+              label="Scratchpad"
+              icon="edit"
+              active={sidebar() && sideView() === "scratchpad"}
+              onClick={() => {
+                setSidebar(true);
+                setSideView("scratchpad");
+              }}
+            />
+            <Action
               label="Todos"
               icon="checklist"
               active={sidebar() && sideView() === "todos"}
@@ -984,33 +1016,48 @@ function App() {
               class="sidebar"
             >
               <header>
-                {sideView() === "todos"
-                  ? "TODOS"
-                  : sideView() === "outline"
-                    ? "OUTLINE"
-                    : "EXPLORER"}
+                {sideView() === "scratchpad"
+                  ? "SCRATCHPAD"
+                  : sideView() === "todos"
+                    ? "TODOS"
+                    : sideView() === "outline"
+                      ? "OUTLINE"
+                      : "EXPLORER"}
                 <Action
                   label="Open Project"
                   icon="folder-opened"
                   onClick={run(openFolder)}
                 />
               </header>
-              <Show when={todoRoot()} keyed>
+              <Show when={extrasRoot()} keyed>
                 {(root) => (
-                  <TodosPanel
-                    root={root}
+                  <>
+                    <ScratchpadPanel
+                      root={root}
+                      active={sidebar() && sideView() === "scratchpad"}
+                      onError={fail}
+                      registerFlush={registerExtrasFlush}
+                    />
+                    <TodosPanel
+                      root={root}
                       active={sidebar() && sideView() === "todos"}
-                    onError={fail}
-                    registerFlush={registerTodoFlush}
-                  />
+                      onError={fail}
+                      registerFlush={registerExtrasFlush}
+                    />
+                  </>
                 )}
               </Show>
-              <Show when={sideView() === "todos" && !todoRoot()}>
+              <Show
+                when={
+                  ["todos", "scratchpad"].includes(sideView()) && !extrasRoot()
+                }
+              >
                 <p class="muted">
-                  Open a project or save your story to keep tasks alongside it.
+                  Open a project or save your story to keep notes and tasks
+                  alongside it.
                 </p>
               </Show>
-              <Show when={sideView() !== "todos"}>
+              <Show when={!["todos", "scratchpad"].includes(sideView())}>
                 <Show
                   when={sideView() === "explorer"}
                   fallback={

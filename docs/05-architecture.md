@@ -41,7 +41,7 @@ flowchart LR
     WB[Workbench UI<br/>activity bar, side bar, tabs,<br/>panel, status bar, palette]
     MON[CodeMirror 6 editors<br/>+ merge/diff view]
     PV[Preview view<br/>page tiles]
-    SB[Side-bar views<br/>Scratchpad / Todos / Bin /<br/>Outline / SCM / Search]
+    SB[Side-bar views<br/>Scratchpad / Todos /<br/>Outline / SCM / Search]
   end
   subgraph Core["Rust core (Tauri app process)"]
     CMD[Command layer<br/>tauri commands + events]
@@ -402,10 +402,10 @@ Packages are the official `@codemirror/*` modules unless noted; community packag
 * Project = folder (doc 02). On open, River reads `_river/river.json` (UI state +
   per-file templates), `_river/settings.json` (project settings) and the extras.
 * **Extras** are served to the side-bar views through commands; files are written
-  atomically on change (debounced 500 ms):
-  * Scratchpad → `_river/scratchpad.md` (whole-text set)
+  atomically with snapshot checks (Scratchpad: 1 s idle plus flush; Todos: interaction):
+  * Scratchpad → `_river/scratchpad.md` (whole-text set); 120 ms idle crash journal
+    in private app data. Conflicts offer a native Save-copy-and-reload action (#48).
   * Todos → `_river/todos.md` (parsed as `- [ ]` lines; preserves unknown lines verbatim)
-  * Bin → `_river/bin/<YYYY-MM-DD HHMM> <first words>.<ext>` (one file per snippet)
 * The Explorer view excludes `_river/` and `.git/` (like `files.exclude`).
 * Lone-file mode: the sidecar is created only when an extra is first used (decision #8).
 * **Settings** resolution: defaults → user (`<app config dir>/settings.json`) → project
@@ -561,7 +561,7 @@ sample documents.
 | **1. Engine CLI** | `river-parse`, `-templates`, `-layout`, `-paginate`, `-pdf`, CLI export | Golden pagination tests pass for all 4 templates |
 | **2. Shell** | Tauri app, workbench skeleton (activity bar, Explorer, tabs, status bar, palette), CodeMirror 6 + Fountain/Markdown support + script look, document sync, save/watch | Edit + save + reopen; highlighting; outline |
 | **3. Preview** | Tile renderer, custom protocol, sync scroll, template dropdown + preview icon | Live preview within budget |
-| **4. Extras & settings** | Scratchpad/Todos/Bin views, settings editor, keybindings, Light/Dark themes (Zen deferred, #45) | Feature-complete UI for v1 |
+| **4. Extras & settings** | Scratchpad/Todos views, settings editor, keybindings, Light/Dark themes (Zen deferred, #45) | Feature-complete UI for v1 |
 | **5. VCS** | Commit/log/diff/branch/checkout/restore, autosave history + Timeline, remotes push/pull/fetch/clone | Never-push-autosave test passes; credentials work for SSH + HTTPS |
 | **6. FDX + polish** | FDX import/export, Problems panel basics, packaging, signing/notarization | v1 release candidate |
 | **v1.1** | Scene merge, cherry-pick, revision marks, page diff, rename character, Characters/Stats views, reader copy, GitHub sign-in | — |

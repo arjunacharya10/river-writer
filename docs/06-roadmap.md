@@ -10,9 +10,12 @@ gate development or release. Linux: later or never.
 * Live paginated preview; PDF export; title page
 * Templates: Screenplay (+ multi-cam), Stage Play, Novel/Manuscript
 * FDX import/export
-* Extras: Scratchpad, Todos, Bin as activity-bar side-bar views (plain files in `_river/`)
+* Extras: Scratchpad and Todos as activity-bar sidebar views (plain files in `_river/`).
+  Bin removed (#47).
   * Todos implemented (#46): quick entry/edit, completion/reopening, collapsed completed
-    tasks, delete and drag/keyboard reorder. Scratchpad and Bin remain next.
+    tasks, delete and drag/keyboard reorder.
+  * Scratchpad implemented (#48): one writing area, autosave, recovery, conflict-copy
+    handling. No extra editor tabs or toolbar.
 * Git: commit (no staging), log, diff (scene/paragraph/word), restore/revert, branch +
   checkout, remote + push/pull/fetch, clone
 * Local autosave history (never pushed); automatic local backups

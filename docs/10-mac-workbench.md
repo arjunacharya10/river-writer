@@ -102,7 +102,7 @@ complete automated Mac interaction suite.
 * Save As does not replace an existing file. Mixed-newline files normalize to their
   detected convention. Save protection compares contents before replacement;
   a different app can still race a write between that check and the final rename.
-* Scratchpad/Bin, settings UI, full Git operations, history compaction, independent backups,
+* Settings UI, full Git operations, history compaction, independent backups,
   FDX, print, Mac file associations, signed packaging and other v1 polish remain
   later phases. Crash recovery, automatic disk saves and local Timeline are implemented
   as described below.
@@ -271,4 +271,35 @@ expanded browser suite checks mouse/keyboard completion, inline editing, drag an
 Option-arrow reorder, deletion, pending entry on sidebar/project departure, view
 restoration, external-conflict retry and no extra editor tabs. A screenshot is in
 ignored `app/output/todos.png`. The draft-recovery/Timeline suite also passes.
-Zen remains deferred; Scratchpad and Bin are the remaining extras slices.
+Zen remains deferred. Scratchpad is implemented below; Bin was removed (#47).
+
+
+## Scratchpad; Bin removed (2026-10-18, #47/#48)
+The pencil activity icon and `View: Scratchpad` command open one plain-text sidebar
+area in Courier Prime. No toolbar and no story tab. Todos remains available. There
+is no Bin view/action/service or automatic creation of cut-material files. Existing
+user files are not removed.
+
+`river-service::extras` reads/writes `_river/scratchpad.md`. Loading does not create
+the file. Changes save after one second idle; blur/sidebar/project/quit paths flush
+pending text through a shared extras registry. Saves preserve BOM/newlines, use
+atomic replacement and compare the loaded snapshot with disk; symlink sidecars and
+files are rejected. Native Cmd+S while an extra has focus flushes that extra.
+
+After 120 ms idle, unsaved notes are journaled privately via the existing recovery
+service. Journals use separate note keys and are cleared only when the disk text
+is saved/acknowledged. Recovery opens an unsaved copy; it never overwrites the
+scratchpad. As with story recovery, an unacknowledged debounce/in-flight write can
+be lost on abrupt termination.
+
+On an external conflict, the sidebar preserves local text. Save a copy and reload
+opens a native Save dialog for a new `.md` copy; the copy never replaces an existing
+file. Cancel leaves the local text intact. Only after a successful copy does the
+sidebar reload disk and acknowledge/clear the conflicted journal.
+
+Verification: 20 service tests cover scratchpad encoding, conflicts, safe copies,
+symlinks and journal restart recovery alongside existing document/Todo protection.
+The expanded browser suite checks autosave, view switching, conflict recovery,
+cancelled copy, pending notes on project close, session restoration and no extra
+editor tabs/Bin button. Existing Todo, story, recovery and Timeline checks pass.
+The inspected screenshot is in ignored `app/output/scratchpad.png`.

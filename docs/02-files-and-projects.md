@@ -22,15 +22,13 @@ The Long Night/
 └── _river/
     ├── scratchpad.md              ← free-form dump
     ├── todos.md                   ← Markdown checkboxes: - [ ] / - [x]
-    ├── bin/                       ← cut material, one dated file per snippet
-    │   └── 2026-10-17 old opening.fountain
     └── river.json                 ← UI state only (cursor, panes, theme, template)
 ```
 
 * `_river/` is **visible** (not hidden) and sorts last: honest, easy to back up by hand.
 * **Opening a lone file** (`script.fountain`) works without a project folder. River
   creates the sidecar (`script.river/` or a `_river/` next to it) **only when you first
-  use the scratchpad, todos or bin**.
+  use the scratchpad or todos**.
 * **Opening a folder** makes it a project. Several story files appear in the navigator,
   and the extras are shared across the project.
 * Losing `river.json` costs only window state, never words.
@@ -42,9 +40,8 @@ which the Explorer hides.
 
 | Extra | File | Side-bar behaviour |
 |---|---|---|
-| Scratchpad | `_river/scratchpad.md` | One plain text area, autosaves, no toolbar |
+| Scratchpad | `_river/scratchpad.md` | Implemented (#48): one plain text area, autosaves, no toolbar or story tab. |
 | Todos | `_river/todos.md` | Simple Google Tasks-inspired sidebar (#46): type to add, click a title to edit, tick to complete, collapse completed tasks, reopen/delete, drag or Option+↑/↓ to reorder. No dates, priorities, reminders or subtasks. |
-| Bin | `_river/bin/*` | "Send to Bin" on a selection makes a dated file; list newest first, expand inline, drag back into the editor. Shared across the project. |
 
 * Extras are **shared across branches by default** (option: per-branch).
 * Extras are committed and pushed like any other file. Any file can be marked
@@ -101,3 +98,17 @@ idle window focus; conflicts preserve disk content and retain typed input for re
 A pending quick-entry/title edit is flushed before changing/closing a project or
 quitting. Unsaved keystrokes in task inputs are not part of story crash-recovery
 journals; tasks persist on Enter, blur or the workspace flush.
+
+
+## Scratchpad implementation (#48)
+Scratchpad saves after one second idle and flushes on blur, sidebar departure, project
+changes and quit. Opening it is read-only until text changes; the sidecar/file is
+created only on a write. Standalone stories use `_river/scratchpad.md` beside the
+story. Existing newline convention/BOM are preserved; the editor uses LF internally.
+
+Dirty text is protected in private app-data recovery journals after 120 ms idle.
+After interruption it is offered as an unsaved copy, preserving the source. File
+conflicts leave the local text in the sidebar. Save a copy and reload asks for a
+new `.md` location; only a successful copy permits reloading. Cancelling or choosing
+an existing filename preserves the local text. The copy is never opened as a tab
+automatically. Bin was removed by decision #47. Existing files are left alone.

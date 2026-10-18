@@ -1,4 +1,5 @@
 //! Desktop orchestration without a Tauri dependency. Editor text uses LF/UTF-8.
+pub mod extras;
 pub mod projects;
 pub mod recovery;
 pub mod todos;

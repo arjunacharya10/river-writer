@@ -27,6 +27,43 @@ fn main() {
                     recovery.restore(&mut docs, args["key"].as_str().ok_or("Missing key")?)?,
                 )
                 .unwrap(),
+                "settle_scratchpad" => {
+                    let root = Path::new(args["root"].as_str().ok_or("Missing root")?);
+                    if extras::scratchpad(root)?.revision.as_deref() != args["expected"].as_str() {
+                        return Err("Scratchpad changed again".into());
+                    }
+                    recovery.forget_note(&extras::scratch_path(root)?)?;
+                    Value::Null
+                }
+                "load_scratchpad" => serde_json::to_value(extras::scratchpad(Path::new(
+                    args["root"].as_str().ok_or("Missing root")?,
+                ))?)
+                .unwrap(),
+                "protect_scratchpad" => {
+                    let root = Path::new(args["root"].as_str().ok_or("Missing root")?);
+                    let path = extras::scratch_path(root)?;
+                    let text = args["text"].as_str().ok_or("Missing text")?;
+                    if extras::scratchpad(root)?.text == text {
+                        recovery.forget_note(&path)?;
+                    } else {
+                        recovery.protect_note(&path, text)?;
+                    }
+                    Value::Null
+                }
+                "save_scratchpad" => {
+                    let root = Path::new(args["root"].as_str().ok_or("Missing root")?);
+                    let text = args["text"].as_str().ok_or("Missing text")?;
+                    recovery.protect_note(&extras::scratch_path(root)?, text)?;
+                    let saved = extras::save_scratchpad(root, args["expected"].as_str(), text)?;
+                    recovery.forget_note(&extras::scratch_path(root)?)?;
+                    serde_json::to_value(saved).unwrap()
+                }
+                "copy_scratchpad" => {
+                    let target = Path::new(args["root"].as_str().ok_or("Missing root")?)
+                        .join("Scratchpad copy.md");
+                    extras::save_copy(&target, args["text"].as_str().ok_or("Missing text")?)?;
+                    json!(true)
+                }
                 "load_todos" => serde_json::to_value(todos::load(Path::new(
                     args["root"].as_str().ok_or("Missing root")?,
                 ))?)
