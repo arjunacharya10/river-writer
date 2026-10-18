@@ -12,8 +12,8 @@ considered: writer-renamed terms, simpler non-git models.)
 * `_river/river.json` is excluded through `.git/info/exclude`; River never edits
   `.gitignore` (#62).
 * **v1 scope (#64):** commit, history, diff, restore and branch create/switch. Remotes,
-  revert, branch delete/merge, tags, writer-shaped diff, retention and teaching hints
-  are v1.1.
+  revert, branch delete/merge, tags, writer-shaped diff and teaching hints are v1.1.
+  No private local history (#66).
 
 ## The visible subset
 | Term | In River |
@@ -37,12 +37,11 @@ Staging area/index (**commit always includes everything**), stash (auto-handled 
 switching branches with uncommitted work: offer "commit" or "carry over"), rebase,
 reset modes, detached HEAD, submodules, hooks. SHAs appear only as a short code on hover.
 
-## Autosave history (not git commits)
-* River keeps an automatic safety net while you write (~every 1–2 min of idle).
-* Stored in a **separate local repository at `.git/river-autosave/`** (shares object
-  storage with the main repository), never shown as commits and **never pushed** (doc 05 §12.3).
-* Thinned over time: everything today, hourly for a week, daily for a month, weekly after.
-* A "Local history" view lets you restore from it. This is the "never lose work" guarantee.
+## Saving and versions (#66)
+* River saves each named file to disk after one second of idle typing; crash recovery
+  protects text not yet saved. There is no private local history or Timeline.
+* Versions are Git commits. Commit when a draft is worth keeping; Restore brings back a
+  file or the project from any commit in the branch.
 
 ## Diff, built for prose
 Git diffs by line, and a prose paragraph is one long line, so River diffs at three levels:
@@ -95,10 +94,13 @@ BRANCHES
 
 
 ### Implemented draft protection (2026-10-18, #42)
+**Superseded by #66:** River no longer keeps private local history or a Timeline. The one-second disk save
+and crash recovery below remain.
+
 Named files save after one second of idle typing. Private history checkpoints the
 previous disk text and each changed saved text before replacement, deduplicating
 unchanged content. This supersedes the proposed 90-second/1–2-minute history timing.
-The Timeline bottom panel previews per-file versions in batches of 200 and restores
+The Timeline right pane (shared with preview, #49) previews per-file versions in batches of 200 and restores
 through an undoable editor edit, preserving the current buffer first.
 
 The private repository reads main objects through alternates; its own new objects
@@ -128,11 +130,9 @@ the commit's parent. Restore never commits or moves the branch; the result appea
 ordinary uncommitted changes.
 
 Before writing, River saves named tabs, refuses if a tab still has unsaved changes,
-records the current project state as a Git tree and checkpoints replaced story files
-in private Timeline history. A banner offers **Undo restore**, which puts the restored
+records the current project state as a Git tree. A banner offers **Undo restore**, which puts the restored
 paths back as they were unless one was edited after the restore. The pre-restore tree
-is unreferenced, so Undo belongs to the current session; Timeline still holds the
-replaced story text. Ignored files, `.git` and `_river/river.json` are never touched;
+is unreferenced, so Undo belongs to the current session. Ignored files, `.git` and `_river/river.json` are never touched;
 symbolic-link paths, links and submodules in the commit are refused.
 
 ### Branches (2026-10-18, #55)
@@ -142,7 +142,7 @@ it. **Create and switch** makes a branch at the current commit and moves to it,
 keeping any uncommitted writing. Switching to a branch on a different commit first
 requires committing, so writing is never lost or silently carried between drafts.
 Switching uses libgit2's safe checkout. Unsaved tabs block it; changed tabs, Scratchpad
-and Todos reload afterwards; private autosave history follows the active branch.
+and Todos reload afterwards.
 Deleting, renaming and merging branches are not in River yet.
 
 ### Git on by default (2026-10-18, #62)
@@ -150,6 +150,41 @@ River projects always have Git. On open or create, `git::ensure_repository` crea
 repository if the folder has none and commits what is already there as "Start project
 history" (the writer's Git identity, else "River Writer"). Changes therefore starts empty
 and shows only what the writer edits. The rule that keeps `_river/river.json` out of Git
-lives in `.git/info/exclude`, so River never touches `.gitignore`. Private history uses
-the same function, so the first autosave can no longer create a commit-less repository.
+lives in `.git/info/exclude`, so River never touches `.gitignore`. 
 New branches can be created immediately; with no commits the field shows a hint.
+
+
+### Implemented local Source Control (2026-10-18, #51)
+The activity-bar Source Control view shows the branch, all changed files, a commit
+message and Commit all changes, plus the current branch's commit history (100 at a
+time). Refresh and a three-second poll while visible pick up external Git/file
+changes. Review changes or select a commit to open a unified text diff in the shared
+right pane, replacing preview/history. This first diff uses standard Git lines;
+scene/paragraph/word presentation remains future work. Binary files appear in the
+file list; displayed patches stop at 1 MB with a visible notice.
+
+Existing Git identity is reused. If unavailable, the sidebar accepts a name/email
+for this project's local config only. Explicit Initialize Git creates a repository
+with `main` and preserves existing ignore rules while adding the UI-state exclusion.
+Autosave-created repositories now also default to `main`; existing branch names
+are preserved. The project root must be the actual working repository root, never
+an automatically discovered parent repository.
+
+Commit flushes named story buffers and extras, then compares the reviewed HEAD and
+content tree before creating a normal Git commit. A changed project fails with the
+message retained for refresh/review/retry. If a right-pane change review was opened,
+that snapshot stays the commit precondition until reviewed again or explicitly
+refreshed. Blank messages, conflicts, unfinished Git operations, detached HEAD and
+an index lock block committing. A temporary index keeps external staged data intact
+on failure; successful commits replace it with the complete committed snapshot.
+No staging UI, force push, shell commands, hooks or transport are added. Status
+constructs content trees in the ordinary object database without moving refs or
+writing the on-disk index; these are not commits and are not pushed. Private
+history's refs/objects remain in its separate repository.
+
+The UI omits `_river/river.json` even if an imported repository previously tracked
+it; the removal then appears as a reviewed deletion. Ignored files otherwise follow
+normal Git semantics (already tracked files remain versioned). Commit history/diffs
+are read-only and do not replace editor content. Restore/revert, branch switching,
+remote setup, credentials and explicit push/pull/fetch/clone remain unfinished.
+Separate automatic backups are out of v1 scope (#50).

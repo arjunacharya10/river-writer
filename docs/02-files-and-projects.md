@@ -112,3 +112,11 @@ conflicts leave the local text in the sidebar. Save a copy and reload asks for a
 new `.md` location; only a successful copy permits reloading. Cancelling or choosing
 an existing filename preserves the local text. The copy is never opened as a tab
 automatically. Bin was removed by decision #47. Existing files are left alone.
+
+
+## Standard Git protection (#50–51)
+Source Control versions the project as an ordinary Git repository. Commit all changes
+includes non-ignored story files, Scratchpad, Todos and other project files; UI state
+is omitted. Use `.gitignore` for private material. No separate dated-copy backup
+system is planned for v1. Remote operations (v1.1, #64) will provide off-device copies
+of committed work; unsaved recovery drafts stay local. There is no private history (#66).

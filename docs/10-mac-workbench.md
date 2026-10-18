@@ -103,7 +103,7 @@ complete automated Mac interaction suite.
   detected convention. Save protection compares contents before replacement;
   a different app can still race a write between that check and the final rename.
 * Settings UI, Git remotes, history compaction, FDX and print are v1.1 (#54, #64).
-  Branches, restore, Mac file associations and signed packaging are done below. Crash recovery, automatic disk saves and local Timeline are implemented
+  Branches, restore, Mac file associations and signed packaging are done below. Crash recovery and automatic disk saves are implemented; local Timeline was removed (#66)
   as described below.
 * No public push has been made; the MIT license and no-business-model decision are now settled (#40).
 
@@ -170,6 +170,9 @@ external source. The full existing workbench regression suite also passes.
 
 
 ## Automatic saving and local Timeline (2026-10-18)
+
+**Superseded in part by #66:** the private history and Timeline described here were
+removed. The one-second autosave remains.
 
 Named story files save after 1 second of idle typing, including inactive tabs.
 Untitled drafts never trigger a save dialog automatically. Autosave uses the same
@@ -428,10 +431,10 @@ The Tauri shell went from 840 to 285 lines and no longer depends on the engine c
 
 **UI.** `main.tsx` keeps workspace state (tabs, editor, sync, preview, autosave, project
 session) and the split layout. Logic with its own state is in `ui/src/features/`:
-`timeline.ts`, `git-workflow.ts` (diff pane, restore/undo, branch switch),
+`git-workflow.ts` (diff pane, restore/undo, branch switch),
 `extras-flush.ts`, `commands.ts` (palette list and ⌘ shortcuts). Presentational pieces
 are in `ui/src/components/`: activity bar, sidebar views, editor title/tabs, banners,
-Git diff pane, Timeline pane, status bar/problems.
+Git diff pane, status bar/problems. (`timeline.ts` and the Timeline pane were removed by #66.)
 
 **Styles.** `ui/src/styles/` holds `base`, `workbench`, `editor`, `preview`, `history`,
 `project-welcome`, `extras` and `git` CSS, imported in that order from `main.tsx`.
@@ -467,3 +470,49 @@ once River retried the snapshot for commit-less repositories.
 Source Control name/email form only appears when neither exists. Covered by a VCS test
 (fallback, no account, configured identity wins) and `verify:git`, which commits with no
 Git identity and checks the author is the account's full name and that no form appears.
+
+
+## Local Source Control (2026-10-18, #50–51)
+Source Control now opens in the left sidebar. It shows the branch, commit message,
+Commit all changes, changed files and paginated commit history. The existing Git
+identity is reused; a missing identity can be set locally for this project. Explicit
+initialization uses `main`. Unified working/commit diffs share the right pane with
+preview and local history, one view at a time. No bottom panel or story tab is added.
+
+Named drafts and extras flush before a commit. Backend checks the reviewed HEAD and
+content tree, refuses unresolved Git states, and preserves existing staging on
+failure. Ignore rules are honored and UI state excluded. Main commits remain ordinary
+Git commits; private autosaves remain isolated and never pushed. Status/diff/history
+make no network calls. No new dependencies were added.
+
+Verification: service and VCS tests cover commit additions/modifications/deletions,
+extras, ignores, stale content, index preservation/locking, detached/in-progress
+states, parent-folder isolation and an independent mirror push after a River commit
+that cannot include private autosaves. `pnpm --dir app verify:git` tests initialize,
+project identity, commits, right-pane diffs, commit history and stale-review retry.
+Screenshot: ignored `app/output/source-control.png`.
+
+Separate automatic backups are out of v1 scope: standard Git remotes provide the
+intended off-device workflow (#50). Next: restore/revert and branches, then remote
+setup/credentials and explicit push/pull/fetch/clone. Rich prose diffs remain planned.
+
+## Local history removed (2026-10-18, #66)
+
+River no longer keeps private local history. Removed: `river_vcs::History` (the
+`.git/river-autosave/` repository and app-data history for standalone files), the
+`local_history`/`history_text`/`prepare_restore` commands, the save-time and
+restore/branch-switch checkpoints (the `Checkpoint` callback on `restore`,
+`undo_restore` and `switch_branch`), the editor-title history button, the Timeline pane
+and `history.css`. The right pane holds the page preview or a Git diff.
+
+What protects writing now: the one-second autosave to disk, the crash-recovery journal
+for unsaved text, editor Undo while a tab is open, Git commits, Restore with Undo
+(refused if the file changed afterwards) and branch switching that requires a commit
+first. Text saved between commits cannot be recovered once its tab is closed.
+
+Existing `.git/river-autosave/` folders and the app-data `history/` folder are left on
+disk untouched; River no longer reads or writes them, and writers may delete them.
+
+Verified: VCS and service tests, both clippy runs, `verify`, `verify:git`,
+`verify:recovery` (now also asserting no history store is created and no history
+button exists) and `test:writing`; Mac app rebuilt.

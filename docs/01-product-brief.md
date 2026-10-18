@@ -46,8 +46,8 @@ Out: comics/graphic novels, essays, academic/MLA, wikis, bulletins, speeches, ar
 * **Scratchpad and todos**, each just a plain-text dump (see doc 02)
 * Git-based versioning with standard git vocabulary (see doc 04)
 * **UI exactly like VS Code** (see doc 03)
-* Automatic local history (private autosaves and Timeline); off-machine copies via a Git
-  remote from v1.1 (#50, #64)
+* Automatic saving, crash recovery and Git commits; off-machine copies via a Git remote
+  from v1.1 (#50, #64, #66)
 
 ## Cut entirely
 Cloud sync, Fling/web review and comments, accounts and sign-in, AI features,
@@ -65,7 +65,7 @@ tables/checklists/code blocks/footnotes in story formats.
 | Revision mode | Revision marks = the diff since a tag, rendered as colored pages and asterisks |
 | Sprints/goals/milestones | Optional daily word-goal ring, off by default |
 | Scratchpad + Todos | Plain-text files in `_river/` |
-| Backups | Private local history; push to your own Git remote (v1.1) |
+| Backups | Git commits; push to your own Git remote (v1.1) |
 
 ## Where it wins
 * **Against Final Draft / Fade In:** plain text, calmer, open source, beautiful typography.

@@ -7,7 +7,6 @@ pub mod recovery;
 pub mod todos;
 use river_model::{Kind, Publication, Script};
 use river_templates::{Template, TemplateId};
-pub use river_vcs::Version as HistoryVersion;
 use serde::Serialize;
 use std::{
     collections::HashMap,
@@ -41,7 +40,6 @@ pub struct Documents {
     next: u64,
     docs: HashMap<u64, Document>,
     project: Option<PathBuf>,
-    history_data: Option<PathBuf>,
 }
 fn read(path: &Path) -> Result<Vec<u8>, String> {
     fs::read(path).map_err(|e| format!("{}: {e}", path.display()))
@@ -82,83 +80,6 @@ fn template_for(path: &Path, root: &Path) -> TemplateId {
         .unwrap_or_else(|| TemplateId::default_for(path))
 }
 impl Documents {
-    pub fn enable_history(&mut self, data: PathBuf) {
-        self.history_data = Some(data);
-    }
-    fn history(&self, path: &Path) -> Result<Option<river_vcs::History>, String> {
-        let Some(data) = &self.history_data else {
-            return Ok(None);
-        };
-        let project = self.project.as_deref().filter(|p| path.starts_with(p));
-        // Opening project history also ensures the project repository (#62).
-        river_vcs::History::open(project, path, data).map(Some)
-    }
-    pub fn local_history(&self, id: u64) -> Result<Vec<river_vcs::Version>, String> {
-        self.local_history_before(id, None)
-    }
-    pub fn local_history_before(
-        &self,
-        id: u64,
-        before: Option<&str>,
-    ) -> Result<Vec<river_vcs::Version>, String> {
-        let doc = self.get(id)?;
-        let Some(path) = &doc.path else {
-            return Ok(vec![]);
-        };
-        self.history(path)?
-            .map(|h| h.older_versions(before))
-            .transpose()
-            .map(|v| v.unwrap_or_default())
-    }
-    pub fn history_text(&self, id: u64, version: &str) -> Result<String, String> {
-        let doc = self.get(id)?;
-        let history = self
-            .history(
-                doc.path
-                    .as_deref()
-                    .ok_or("Save this draft to start local history")?,
-            )?
-            .ok_or("Local history is unavailable")?;
-        Ok(decode(&history.read(version)?)?.0)
-    }
-    /// Protect the current buffer before replacing it with an older version.
-    pub fn before_restore(&self, id: u64, revision: u64) -> Result<(), String> {
-        let doc = self.get(id)?;
-        if doc.revision != revision {
-            return Err("The story changed. Choose the version again.".into());
-        }
-        let history = self
-            .history(doc.path.as_deref().ok_or("Save this draft first")?)?
-            .ok_or("Local history is unavailable")?;
-        history.checkpoint(doc.text.as_bytes())
-    }
-    /// Keep a story file's current bytes in private history before Git replaces them.
-    pub fn checkpoint_replaced(&self, path: &Path, bytes: &[u8]) -> Result<(), String> {
-        if !story(path) {
-            return Ok(());
-        }
-        match self.history(path)? {
-            Some(history) => history.checkpoint(bytes),
-            None => Ok(()),
-        }
-    }
-    /// Restore a file or the project from a commit, checkpointing replaced stories first.
-    pub fn git_restore(
-        &self,
-        root: &Path,
-        commit: &str,
-        path: Option<&str>,
-    ) -> Result<git::Restored, String> {
-        git::restore(root, commit, path, &mut |p, b| {
-            self.checkpoint_replaced(p, b)
-        })
-    }
-    pub fn git_switch_branch(&self, root: &Path, name: &str) -> Result<Vec<String>, String> {
-        git::switch_branch(root, name, &mut |p, b| self.checkpoint_replaced(p, b))
-    }
-    pub fn git_undo_restore(&self, root: &Path, restored: &git::Restored) -> Result<(), String> {
-        git::undo_restore(root, restored, &mut |p, b| self.checkpoint_replaced(p, b))
-    }
     pub fn autosave(&mut self, id: u64, revision: u64) -> Result<Option<Document>, String> {
         let doc = self.get(id)?;
         if doc.revision != revision || !doc.dirty || doc.path.is_none() {
@@ -337,12 +258,6 @@ impl Documents {
             vec![]
         };
         bytes.extend_from_slice(d.text.replace('\n', &d.ending).as_bytes());
-        if let Some(history) = self.history(&path)? {
-            if let Some(previous) = expected {
-                history.checkpoint(previous)?;
-            }
-            history.checkpoint(&bytes)?;
-        }
         atomic_write(&path, &bytes, expected)?;
         let doc = self.docs.get_mut(&id).unwrap();
         if !doc.template_override {
@@ -658,13 +573,11 @@ pub fn initialize_git(root: &Path) -> Result<(), String> {
 mod tests {
     use super::*;
     #[test]
-    fn autosave_preserves_encoding_and_history_and_rejects_external_edits() {
+    fn autosave_preserves_encoding_and_rejects_external_edits() {
         let dir = dir();
         let path = dir.join("story.md");
         fs::write(&path, b"\xef\xbb\xbffirst\r\n").unwrap();
-        fs::write(dir.join(".gitignore"), "personal-notes/\n").unwrap();
         let mut docs = Documents::default();
-        docs.enable_history(dir.join("app-data"));
         docs.set_project(&dir).unwrap();
         let doc = docs.open(&path).unwrap();
         docs.update(doc.id, 1, "second\n".into(), doc.template)
@@ -673,47 +586,16 @@ mod tests {
         let saved = docs.autosave(doc.id, 1).unwrap().unwrap();
         assert!(!saved.dirty);
         assert_eq!(fs::read(&path).unwrap(), b"\xef\xbb\xbfsecond\r\n");
-        let versions = docs.local_history(doc.id).unwrap();
-        assert_eq!(versions.len(), 2);
-        assert_eq!(
-            docs.history_text(doc.id, &versions[1].id).unwrap(),
-            "first\n"
-        );
         docs.update(doc.id, 2, "my latest unsaved text".into(), doc.template)
             .unwrap();
-        docs.before_restore(doc.id, 2).unwrap();
-        assert_eq!(docs.local_history(doc.id).unwrap().len(), 3);
-        assert!(docs.before_restore(doc.id, 1).is_err());
         fs::write(&path, "external text").unwrap();
         assert!(docs.autosave(doc.id, 2).is_err());
         assert_eq!(fs::read_to_string(&path).unwrap(), "external text");
         assert_eq!(docs.get(doc.id).unwrap().text, "my latest unsaved text");
-        // The writer's .gitignore is left alone; UI state is excluded locally (#62).
-        let ignore = fs::read_to_string(dir.join(".gitignore")).unwrap();
-        assert!(!ignore.contains("_river"));
-        let exclude = fs::read_to_string(dir.join(".git/info/exclude")).unwrap();
-        assert!(exclude.contains("/_river/river.json"));
         let untitled = docs.new_document();
         docs.update(untitled.id, 1, "untitled".into(), untitled.template)
             .unwrap();
         assert!(docs.autosave(untitled.id, 1).unwrap().is_none());
-        fs::remove_dir_all(dir).unwrap();
-    }
-    #[test]
-    fn history_failure_leaves_source_untouched() {
-        let dir = dir();
-        let path = dir.join("story.md");
-        fs::write(&path, "original").unwrap();
-        let data = dir.join("not-a-folder");
-        fs::write(&data, "occupied").unwrap();
-        let mut docs = Documents::default();
-        docs.enable_history(data);
-        let doc = docs.open(&path).unwrap();
-        docs.update(doc.id, 1, "new draft".into(), doc.template)
-            .unwrap();
-        assert!(docs.autosave(doc.id, 1).is_err());
-        assert_eq!(fs::read_to_string(&path).unwrap(), "original");
-        assert!(docs.get(doc.id).unwrap().dirty);
         fs::remove_dir_all(dir).unwrap();
     }
     fn dir() -> PathBuf {

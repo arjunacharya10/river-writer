@@ -62,12 +62,10 @@ fn reply<T: Serialize>(value: T) -> Result<Reply, String> {
 const DONE: Result<Reply, String> = Ok(Reply::Json(Value::Null));
 
 impl Service {
-    /// `data` holds private history and crash-recovery journals.
+    /// `data` holds crash-recovery journals.
     pub fn new(data: PathBuf, shell: Box<dyn Shell>) -> Result<Self, String> {
-        let mut documents = Documents::default();
-        documents.enable_history(data.clone());
         Ok(Self {
-            documents: Mutex::new(documents),
+            documents: Mutex::default(),
             previews: Mutex::default(),
             serial: AtomicU64::new(0),
             recovery: Recovery::new(data.join("recovery"))?,
@@ -118,16 +116,22 @@ impl Service {
                 git::create_branch(&root()?, &arg::<String>(args, "name")?)?;
                 DONE
             }
+            // Rewrites hold the document lock so no save interleaves with them.
             "git_switch_branch" => {
-                reply(docs()?.git_switch_branch(&root()?, &arg::<String>(args, "name")?)?)
+                let _guard = docs()?;
+                reply(git::switch_branch(&root()?, &arg::<String>(args, "name")?)?)
             }
-            "git_restore" => reply(docs()?.git_restore(
-                &root()?,
-                &arg::<String>(args, "commit")?,
-                arg::<Option<String>>(args, "path")?.as_deref(),
-            )?),
+            "git_restore" => {
+                let _guard = docs()?;
+                reply(git::restore(
+                    &root()?,
+                    &arg::<String>(args, "commit")?,
+                    arg::<Option<String>>(args, "path")?.as_deref(),
+                )?)
+            }
             "git_undo_restore" => {
-                docs()?.git_undo_restore(&root()?, &arg(args, "restored")?)?;
+                let _guard = docs()?;
+                git::undo_restore(&root()?, &arg(args, "restored")?)?;
                 DONE
             }
 
@@ -285,24 +289,11 @@ impl Service {
             }
             "confirm_discard" => reply(self.shell.confirm_discard(&arg::<String>(args, "name")?)),
 
-            // Crash recovery and private history.
+            // Crash recovery.
             "recovery_drafts" => reply(self.recovery.pending()?),
             "recover_draft" => {
                 let key = arg::<String>(args, "key")?;
                 reply(self.recovery.restore(&mut *docs()?, &key)?)
-            }
-            "local_history" => {
-                reply(docs()?.local_history_before(
-                    id()?,
-                    arg::<Option<String>>(args, "before")?.as_deref(),
-                )?)
-            }
-            "history_text" => reply(docs()?.history_text(id()?, &arg::<String>(args, "version")?)?),
-            "prepare_restore" => {
-                let (id, version) = (id()?, arg::<String>(args, "version")?);
-                let docs = docs()?;
-                docs.before_restore(id, arg(args, "revision")?)?;
-                reply(docs.history_text(id, &version)?)
             }
 
             // Pages.

@@ -50,7 +50,7 @@ flowchart LR
     LAY[Layout + pagination]
     RND[Page rasterizer]
     PDF[PDF writer]
-    VCS[VCS service<br/>git, autosave history]
+    VCS[VCS service<br/>git]
     PRJ[Project service<br/>_river/, settings, extras]
     WK[Worker pool]
   end
@@ -90,7 +90,7 @@ river-writer/
 │   ├── river-pdf/                page display list → PDF (font subsetting, metadata, outline)
 │   ├── river-fdx/                Final Draft import/export
 │   ├── river-diff/               structural/paragraph/word diff, 3-way scene merge
-│   ├── river-vcs/                git (repo, commit, branch, remote), autosave history
+│   ├── river-vcs/                git (repo, commit, branch, restore)
 │   ├── river-project/            project folder, _river/, river.json, settings, extras, watcher
 │   └── river-service/            orchestration: DocumentStore, LanguageService, PreviewService
 ├── app/
@@ -444,31 +444,12 @@ No grammar or spelling beyond the system spellchecker in the editor.
   Carry over is a checkout with merge; on a conflict, fall back to an internal stash
   that is never shown to the user.
 
-### 12.3 Autosave history (local only)
-* **Decided (§19.4):** stored in a separate repository at `.git/river-autosave/` that
-  shares objects with the main repository via `objects/info/alternates` (no duplication),
-  one autosave branch per real branch. *(Earlier plan: private refs
-  `refs/river/autosave/<branch>` in the main repository; replaced to remove any
-  `--mirror` leak risk.)*
-* **Implemented default (#42):** named files save after 1 s of idle typing. Before
-  replacement, checkpoint the previous disk bytes and the changed saved bytes;
-  identical content is deduplicated. Message: `autosave`. This supersedes the
-  proposed ~90 s history interval so intervening disk saves remain recoverable.
-  Untitled text uses crash recovery until the writer chooses a filename.
-* **Never pushed:** it isn't part of the main repository's refs, so no push (including
-  `git push --mirror` from the CLI) can include it; a fresh clone has commits but no autosaves.
-* **Retention (planned; not implemented yet):** a compaction job rewrites the autosave chain to keep all of today,
-  hourly for 7 days, daily for 30 days, weekly beyond. Unreferenced objects are
-  collected by periodic `gc`.
-* Surfaced in the **Timeline** right pane per file (shared with preview, decision #49): preview a saved version and
-  restore it as an isolated, undoable editor edit. The current buffer is checkpointed
-  before restoration. Merging real commits into Timeline remains planned. The current
-  list loads 200 versions at a time; Load older versions exposes the remaining history.
-* `river-vcs` uses libgit2 without transport features for this local-only slice. It
-  adopts the exact project repository or initializes one on first history access;
-  `_river/river.json` is ignored without changing the user’s other ignore rules.
-  Standalone-file history lives in app data keyed by canonical source path. Linked
-  Git worktrees use their own administrative directory and shared main object store.
+### 12.3 Autosave (no private history, #66)
+* Named files save to disk after 1 s of idle typing (#42); untitled text and unsaved
+  edits are protected by the crash-recovery journal in app data.
+* There is no private autosave repository or Timeline. The earlier design
+  (`.git/river-autosave/` sharing objects via alternates, per-branch chains, retention
+  thinning, a Timeline pane) was built and then removed by #66. Versions are Git commits.
 
 ### 12.4 Diff (river-diff)
 * Text diff engine: `imara-diff` or `similar` (Histogram/Myers).
@@ -562,9 +543,9 @@ sample documents.
 | **2. Shell** | Tauri app, workbench skeleton (activity bar, Explorer, tabs, status bar, palette), CodeMirror 6 + Fountain/Markdown support + script look, document sync, save/watch | Edit + save + reopen; highlighting; outline |
 | **3. Preview** | Tile renderer, custom protocol, sync scroll, template dropdown + preview icon | Live preview within budget |
 | **4. Extras & settings** | Scratchpad/Todos views, settings editor, keybindings, Light/Dark themes (Zen deferred, #45) | Feature-complete UI for v1 |
-| **5. VCS** | Commit/log/diff/branch/checkout/restore, autosave history + Timeline, remotes push/pull/fetch/clone | Never-push-autosave test passes; credentials work for SSH + HTTPS |
+| **5. VCS** | Commit/log/diff/branch/checkout/restore (remotes v1.1, #64; no private history, #66) | Credentials work for SSH + HTTPS |
 | **6. FDX + polish** | FDX import/export, Problems panel basics, packaging (v1 ships as source, #65) | v1 release candidate |
-| **v1.1** | Everything moved by #64 (remotes, settings, Quick Open, search, Explorer tree, print, A4, retention, CI release), scene merge, cherry-pick, revision marks, page diff, rename character, Characters/Stats views, reader copy, GitHub sign-in | — |
+| **v1.1** | Everything moved by #64 (remotes, settings, Quick Open, search, Explorer tree, print, A4, CI release), scene merge, cherry-pick, revision marks, page diff, rename character, Characters/Stats views, reader copy, GitHub sign-in | — |
 
 ---
 
@@ -619,7 +600,6 @@ See [engine usage, validation and boundaries](09-engine-cli.md).
 | Typesetting quality (glyph positions, wrapping parity) | Phase-0 spike; one monospace font; golden visual tests |
 | WKWebView editing behaviour and performance | Test the actual macOS webview, including typing, selection, IME and scrolling |
 | libgit2 credential edge cases (SSH agents, 2FA tokens) | Lean on OS keychains + credential helpers; clear error messages; device-flow sign-in in v1.1 |
-| Autosave store corrupted/deleted | It's a disposable safety net in `.git/river-autosave/`; real history is unaffected |
 | Large projects (multi-file novels with 100+ chapters) | Per-file parse caches, project-level indices built lazily, pagination only for the previewed file / includes |
 | Scope creep toward "VS Code features" | Doc 01 principles; "Never" list in doc 06; no extension host |
 | CodeMirror falls short of VS Code polish (find widget, minimap, keymap details) | Theme/keymap work budgeted in phase 2; community add-ons verified or replaced by small in-house modules |
@@ -635,7 +615,7 @@ See [engine usage, validation and boundaries](09-engine-cli.md).
    `pdf-writer` for any single feature krilla lacks.
 3. **Workbench UI: SolidJS** (fine-grained updates for many small VS Code-style widgets;
    JSX keeps a React switch cheap). React is the fallback if developer familiarity wins.
-4. **Autosave store: a separate repository inside `.git/` (`.git/river-autosave/`)**
+4. **Superseded by #66 (no private history).** Was: **Autosave store: a separate repository inside `.git/` (`.git/river-autosave/`)**
    sharing object storage with the main repository via git alternates. Never part of
    any push (even `--mirror`), invisible to other git tools, moves with the project,
    self-contained pruning. Lone-file mode: app data dir keyed by file path. Supersedes

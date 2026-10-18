@@ -16,16 +16,16 @@ gate development or release. Linux: later or never.
 * Git, built in (no installed `git`): on by default with a starting snapshot (#62),
   review and commit everything (#51), history and commit diffs, file/project restore
   with Undo (#53), branch create/switch (#55), Mac-account identity (#63)
-* Draft protection: one-second autosave, crash recovery, private per-branch history and
-  Timeline with restore/Undo (#42). No off-machine copy in v1; writers use their own
-  Mac backups (#50, #64)
+* Draft protection: one-second autosave and crash recovery (#42). Versions are Git
+  commits; no private local history or Timeline (#66). No off-machine copy in v1;
+  writers use their own Mac backups (#50, #64)
 * Mac release: `app.riverwriter.mac` identity, icon and file associations (#56, #58).
   Distributed as source: writers clone and build it themselves (#65)
 * Themes: Light and Dark only, following the system appearance
 
 ### Left before releasing v1
 * Native checks in the Mac app after the refactor (#61): open, edit/save, preview, PDF,
-  Timeline, Git review/commit/restore/branch, Finder double-click
+  Git review/commit/restore/branch, Finder double-click
 * Build-from-source steps checked on a clean clone
 * Doc and bug fixes found along the way
 
@@ -40,7 +40,6 @@ Moved from v1 (#64):
 * Explorer tree: folders, new/rename/delete, folder watching
 * Native Print; A4 paper / Page Setup
 * Preview sync scroll and click-to-jump; Outline drag-to-reorder scenes
-* Private-history retention; real commits in Timeline
 * Split editor groups, pinned tabs; includes resolved from the project root
 * CI release workflow, `CHANGELOG.md`, network-promise audit; Help → Check for Updates /
   Subscribe links
@@ -66,8 +65,6 @@ services, non-creative templates.
 1. One unified syntax for screen and prose, or Fountain + Markdown kept separate?
    (Current lean: separate.)
 2. Open Highland `.highland` files as a migration path? (ZIP → TextBundle → `text.fountain`/`text.md`)
-3. History retention/compaction implementation (v1.1, #64). The disk-save interval is
-   settled at 1 second idle; checkpoints protect each disk replacement (#42).
 
 ## Closed decisions: license and business model (#40)
 * **License: MIT.** The repository's `LICENSE` contains the grant.

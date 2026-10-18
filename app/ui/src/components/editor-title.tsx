@@ -12,8 +12,6 @@ export function EditorTitle(props: {
   onTemplate: (template: TemplateId) => void;
   previewOpen: boolean;
   onPreview: () => void;
-  historyOpen: boolean;
-  onHistory: () => void;
   onExport: () => void;
 }) {
   return (
@@ -60,12 +58,6 @@ export function EditorTitle(props: {
               icon="open-preview"
               active={props.previewOpen}
               onClick={props.onPreview}
-            />
-            <Action
-              label="Toggle local history"
-              icon="history"
-              active={props.historyOpen}
-              onClick={props.onHistory}
             />
             <Action label="Export PDF" icon="export" onClick={props.onExport} />
           </div>

@@ -153,7 +153,7 @@ fn review(
     let mut patch = Vec::new();
     let mut truncated = false;
     diff.print(DiffFormat::Patch, |_, _, line| {
-        if patch.len() + line.content().len() + 1 > 1_000_000 {
+        if truncated || patch.len() + line.content().len() + 1 > 1_000_000 {
             truncated = true;
             return true;
         }
@@ -488,8 +488,6 @@ pub fn commit_diff(root: &Path, id: &str) -> Result<Review, String> {
     review(&repo, old.as_ref(), &c.tree().map_err(err)?)
 }
 
-/// Called with each existing file's bytes before a restore replaces or removes it.
-pub type Checkpoint<'a> = dyn FnMut(&Path, &[u8]) -> Result<(), String> + 'a;
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Restored {
     /// Pre-restore project tree; the undo source.
@@ -564,16 +562,10 @@ fn apply(
     source: &git2::Tree<'_>,
     paths: &[String],
     before: &git2::Tree<'_>,
-    before_replace: &mut Checkpoint<'_>,
 ) -> Result<(), String> {
     let mut plan = Vec::new();
     for path in paths {
         plan.push((disk_path(root, path)?, blob_at(source, path)?));
-    }
-    for (disk, _) in &plan {
-        if let Ok(old) = fs::read(disk) {
-            before_replace(disk, &old)?;
-        }
     }
     let mut done: Vec<usize> = Vec::new();
     let write = |disk: &Path, target: &Option<(Oid, i32)>| -> Result<(), String> {
@@ -634,12 +626,7 @@ fn apply(
 }
 /// Restore one file (`path`) or the whole project from a commit in this branch.
 /// A file deleted by that commit is restored from the commit's parent.
-pub fn restore(
-    root: &Path,
-    commit: &str,
-    path: Option<&str>,
-    before_replace: &mut Checkpoint<'_>,
-) -> Result<Restored, String> {
+pub fn restore(root: &Path, commit: &str, path: Option<&str>) -> Result<Restored, String> {
     let repo = open(root)?;
     let c = reachable(&repo, commit)?;
     let before_id = current_tree(&repo)?;
@@ -681,7 +668,7 @@ pub fn restore(
     if paths.is_empty() {
         return Err("Nothing to restore: it already matches this commit.".into());
     }
-    apply(&repo, root, &source, &paths, &before, before_replace)?;
+    apply(&repo, root, &source, &paths, &before)?;
     Ok(Restored {
         before: before_id.to_string(),
         after: current_tree(&repo)?.to_string(),
@@ -690,11 +677,7 @@ pub fn restore(
 }
 /// Put restored paths back as they were before the restore, unless one of them
 /// was edited after it (then the newer writing wins and undo is refused).
-pub fn undo_restore(
-    root: &Path,
-    restored: &Restored,
-    before_replace: &mut Checkpoint<'_>,
-) -> Result<(), String> {
+pub fn undo_restore(root: &Path, restored: &Restored) -> Result<(), String> {
     let repo = open(root)?;
     let before = repo
         .find_tree(Oid::from_str(&restored.before).map_err(err)?)
@@ -706,11 +689,11 @@ pub fn undo_restore(
     for path in &restored.paths {
         if blob_at(&now, path)? != blob_at(&after, path)? {
             return Err(format!(
-                "{path} changed after the restore, so it was not undone. Use Timeline or Source Control to recover older text."
+                "{path} changed after the restore, so it was not undone. Your newer writing was kept."
             ));
         }
     }
-    apply(&repo, root, &before, &restored.paths, &now, before_replace)
+    apply(&repo, root, &before, &restored.paths, &now)
 }
 
 #[derive(Serialize)]
@@ -766,11 +749,7 @@ pub fn create_branch(root: &Path, name: &str) -> Result<(), String> {
 }
 /// Switch to a local branch. Uncommitted changes must be committed first, so a
 /// switch never loses or carries writing between drafts. Returns rewritten paths.
-pub fn switch_branch(
-    root: &Path,
-    name: &str,
-    before_replace: &mut Checkpoint<'_>,
-) -> Result<Vec<String>, String> {
+pub fn switch_branch(root: &Path, name: &str) -> Result<Vec<String>, String> {
     let repo = open(root)?;
     if repo.state() != RepositoryState::Clean || repo.index().map_err(err)?.has_conflicts() {
         return Err("Finish the current Git operation or conflicts before switching.".into());
@@ -810,14 +789,6 @@ pub fn switch_branch(
         .filter_map(|d| d.new_file().path().or(d.old_file().path()))
         .map(|p| p.to_string_lossy().into_owned())
         .collect();
-    for path in &paths {
-        let disk = root.join(path);
-        if !disk.is_symlink()
-            && let Ok(bytes) = fs::read(&disk)
-        {
-            before_replace(&disk, &bytes)?;
-        }
-    }
     let mut checkout = git2::build::CheckoutBuilder::new();
     checkout.safe();
     repo.checkout_tree(new.as_object(), Some(&mut checkout))
@@ -959,9 +930,6 @@ mod tests {
         assert!(commit(&root, s.head.as_deref(), &s.tree, "Fail").is_err());
         fs::remove_dir_all(root).unwrap();
     }
-    fn none(_: &Path, _: &[u8]) -> Result<(), String> {
-        Ok(())
-    }
     #[test]
     fn restores_files_and_projects_and_undoes_them() {
         let root = folder();
@@ -976,40 +944,21 @@ mod tests {
         let second = save(&root, "Second");
         fs::write(root.join("New.md"), "uncommitted new chapter").unwrap();
         // Bring back a file deleted by a commit, from that commit's parent.
-        let mut seen = Vec::new();
-        let r = restore(&root, &second, Some("Deleted.md"), &mut |p, _| {
-            seen.push(p.to_path_buf());
-            Ok(())
-        })
-        .unwrap();
-        assert!(seen.is_empty());
+        let r = restore(&root, &second, Some("Deleted.md")).unwrap();
         assert_eq!(
             fs::read_to_string(root.join("Deleted.md")).unwrap(),
             "a scene worth keeping"
         );
-        undo_restore(&root, &r, &mut none).unwrap();
+        undo_restore(&root, &r).unwrap();
         assert!(!root.join("Deleted.md").exists());
-        // Whole project: overwrites, recreates, removes newer files; checkpoints old text.
-        let mut replaced = Vec::new();
-        let r = restore(&root, &first, None, &mut |p, b| {
-            replaced.push((
-                p.file_name().unwrap().to_string_lossy().into_owned(),
-                b.to_vec(),
-            ));
-            Ok(())
-        })
-        .unwrap();
+        // Whole project: overwrites, recreates and removes newer files.
+        let r = restore(&root, &first, None).unwrap();
         assert_eq!(
             fs::read_to_string(root.join("acts/One.fountain")).unwrap(),
             "INT. CAFÉ - DAY\n"
         );
         assert!(root.join("Deleted.md").exists() && !root.join("New.md").exists());
-        assert!(
-            replaced
-                .iter()
-                .any(|(n, b)| n == "New.md" && b == b"uncommitted new chapter")
-        );
-        undo_restore(&root, &r, &mut none).unwrap();
+        undo_restore(&root, &r).unwrap();
         assert_eq!(
             fs::read_to_string(root.join("acts/One.fountain")).unwrap(),
             "INT. CAFÉ - NIGHT 🎬\n"
@@ -1020,15 +969,15 @@ mod tests {
         );
         assert!(!root.join("Deleted.md").exists());
         assert!(
-            restore(&root, &second, Some("acts/One.fountain"), &mut none)
+            restore(&root, &second, Some("acts/One.fountain"))
                 .unwrap_err()
                 .contains("already matches")
         );
         // Undo never overwrites writing done after the restore.
-        let r = restore(&root, &first, Some("acts/One.fountain"), &mut none).unwrap();
+        let r = restore(&root, &first, Some("acts/One.fountain")).unwrap();
         fs::write(root.join("acts/One.fountain"), "newer writing").unwrap();
         assert!(
-            undo_restore(&root, &r, &mut none)
+            undo_restore(&root, &r)
                 .unwrap_err()
                 .contains("changed after")
         );
@@ -1041,17 +990,14 @@ mod tests {
         fs::remove_dir_all(root).unwrap();
     }
     #[test]
-    fn restore_refuses_foreign_commits_links_and_checkpoint_failures() {
+    fn restore_refuses_foreign_commits_and_links() {
         let root = folder();
         init(&root).unwrap();
         identity(&root, "Writer", "writer@example.invalid").unwrap();
         fs::write(root.join("Story.md"), "one").unwrap();
-        let first = save(&root, "First");
+        save(&root, "First");
         fs::write(root.join("Story.md"), "two").unwrap();
-        assert!(restore(&root, &"0".repeat(40), None, &mut none).is_err());
-        // A failed safety checkpoint stops the restore before any disk change.
-        assert!(restore(&root, &first, None, &mut |_, _| Err("no history".into())).is_err());
-        assert_eq!(fs::read_to_string(root.join("Story.md")).unwrap(), "two");
+        assert!(restore(&root, &"0".repeat(40), None).is_err());
         #[cfg(unix)]
         {
             let outside = folder();
@@ -1061,7 +1007,7 @@ mod tests {
             fs::remove_dir_all(root.join("real")).unwrap();
             std::os::unix::fs::symlink(&outside, root.join("real")).unwrap();
             assert!(
-                restore(&root, &linked, Some("real/Linked.md"), &mut none)
+                restore(&root, &linked, Some("real/Linked.md"))
                     .unwrap_err()
                     .contains("symbolic link")
             );
@@ -1098,18 +1044,14 @@ mod tests {
         );
         fs::write(root.join("Story.md"), "alternate ending").unwrap();
         // Same commit: uncommitted writing comes along to the new branch.
-        assert!(
-            switch_branch(&root, "draft-2", &mut none)
-                .unwrap()
-                .is_empty()
-        );
+        assert!(switch_branch(&root, "draft-2").unwrap().is_empty());
         assert_eq!(status(&root).unwrap().branch, "draft-2");
         fs::write(root.join("Extra.md"), "only on draft-2").unwrap();
         save(&root, "Alternate");
         // Once branches diverge, uncommitted writing blocks a switch and stays on disk.
         fs::write(root.join("Unsaved.md"), "not committed").unwrap();
         assert!(
-            switch_branch(&root, "main", &mut none)
+            switch_branch(&root, "main")
                 .unwrap_err()
                 .contains("Commit your changes")
         );
@@ -1118,16 +1060,9 @@ mod tests {
             "not committed"
         );
         fs::remove_file(root.join("Unsaved.md")).unwrap();
-        let mut seen = Vec::new();
-        let mut paths = switch_branch(&root, "main", &mut |p, _| {
-            seen.push(p.file_name().unwrap().to_string_lossy().into_owned());
-            Ok(())
-        })
-        .unwrap();
+        let mut paths = switch_branch(&root, "main").unwrap();
         paths.sort();
         assert_eq!(paths, vec!["Extra.md", "Story.md"]);
-        seen.sort();
-        assert_eq!(seen, vec!["Extra.md", "Story.md"]);
         assert_eq!(
             fs::read_to_string(root.join("Story.md")).unwrap(),
             "main draft"
@@ -1135,13 +1070,13 @@ mod tests {
         assert!(!root.join("Extra.md").exists());
         assert!(status(&root).unwrap().files.is_empty());
         assert_eq!(status(&root).unwrap().branch, "main");
-        switch_branch(&root, "draft-2", &mut none).unwrap();
+        switch_branch(&root, "draft-2").unwrap();
         assert_eq!(
             fs::read_to_string(root.join("Extra.md")).unwrap(),
             "only on draft-2"
         );
         assert_eq!(log(&root, None).unwrap()[0].message, "Alternate");
-        assert!(switch_branch(&root, "missing", &mut none).is_err());
+        assert!(switch_branch(&root, "missing").is_err());
         fs::remove_dir_all(root).unwrap();
     }
     #[test]

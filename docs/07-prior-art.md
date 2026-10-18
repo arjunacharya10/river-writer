@@ -16,7 +16,7 @@ never from inspecting its code.
 | Sync-tool conflict copies | Plain files left to the user | Detect common `(conflicted copy)` patterns → "Compare with original" (diff view) |
 | Renames breaking references | Rewrites links on rename | Rewrite `{{INCLUDE: path}}` on rename/move |
 | Per-project layout/settings | `.obsidian/workspace.json` + per-vault config | `_river/river.json` + `_river/settings.json` |
-| Never losing work | "File recovery" snapshots with retention | Validates autosave in `.git/river-autosave/` (today / hourly / daily / weekly) |
+| Never losing work | "File recovery" snapshots with retention | Considered for a private autosave history; River dropped it in favour of Git commits (#66) |
 | Theming | CSS variables throughout | Light/Dark as CSS variable sets from VS Code's palettes |
 | Commands and hotkeys | Central registry, hotkeys by command ID, conflict detection | VS Code-style registry + conflict warnings in the keybindings editor |
 | Undo across tab switches | Keeps editor state per open file | Cache CodeMirror `EditorState` per tab |

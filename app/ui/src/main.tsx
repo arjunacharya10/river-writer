@@ -24,10 +24,8 @@ import {
   ExternalChangeBanner,
 } from "./components/banners";
 import { GitDiffPane } from "./components/git-diff";
-import { TimelinePane } from "./components/timeline";
 import { StatusBar, Problems } from "./components/status-bar";
 import { createExtrasFlush } from "./features/extras-flush";
-import { createTimeline } from "./features/timeline";
 import { createGitWorkflow } from "./features/git-workflow";
 import { shortcut, workbenchCommands } from "./features/commands";
 import { ProjectWelcome } from "./components/welcome";
@@ -52,7 +50,6 @@ import "./styles/base.css";
 import "./styles/workbench.css";
 import "./styles/editor.css";
 import "./styles/preview.css";
-import "./styles/history.css";
 import "./styles/project-welcome.css";
 import "./styles/extras.css";
 import "./styles/git.css";
@@ -74,7 +71,7 @@ function App() {
           loadEditor();
         }
       } catch {
-        // The restore removed this file; its saved text is in Git and Timeline.
+        // The restore removed this file; its saved text is in Git.
         await call("close_document", { id: doc.id });
         const remaining = tabs().filter((d) => d.id !== doc.id);
         states.delete(doc.id);
@@ -150,7 +147,6 @@ function App() {
     if (!local) return;
     patch(id, { dirty: local.revision !== result.revision });
     if (active() === id) setNotice("Saved automatically");
-    if (timeline.open() && active() === id) await timeline.load();
   }
   const [recoveries, setRecoveries] = createSignal<
     { key: string; path: string | null }[]
@@ -240,27 +236,17 @@ function App() {
     setTabs((ds) => ds.map((d) => (d.id === id ? { ...d, ...changes } : d)));
   const { flushExtras, registerExtrasFlush } = createExtrasFlush(fail);
   const [extrasEpoch, setExtrasEpoch] = createSignal(0);
-  const timeline = createTimeline({
-    current,
-    active,
-    sync,
-    view: () => view,
-    notify: setNotice,
-    fail,
-  });
   const git = createGitWorkflow({
     folder,
     prepare: prepareGitWrite,
     afterWrite: afterGitWrite,
     makeRoom: () => {
       if (previewOpen()) togglePreview();
-      timeline.setOpen(false);
     },
     notify: setNotice,
   });
-  /** Preview, Timeline and Git diff share one right-hand pane. */
-  const sidePaneOpen = () =>
-    !!(((previewOpen() || timeline.open()) && current()) || git.diff());
+  /** Preview and Git diff share one right-hand pane. */
+  const sidePaneOpen = () => !!((previewOpen() && current()) || git.diff());
   function applyAnalysis(a: Analysis, id: number) {
     if (active() !== id || current()?.revision !== a.revision) return;
     patch(id, { dirty: a.dirty });
@@ -438,7 +424,6 @@ function App() {
   }
   async function clearWorkspace() {
     for (const id of autosaveTimers.keys()) cancelAutosave(id);
-    timeline.reset();
     git.setDiff(null);
     clearTimeout(refreshTimer);
     previewRequest++;
@@ -561,7 +546,7 @@ function App() {
     setNotice("Saved");
     setExternal(false);
     await call("persist_saved_template", { id: doc.id });
-    // Saving a new .fountain file changes syntax, without changing its text or history.
+    // Saving a new .fountain file changes syntax, without changing its text or undo history.
     if (active() === doc.id)
       applyAnalysis(
         await call<Analysis>("analyze_document", { id: doc.id }),
@@ -665,7 +650,6 @@ function App() {
   }
   function togglePreview() {
     git.setDiff(null);
-    timeline.setOpen(false);
     setPreviewOpen((v) => !v);
     if (previewOpen()) void updatePreview();
     else {
@@ -1004,12 +988,6 @@ function App() {
                 onTemplate={(template) => run(() => changeTemplate(template))()}
                 previewOpen={previewOpen()}
                 onPreview={togglePreview}
-                historyOpen={timeline.open()}
-                onHistory={() => {
-                  if (!timeline.open() && previewOpen()) togglePreview();
-                  git.setDiff(null);
-                  timeline.setOpen(!timeline.open());
-                }}
                 onExport={run(exportPdf)}
               />
               <ErrorBanner error={error()} onDismiss={() => setError("")} />
@@ -1057,11 +1035,6 @@ function App() {
                     inert={!sidePaneOpen()}
                   >
                     <GitDiffPane git={git} run={run} />
-                    <TimelinePane
-                      timeline={timeline}
-                      saved={!!current()?.path}
-                      run={run}
-                    />
                     <Show when={previewOpen() && current()}>
                       <PagePreview
                         id={active()!}

@@ -6,7 +6,7 @@ formatted pages. It's a focused, anti-bloat take on Highland Pro: craft first, n
 no accounts, no AI, no plugins.
 
 ## Read first
-1. `docs/decision-log.md` — every decision (65 so far) with reasoning and reversals.
+1. `docs/decision-log.md` — every decision (66 so far) with reasoning and reversals.
    **Locked decisions are not to be relitigated** unless the user raises them.
 2. `docs/01-product-brief.md` (principles), then `02`–`10` as relevant.
 3. Formatting-engine behaviour (parser rules, template values, pagination,
@@ -28,13 +28,13 @@ no accounts, no AI, no plugins.
 * **Editor vs page:** no page info and no line numbers in the editor. Screenplay-family
   files get a "script look" (indents/widths from template data, visual only).
   Pages exist only in the preview/PDF, which come from one Rust display list.
-* **Git:** standard git vocabulary, no staging, autosave in `.git/river-autosave/`
-  (never pushed), scene-level diff/merge.
+* **Git:** standard git vocabulary, no staging, scene-level diff/merge (v1.1). No
+  private local history or Timeline (#66): autosave writes the file, Git keeps versions.
 * **Network:** none except explicit git push/pull/fetch/clone. No auto-update or update
   checks (but keep the door open; doc 08).
 
 ## Current status and next step
-Product definition complete (65 decisions). Engine CLI and the first production Mac
+Product definition complete (66 decisions). Engine CLI and the first production Mac
 workbench are implemented. `app/` uses Kobalte/Corvu/CodeMirror with native menus,
 a project welcome screen (New/Open/Recent), saved project tab/layout restoration,
 real story-file IO, Rust-driven outline and page preview/PDF. `river-service` stays
@@ -43,13 +43,13 @@ commands, verification and boundaries.
 
 Next: v1 scope is frozen (#64): release what is built. Remaining for v1 are native checks
 in the Mac app and fixes. v1 ships as source: writers clone and build it (#65). Remotes, settings,
-Quick Open, search, Explorer tree, print, A4, retention, revert/branch delete/merge,
-CI release and FDX are v1.1 (`docs/06-roadmap.md`). River must never require installed tools. Autosave, crash recovery, private Timeline, Todos and
-Scratchpad are implemented; separate backups dropped in favour of a Git remote (#50).
+Quick Open, search, Explorer tree, print, A4, revert/branch delete/merge,
+CI release and FDX are v1.1 (`docs/06-roadmap.md`). River must never require installed tools. Autosave, crash recovery, Todos and
+Scratchpad are implemented; private local history/Timeline was removed (#66); separate backups dropped in favour of a Git remote (#50).
 Windows is deferred (#36).
 License: **MIT**; no business model or monetization planned (#40). These questions are closed.
-Open (non-blocking) decisions: unified syntax vs separate, `.highland` import and autosave
-timing/retention (`docs/06-roadmap.md`).
+Open (non-blocking) decisions: unified syntax vs separate and `.highland` import
+(`docs/06-roadmap.md`).
 
 ## Working with the user
 * Show the plan (paths, options, what changes) and **wait for approval** before system

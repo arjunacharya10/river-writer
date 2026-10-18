@@ -17,7 +17,7 @@ trademarks and are not used.)
 │──│ │left?     │ │  MARA                             ░░  │ │                    │
 │✎ │ │…         │ │  (whispering)                     ░░  │ │                    │
 │☑ │ └──────────┘ ├────────────────────────────────────────┴──────────────────────┤
-│  │              │ PANEL:  PROBLEMS │ TIMELINE │ STATS                           │
+│  │              │ PANEL:  PROBLEMS │ STATS                                      │
 │⚙ │              │  ⚠ Cue "JON" also written as "JOHN" (12 places)               │
 ├──┴──────────────┴───────────────────────────────────────────────────────────────┤
 │ ⎇ main ↑2 ↓0 · ⚠ 1 · 23,410 words · 58 scenes · Fountain                         │
@@ -39,7 +39,6 @@ bar**. They never open as tabs.
 | **Scratchpad view** | Implemented (#48): one plain-text sidebar writing area, autosaved to `_river/scratchpad.md`, with recovery and external-change protection. No toolbar or story tab. |
 | **Todos view** | Implemented (#46): simple task sidebar backed by `_river/todos.md`. Quick entry, inline edit, complete/reopen, collapsed completed list, delete, drag/keyboard reorder. No dates, reminders, priorities or subtasks. |
 | Outline | Scenes, sections, synopses, notes; drag to reorder scenes |
-| Timeline view | Local autosave history + git commits for the current file |
 | Search | Project find/replace with regex and include/exclude; extra toggles: dialogue only, character, notes |
 | Source Control | VS Code SCM view: commit box, changes list (all files, **no staging section**), branches, ⋯ menu for push/pull/fetch/merge/tag (doc 04) |
 | Editor groups & tabs | **Story files only** (+ the page preview and diff views of story files). Splits, preview tabs, pinned tabs, drag between groups |
@@ -156,4 +155,5 @@ project is selected. The welcome screen follows the same Light/Dark tokens and u
 Kobalte controls; native Mac dialogs handle name/location and folder selection.
 Closing a project returns here, preserving its saved tabs/layout for the next open.
 
-Local history shares the resizable right pane with page preview, one view at a time (decision #49). It does not open a bottom panel.
+Git diffs share the resizable right pane with page preview, one view at a time (#49).
+There is no local-history Timeline (#66).
