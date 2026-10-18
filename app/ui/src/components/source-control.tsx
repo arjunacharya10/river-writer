@@ -53,7 +53,13 @@ export function SourceControl(props: {
     if (reading() || busy() || disposed) return;
     setReading(true);
     try {
-      const next = await call<Status>("git_status", { root });
+      let next = await call<Status>("git_status", { root });
+      // Projects always have Git (#62). If setup did not happen on open, do it
+      // now rather than asking the writer to.
+      if (!next.initialized) {
+        await call("git_init", { root });
+        next = await call<Status>("git_status", { root });
+      }
       const log = next.initialized
         ? await call<Commit[]>("git_log", { root })
         : [];
@@ -163,23 +169,7 @@ export function SourceControl(props: {
           <>
             <Show
               when={s().initialized}
-              fallback={
-                <>
-                  <p class="muted">
-                    Use Git to keep named versions of this project.
-                  </p>
-                  <button
-                    disabled={busy() || reading()}
-                    onClick={() =>
-                      void act(async () => {
-                        await call("git_init", { root });
-                      })
-                    }
-                  >
-                    Initialize Git
-                  </button>
-                </>
-              }
+              fallback={<p class="muted">Setting up version history…</p>}
             >
               <Show when={s().blocked}>
                 <p class="git-message" role="alert">

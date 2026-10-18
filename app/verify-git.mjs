@@ -39,7 +39,7 @@ try {
   // Git starts on its own: one snapshot, nothing pending, .gitignore untouched.
   await panel.getByText("No changes to commit.", { exact: true }).waitFor();
   assert.equal(
-    await panel.getByRole("button", { name: "Initialize Git" }).count(),
+    await panel.getByRole("button", { name: /Initialize/ }).count(),
     0,
   );
   await panel

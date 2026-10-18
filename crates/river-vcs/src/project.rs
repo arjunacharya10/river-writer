@@ -72,15 +72,28 @@ fn head(repo: &Repository) -> Result<Option<git2::Commit<'_>>, String> {
         Err(e) => Err(err(e)),
     }
 }
+/// Add every non-ignored file, skipping folders that are Git repositories of
+/// their own (another project inside this one): libgit2 cannot add those.
+fn add_project_files(repo: &Repository, index: &mut Index) -> Result<(), String> {
+    let root = repo
+        .workdir()
+        .ok_or("Choose a working project folder")?
+        .to_path_buf();
+    let mut skip_nested = |path: &Path, _: &[u8]| -> i32 {
+        let nested = path.to_string_lossy().ends_with('/') || root.join(path).join(".git").exists();
+        i32::from(nested)
+    };
+    index
+        .add_all(["*"], IndexAddOption::DEFAULT, Some(&mut skip_nested))
+        .map_err(err)
+}
 fn candidate(repo: &Repository, index: &mut Index) -> Result<Oid, String> {
     repo.set_index(index).map_err(err)?;
     if let Some(head) = head(repo)? {
         index.read_tree(&head.tree().map_err(err)?).map_err(err)?;
     }
     index.update_all(["*"], None).map_err(err)?;
-    index
-        .add_all(["*"], IndexAddOption::DEFAULT, None)
-        .map_err(err)?;
+    add_project_files(repo, index)?;
     // UI state is never published, including repositories that previously tracked it.
     if index.get_path(Path::new("_river/river.json"), 0).is_some() {
         index
@@ -164,7 +177,8 @@ pub fn status(root: &Path) -> Result<Status, String> {
         .iter()
         .filter_map(|entry| {
             let path = entry.path()?.to_owned();
-            if path == "_river/river.json" {
+            // UI state, and other projects nested inside this one, are not changes.
+            if path == "_river/river.json" || path.ends_with('/') {
                 return None;
             }
             let flags = entry.status();
@@ -274,9 +288,7 @@ pub fn ensure_repository(root: &Path) -> Result<bool, String> {
     }
     // The on-disk index must match the snapshot, or status would show it staged.
     let mut index = repo.index().map_err(err)?;
-    index
-        .add_all(["*"], IndexAddOption::DEFAULT, None)
-        .map_err(err)?;
+    add_project_files(&repo, &mut index)?;
     if index.get_path(Path::new("_river/river.json"), 0).is_some() {
         index
             .remove_path(Path::new("_river/river.json"))
@@ -1200,5 +1212,20 @@ mod tests {
         assert!(log(&other, None).unwrap().is_empty());
         fs::remove_dir_all(root).unwrap();
         fs::remove_dir_all(other).unwrap();
+    }
+    #[test]
+    fn a_project_inside_another_is_skipped_not_fatal() {
+        let root = folder();
+        fs::write(root.join("Outer.md"), "outer").unwrap();
+        fs::create_dir(root.join("Inner Story")).unwrap();
+        fs::write(root.join("Inner Story/Inner.md"), "inner").unwrap();
+        assert!(ensure_repository(&root.join("Inner Story")).unwrap());
+        assert!(ensure_repository(&root).unwrap());
+        let snapshot = commit_diff(&root, &log(&root, None).unwrap()[0].id).unwrap();
+        let paths: Vec<_> = snapshot.files.iter().map(|f| f.path.as_str()).collect();
+        assert_eq!(paths, vec!["Outer.md"]);
+        review_changes(&root).unwrap();
+        assert!(status(&root).unwrap().files.is_empty());
+        fs::remove_dir_all(root).unwrap();
     }
 }

@@ -445,7 +445,8 @@ preview and export once in the Mac app to confirm.
 ## Git on by default (2026-10-18, #62)
 
 `river_vcs::project::ensure_repository` runs when a project is opened or created (inside
-the document lock; failure only leaves the Initialize fallback) and from `History::open`.
+the document lock) and from `History::open`. There is no Initialize button: if a project
+reaches Source Control without a repository, the panel runs setup itself (Refresh retries).
 New repositories get `/_river/river.json` in `.git/info/exclude` and a starting snapshot
 written through the real index, so status is clean. The old `.gitignore` writer is gone.
 A repository with no commits and nothing staged (as older River builds left behind)
@@ -455,3 +456,8 @@ snapshot contents, untouched `.gitignore`, single exclude rule, immediate branch
 adopting an existing repository) and by `verify:git`, which now starts from a folder
 without Git and checks the snapshot, the untouched `.gitignore` and that only the
 writer's edit is listed.
+
+Nested projects: a folder that is itself a Git repository inside the project (another
+River project, say) is skipped when snapshotting, reviewing or committing, and is not
+listed as a change. Previously libgit2 failed on it ("invalid path"), which broke autosave
+once River retried the snapshot for commit-less repositories.
