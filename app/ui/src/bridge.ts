@@ -22,3 +22,8 @@ export async function commands(handler: (id: string) => void) {
   if (import.meta.env.DEV && window.__RIVER_TEST__) return () => {};
   return listen<string>("river:command", (e) => handler(e.payload));
 }
+/** Files macOS asked River to open; the backend queues them until the UI asks. */
+export async function openedFiles(handler: () => void) {
+  if (import.meta.env.DEV && window.__RIVER_TEST__) return () => {};
+  return listen("river:open-files", () => handler());
+}

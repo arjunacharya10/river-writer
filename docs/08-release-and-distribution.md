@@ -101,6 +101,29 @@ flowchart LR
 | GitHub repository secrets | Apple ID/app-specific password or API key, team ID, certificates | — |
 | Website + newsletter service | Download page, changelog, sign-up (any static site + a newsletter provider) | provider-dependent |
 
+## Local release build (implemented, #56/#57)
+Identity: bundle ID **`app.riverwriter.mac`**, product name River Writer, category
+Productivity, macOS 13+, hardened runtime, original icon from `app/assets/river-icon.svg`
+(`pnpm --dir app tauri icon assets/river-icon.svg -o src-tauri/icons`, keeping only the
+macOS sizes). Bundles: `.app` and `.dmg`. The MIT license and Courier Prime OFL ship inside.
+
+File types: `.fountain` by extension (Default rank; the writer can still choose another
+app), `.md`/`.markdown` via `net.daringfireball.markdown` at Alternate rank (River is
+offered in Open With, never forced as the Markdown default). Do not add a MIME type to
+the Fountain entry: Tauri turns `text/plain` into `public.plain-text`, which would
+register River for every text file.
+
+One-time setup, done by the writer, not River:
+```sh
+rustup target add x86_64-apple-darwin
+xcrun notarytool store-credentials river-notary --apple-id YOU@EXAMPLE.COM --team-id TEAMID
+```
+Then `scripts/release-mac.sh` builds a universal app and DMG, signs with the first
+Developer ID Application identity (override with `APPLE_SIGNING_IDENTITY`), verifies the
+signature, notarizes with the `river-notary` profile (`RIVER_NOTARY_PROFILE` to change),
+staples both, runs `spctl` and writes `<dmg>.sha256`. `--arm64-only` and `--no-notarize`
+help local trials. The CI release workflow above is still to be written.
+
 ## Versioning
 * **Semantic versioning:** `MAJOR.MINOR.PATCH`. Patch = fixes; minor = features (slow,
   deliberate); major = rare, only for unavoidable format changes (with migration).

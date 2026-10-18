@@ -18,6 +18,8 @@ struct Desktop {
     previews: Mutex<HashMap<u64, (u64, Arc<river_model::Publication>)>>,
     serial: AtomicU64,
     exit: AtomicBool,
+    /// Story files macOS asked River to open (Finder, Dock, Open With) not yet shown.
+    opened: Mutex<Vec<PathBuf>>,
 }
 fn lock<T>(m: &Mutex<T>) -> Result<std::sync::MutexGuard<'_, T>, String> {
     m.lock()
@@ -29,6 +31,10 @@ async fn work<T: Send + 'static>(
     tauri::async_runtime::spawn_blocking(f)
         .await
         .map_err(|e| e.to_string())?
+}
+#[tauri::command]
+fn take_opened_files(app: tauri::AppHandle) -> Result<Vec<PathBuf>, String> {
+    Ok(std::mem::take(&mut *lock(&app.state::<Desktop>().opened)?))
 }
 #[tauri::command]
 async fn git_status(root: PathBuf) -> Result<river_service::git::Status, String> {
@@ -761,6 +767,7 @@ fn main() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            take_opened_files,
             git_status,
             git_init,
             git_identity,
@@ -809,12 +816,25 @@ fn main() {
         ])
         .build(tauri::generate_context!())
         .expect("River could not start");
-    app.run(|app, event| {
-        if let tauri::RunEvent::ExitRequested { api, .. } = event
-            && !app.state::<Desktop>().exit.load(Ordering::Relaxed)
+    app.run(|app, event| match event {
+        tauri::RunEvent::ExitRequested { api, .. }
+            if !app.state::<Desktop>().exit.load(Ordering::Relaxed) =>
         {
             api.prevent_exit();
             let _ = app.emit("river:command", "quit");
         }
+        // Finder/Dock opens can arrive before the UI listens: queue, then nudge.
+        #[cfg(target_os = "macos")]
+        tauri::RunEvent::Opened { urls } => {
+            let files: Vec<PathBuf> = urls
+                .iter()
+                .filter_map(|url| url.to_file_path().ok())
+                .collect();
+            if let Ok(mut queue) = app.state::<Desktop>().opened.lock() {
+                queue.extend(files);
+            }
+            let _ = app.emit("river:open-files", ());
+        }
+        _ => {}
     });
 }

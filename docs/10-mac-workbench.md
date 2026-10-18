@@ -368,3 +368,21 @@ with uncommitted work, file rewrite/removal and checkpoint callbacks. `verify:gi
 creates a branch through the UI with uncommitted text, commits on it, switches back
 with an open tab, checks the status bar and refuses a dirty switch. Screenshot:
 ignored `app/output/git-branches.png`. FDX moved to v1.1 (#54).
+
+## Mac release polish (2026-10-18, #56/#57)
+
+Identity is now `app.riverwriter.mac` with an original icon and macOS 13 minimum. The
+generated Info.plist was inspected: `.fountain` is matched by extension only at Default
+rank; Markdown uses `net.daringfireball.markdown` at Alternate rank. An early config with
+a `text/plain` MIME type produced `public.plain-text` and was corrected before commit.
+
+macOS `RunEvent::Opened` (Finder double-click, Dock drop, Open With) queues paths in the
+backend; the UI drains the queue on start-up and on a `river:open-files` event, opening
+each file as a story tab one at a time. `scripts/release-mac.sh` covers signing,
+notarization, stapling and Gatekeeper checks (doc 08).
+
+Verified: bundle builds, Info.plist identity/category/minimum OS/document types, icon set,
+script syntax, and all browser suites. Not yet verified: a real Developer ID signed and
+notarized build (needs the writer's notary profile and the x86_64 Rust target), and the
+Finder open flow in the native app (a manual check: double-click a `.fountain` file with
+River closed and with it open).

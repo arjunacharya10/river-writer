@@ -12,7 +12,7 @@ import { EditorView } from "@codemirror/view";
 import type { EditorState } from "@codemirror/state";
 import { openSearchPanel } from "@codemirror/search";
 import { isolateHistory } from "@codemirror/commands";
-import { call, commands } from "./bridge";
+import { call, commands, openedFiles } from "./bridge";
 import { stateFor, semantic, byteOffsets } from "./editor";
 import { writingContext } from "./writing";
 import {
@@ -1022,6 +1022,19 @@ function App() {
       return () => {};
     });
     onCleanup(() => void unlisten.then((f) => f()));
+    // Open Finder/Dock requests one at a time, after any project load finishes.
+    let opening = Promise.resolve();
+    const openRequested = () => {
+      opening = opening
+        .then(async () => {
+          const paths = await call<string[]>("take_opened_files");
+          for (const path of paths) await open(path);
+        })
+        .catch(fail);
+    };
+    const stopOpened = openedFiles(openRequested).catch(() => () => {});
+    onCleanup(() => void stopOpened.then((f) => f()));
+    if (!window.__RIVER_TEST__) openRequested();
     const key = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey)) return;
       const k = e.key.toLowerCase();
