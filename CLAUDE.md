@@ -31,7 +31,7 @@ no accounts, no AI, no plugins.
   checks (but keep the door open; doc 08).
 
 ## Current status and next step
-Product definition complete (35 decisions; one font: Courier Prime, #35); **typesetting trial implemented**. Next: **complete phase 0 trial builds**
+Product definition complete (35 decisions; one font: Courier Prime, #35); **typesetting and native editor trials implemented on macOS**. Next: **complete phase 0 trial builds**
 (`docs/05-architecture.md` §16):
 1. Typesetting: Parley + krilla render one screenplay page and one manuscript page to PDF and
    to a raster image from the same display list; the outputs must match.

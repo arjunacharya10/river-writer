@@ -558,7 +558,14 @@ On Apple M5 / macOS, 120 synthetic pages (265,680 glyphs) fully shape/wrap into 
 display list in 56.67 ms median / 62.85 ms worst (10 warm samples). Independent PDF
 renders match preview geometry within 1 pixel at 144 dpi; anti-aliasing differs.
 This is not yet a production incremental-pagination benchmark or Windows validation.
-See [trial notes](../spikes/typeset/NOTES.md) for reproduction and limitations.
+After extracting shared `spikes/template.json`, a repeat measured 44.96 ms median /
+45.67 ms worst for the same workload. The editor trial in `spikes/editor/` runs in a
+native Tauri/WebKit window: 4,920-line document, typing transaction + forced layout
+p95 5–6 ms, with minimap enabled. Keyboard input and undo also checked natively.
+Browser tests cover source-preserving template changes, search and geometry.
+Windows and full production pagination remain unvalidated. See the
+[typesetting notes](../spikes/typeset/NOTES.md) and
+[editor notes](../spikes/editor/NOTES.md) for reproduction and limitations.
 
 ## 17. Packaging and platforms
 

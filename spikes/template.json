@@ -1,0 +1,35 @@
+{
+  "fontSizePt": 12,
+  "cellPt": 7.2,
+  "screenplay": {
+    "action": {
+      "x": 108,
+      "width": 432
+    },
+    "scene": {
+      "x": 108,
+      "width": 400
+    },
+    "cue": {
+      "x": 248.976,
+      "width": 291.024
+    },
+    "parenthetical": {
+      "x": 207,
+      "width": 211.032
+    },
+    "dialogue": {
+      "x": 178.992,
+      "width": 248.976
+    },
+    "transition": {
+      "x": 108,
+      "width": 432
+    }
+  },
+  "manuscript": {
+    "x": 72,
+    "width": 468,
+    "firstIndent": 36
+  }
+}

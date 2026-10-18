@@ -5,8 +5,9 @@ text, and River turns it into perfectly formatted pages. No cloud, no accounts, 
 subscription.
 
 Status: **phase 0 trials underway.** Product definition is complete (35 decisions).
-The typesetting trial generates matching PDF/preview pages and meets the synthetic
-layout timing target on macOS; see [trial results](spikes/typeset/NOTES.md).
+The typesetting and native editor trials run on macOS and meet their experimental
+performance budgets. Windows checks and production pagination remain outstanding.
+See [typesetting results](spikes/typeset/NOTES.md) and [editor results](spikes/editor/NOTES.md).
 
 ## Documents
 

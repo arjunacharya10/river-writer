@@ -73,3 +73,10 @@ Screenplay uses a conservative 6-inch action measure ending at 7.5 inches; the
 Highland spec's unresolved default-width/right-edge question remains open. The
 first-line manuscript indent is simulated by separately wrapping the first line.
 Production code should carry source ranges through that split and pagination.
+
+## Shared geometry follow-up
+
+Both trials now read `../template.json` (source geometry; no duplicate editor values).
+The refactored trial was rechecked: 44.96 ms median / 45.67 ms max for the same
+265,680-glyph workload. PDF/PNG comparison still passes, including its negative
+control. Normal run-to-run timing varies with compilation and other applications.

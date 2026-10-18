@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 krilla = "0.8"
 parley = "0.12"
+serde_json = "1.0.154"
 skrifa = "0.44"
 tiny-skia = "0.12"
 
