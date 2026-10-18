@@ -1,0 +1,12 @@
+[package]
+name = "typeset"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+krilla = "0.8"
+parley = "0.12"
+skrifa = "0.44"
+tiny-skia = "0.12"
+
+[workspace]
