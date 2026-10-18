@@ -900,7 +900,12 @@ function App() {
           <ActivityBar
             view={sideView()}
             sidebar={sidebar()}
-            onShow={showView}
+            onShow={(view) =>
+              // Like VS Code: clicking the active view's icon hides the sidebar.
+              sidebar() && sideView() === view
+                ? setSidebar(false)
+                : showView(view)
+            }
           />
           <Split
             class="workbench-split"

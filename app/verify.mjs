@@ -153,6 +153,20 @@ try {
     await page.keyboard.press("ControlOrMeta+b");
     await assertPanes(true);
   }
+  // Clicking the active activity icon hides the sidebar; clicking again restores it.
+  const explorerIcon = page.getByRole("button", {
+    name: "Explorer",
+    exact: true,
+  });
+  const explorerHeader = page.locator(".sidebar > header", {
+    hasText: "EXPLORER",
+  });
+  await explorerIcon.click();
+  await explorerHeader.waitFor({ state: "hidden" });
+  await assertPanes(true);
+  await explorerIcon.click();
+  await explorerHeader.waitFor();
+  await assertPanes(true);
   const editor = page.getByRole("textbox", { name: "Story editor" });
   await editor.click();
   await page.keyboard.press("ControlOrMeta+End");
