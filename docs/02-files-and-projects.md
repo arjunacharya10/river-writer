@@ -6,8 +6,9 @@
   synopses `=` and boneyard `/* */`.
 * The story file stays **pure**. Nothing app-specific is written into it, so it opens
   correctly in any Fountain or Markdown tool.
-* Optional portable template hint via Fountain title-page metadata
-  (`Template: Stage Play`). Other apps ignore it harmlessly.
+* **Template is per file**, chosen from the dropdown in the editor title bar (doc 03).
+  Default **Manuscript** for every `.fountain`/`.md` file; the choice is stored in
+  `_river/river.json` (`"templates": {"Act 1.fountain": "stageplay"}`), never in the story file.
 * No `.river` content format and no ZIP bundle (unlike Highland's `.highland` ZIP of a
   TextBundle, which hides the text from other tools and makes sync all-or-nothing).
 
@@ -52,7 +53,8 @@ which the Explorer hides.
 ```json
 {
   "version": 1,
-  "template": "screenplay",          // screenplay | screenplay-multicam | stageplay | manuscript
+  "templates": {"The Long Night.fountain": "screenplay"},  // per file; missing = manuscript
+                                     // manuscript | screenplay | screenplay-multicam | stageplay
   "openFiles": ["The Long Night.fountain"],
   "cursor": {"The Long Night.fountain": 10422},
   "panes": {"preview": true, "extras": "scratchpad"},

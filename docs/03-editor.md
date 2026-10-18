@@ -44,12 +44,13 @@ bar**. They never open as tabs.
 | Search | Project find/replace with regex and include/exclude; extra toggles: dialogue only, character, notes |
 | Source Control | VS Code SCM view: commit box, changes list (all files, **no staging section**), branches, ⋯ menu for push/pull/fetch/merge/tag (doc 04) |
 | Editor groups & tabs | **Story files only** (+ the page preview and diff views of story files). Splits, preview tabs, pinned tabs, drag between groups |
+| Template | **Template dropdown in the editor title bar**, next to the preview icon (story tabs only): `[ Manuscript ▾ ] [preview] [⋯]`. Options: Manuscript · Screenplay · Screenplay (Multi-cam) · Stage Play. **Default: Manuscript** for every file. Changing it re-paginates the preview instantly; the choice is remembered per file in `_river/river.json`. No template prompt when creating projects or files. |
 | Preview | **One preview icon in the editor title bar** (right end of the tab row, where VS Code shows "Open Preview to the Side"), visible only for story tabs. Click toggles the paginated page preview beside the script; scroll-synced. Keys: `⌘K V` (to the side), `⇧⌘V` (in place). The adjacent **⋯** menu holds Export PDF, Export FDX, Print. |
 | Diff editor | Side-by-side and inline, word-level highlighting, scene badges |
 | Minimap | Real minimap with scene headers as section markers |
 | Breadcrumbs | File › Act/section › Scene |
 | Panel (bottom) | **Problems** (script check) · **Timeline** · **Stats** (pages, runtime, words per character). No terminal or output panel. |
-| Status bar | Branch + sync, problems, page X/Y, words, runtime (~1 page = 1 min), template, language mode |
+| Status bar | Branch + sync, problems, page X/Y, words, runtime (~1 page = 1 min), language mode (template is chosen in the editor title bar, not here) |
 | Command palette / Quick Open | `⌘⇧P`, `⌘P`; `@` jumps to a scene, `#` to a character |
 | Settings | Settings UI + `settings.json` (user and project scopes) |
 | Keybindings | VS Code default keymap; `keybindings.json` |
