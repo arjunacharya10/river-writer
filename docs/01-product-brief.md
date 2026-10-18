@@ -26,9 +26,11 @@ Out: comics/graphic novels, essays, academic/MLA, wikis, bulletins, speeches, ar
 4. **Opinionated over configurable.** Three forms done perfectly beat 14 done adequately.
 5. **Calm.** No badges, nags, streaks, pop-ups, surveys, paywalls or callouts.
 6. **Laser-sharp.** Every feature must serve the act of writing a story.
-7. **Multiplatform, slow features.** Mac, Windows and Linux from v1. Every feature ships
-   on all three at the same time, and with the same behaviour. No platform-exclusive
-   features. River grows slowly and deliberately rather than fast and uneven.
+7. **Multiplatform, slow features.** **macOS and Windows** from v1. Every feature ships
+   on both at the same time, with the same behaviour; no platform-exclusive features.
+   River grows slowly and deliberately rather than fast and uneven. **Linux: later or
+   never** (not on the core roadmap; as an open-source project, a community port is welcome).
+8. **Open source.** River's source is public (license TBD, see doc 06).
 
 ## Keep (core)
 * Fountain for screen and stage; Markdown-style prose for novels

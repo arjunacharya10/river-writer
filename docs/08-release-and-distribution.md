@@ -46,7 +46,7 @@ flowchart LR
     Developer ID certificate, notarize, staple** (Apple credentials as GitHub secrets).
   * **Windows:** `.msi` and/or NSIS `.exe`; **Authenticode signing via Azure Trusted
     Signing** (or an OV certificate); WebView2 bootstrapper included.
-  * **Linux (when enabled):** AppImage + `.deb` (+ `.rpm`), added as one more matrix row.
+  * **Linux:** not built (later or never; community port welcome).
 * Creates a **draft GitHub Release** with the installers, SHA-256 checksums and release notes
   generated from the changelog.
 * Publishing the release is the only manual click. The website's download links point to

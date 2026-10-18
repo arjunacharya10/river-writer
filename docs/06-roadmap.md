@@ -1,7 +1,7 @@
 # 06 — Roadmap
 
 ## Version 1 — "write, see the page, keep every version"
-Ships on **macOS, Windows and Linux** simultaneously (principle 7: multiplatform, slow features).
+Ships on **macOS and Windows** simultaneously (principle 7). Linux: later or never.
 * VS Code workbench: activity bar, Explorer, Search, Source Control, Outline, editor groups/tabs,
   command palette, quick open, breadcrumbs, minimap, status bar, settings.json, VS Code keymap, Zen mode
 * Live paginated preview; PDF export; title page
@@ -32,6 +32,7 @@ services, non-creative templates.
 1. One unified syntax for screen and prose, or Fountain + Markdown kept separate?
    (Current lean: separate.)
 2. Open Highland `.highland` files as a migration path? (ZIP → TextBundle → `text.fountain`/`text.md`)
-3. Pricing: one-time purchase (assumed), price point TBD.
+3. Pricing: depends on the open-source business model (item 6).
 4. Exact autosave interval and retention.
-5. Spellcheck: OS webview spellcheck (differs on Linux) vs bundled Hunspell-based checking for identical behaviour (doc 07).
+5. **License** for the open-source release (e.g. MIT/Apache-2.0 vs GPL-3.0). Note: GPL would allow reusing code from GPL projects like Beat/Zettlr; MIT/Apache maximizes adoption.
+6. **Business model** with open source: e.g. free source + paid signed builds, donations/sponsorship, or fully free (replaces the "one-time purchase" assumption).

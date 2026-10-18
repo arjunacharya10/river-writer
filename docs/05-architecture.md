@@ -15,7 +15,7 @@ time** (maturity, licenses, current versions). Behaviour references point to
 | Offline; network only on push/pull/fetch/clone | No HTTP plugin, no updater, no telemetry; git networking lives in Rust and runs only on explicit commands. |
 | Feels exactly like VS Code | VS Code-faithful workbench (doc 03) + CodeMirror 6 editor with a VS Code keymap/theme. |
 | Fast on long scripts and novels | Incremental parse and pagination; background work off the UI thread. |
-| Small, native-feeling app | Tauri 2 (system webview), Rust core. |
+| Small, native-feeling app | **Tauri 2** (system webview), Rust core — **locked** (decision #31). |
 
 Performance budgets (targets on an M-series Mac / mid-range PC):
 
@@ -565,23 +565,24 @@ sample documents.
   `.fountain` (and optionally `.md`, without claiming ownership).
 * Windows: MSI/NSIS installer, WebView2 runtime (evergreen; bootstrapper included),
   Authenticode code-signed; file association for `.fountain`.
-* Linux: AppImage + `.deb` (+ `.rpm`; Flatpak later); WebKitGTK minimum version
-  documented; `.desktop` file and MIME type for `.fountain`.
+* Linux: **not in scope** (later or never; community port welcome). If added: AppImage +
+  `.deb`, WebKitGTK minimum version, `.desktop` file and MIME type for `.fountain`.
 * Bundled fonts ship with their license files (OFL text) in the app and the About panel.
-* **Decided (#29): Mac, Windows and Linux at v1**, same features and behaviour on all three.
+* **Decided (#29, revised): macOS and Windows at v1**, same features and behaviour on both.
+  Linux later or never (community port welcome, since River is open source).
   * **CI matrix:** build, unit tests, golden pagination, visual-regression renders and
-    E2E smoke tests on macOS, Windows and Linux for every change. A feature isn't done
-    until it passes on all three.
+    E2E smoke tests on macOS and Windows for every change. A feature isn't done until it
+    passes on both.
   * **Rendering parity:** pages are rasterized in Rust from bundled fonts, so preview and PDF
-    are identical across OSes by construction. Only the workbench UI depends on the webview.
-  * **Webview differences** (WKWebView / WebView2 / WebKitGTK): conservative CSS, no
-    bleeding-edge web APIs, per-OS E2E runs, and a minimum WebKitGTK version on Linux.
+    are identical across OSes by construction. Only the workbench UI depends on the webview
+    (WKWebView on macOS, WebView2/Chromium on Windows; both mature).
   * **Per-OS integration points**, each behind one Rust abstraction: credential store
-    (Keychain / Credential Manager / libsecret), printing (native print dialog with the
-    generated PDF), file associations, menus (macOS app menu vs in-window menu bar on
-    Windows/Linux, mirroring VS Code), keybindings (`⌘` ↔ `Ctrl` mapping as in VS Code),
-    window chrome (VS Code-style custom title bar on Windows/Linux, native traffic lights on macOS).
-  * **Paths and line endings:** the project uses `/`-normalized relative paths in
+    (Keychain / Credential Manager), printing (native print dialog with the generated PDF),
+    file associations, menus (macOS app menu vs in-window menu bar on Windows, mirroring
+    VS Code), keybindings (`⌘` ↔ `Ctrl` mapping as in VS Code), window chrome (VS Code-style
+    custom title bar on Windows, native traffic lights on macOS).
+  * **Spellcheck:** system spellcheck via the webview on both (good on macOS and Windows).
+* **Paths and line endings:** the project uses `/`-normalized relative paths in
     `river.json`; text is saved with the line endings it was opened with (default LF for
     new files); git `core.autocrlf` is left to the user's config.
 
@@ -615,4 +616,6 @@ sample documents.
    any push (even `--mirror`), invisible to other git tools, moves with the project,
    self-contained pruning. Lone-file mode: app data dir keyed by file path. Supersedes
    the private-refs plan in §12.3.
-5. **Platforms: Mac, Windows, Linux at v1** (decision #29).
+5. **Platforms: macOS and Windows at v1; Linux later or never** (decision #29, revised).
+6. **Shell: Tauri 2, locked** (decision #31) after comparing with Electron (maturity, identical
+   engine, Linux) — River's focused scope, Rust-native core and strict network promise favour Tauri.
