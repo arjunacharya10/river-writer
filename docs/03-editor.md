@@ -44,7 +44,7 @@ bar**. They never open as tabs.
 | Search | Project find/replace with regex and include/exclude; extra toggles: dialogue only, character, notes |
 | Source Control | VS Code SCM view: commit box, changes list (all files, **no staging section**), branches, ⋯ menu for push/pull/fetch/merge/tag (doc 04) |
 | Editor groups & tabs | **Story files only** (+ the page preview and diff views of story files). Splits, preview tabs, pinned tabs, drag between groups |
-| Preview | Like Markdown preview: "Open Preview to the Side" (`⌘K V`), scroll-synced, real paginated pages |
+| Preview | **One preview icon in the editor title bar** (right end of the tab row, where VS Code shows "Open Preview to the Side"), visible only for story tabs. Click toggles the paginated page preview beside the script; scroll-synced. Keys: `⌘K V` (to the side), `⇧⌘V` (in place). The adjacent **⋯** menu holds Export PDF, Export FDX, Print. |
 | Diff editor | Side-by-side and inline, word-level highlighting, scene badges |
 | Minimap | Real minimap with scene headers as section markers |
 | Breadcrumbs | File › Act/section › Scene |
