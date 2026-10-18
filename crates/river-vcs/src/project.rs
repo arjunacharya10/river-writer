@@ -258,16 +258,20 @@ fn exclude_ui_state(repo: &Repository) -> Result<(), String> {
 }
 /// Every River project has Git. A new repository starts with a snapshot of the
 /// files already there ("Start project history"), so Changes lists only what the
-/// writer edits afterwards. An existing repository is adopted as it is.
-/// Returns whether a repository was created.
+/// writer edits afterwards. An existing repository with history is adopted as
+/// it is. Returns whether River made the starting snapshot.
 pub fn ensure_repository(root: &Path) -> Result<bool, String> {
-    if root.join(".git").exists() {
-        exclude_ui_state(&open(root)?)?;
-        return Ok(false);
+    let created = !root.join(".git").exists();
+    if created {
+        init(root)?;
     }
-    init(root)?;
     let repo = open(root)?;
     exclude_ui_state(&repo)?;
+    // An existing repository is adopted as it is, unless it has no commits and
+    // nothing staged (e.g. one an older River created): that gets the snapshot too.
+    if !created && (head(&repo)?.is_some() || !repo.index().map_err(err)?.is_empty()) {
+        return Ok(false);
+    }
     // The on-disk index must match the snapshot, or status would show it staged.
     let mut index = repo.index().map_err(err)?;
     index
@@ -1174,5 +1178,27 @@ mod tests {
         let exclude = fs::read_to_string(root.join(".git/info/exclude")).unwrap();
         assert_eq!(exclude.matches("/_river/river.json").count(), 1);
         fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn empty_repositories_left_by_older_river_get_the_snapshot_too() {
+        let root = folder();
+        init(&root).unwrap();
+        fs::write(root.join(".gitignore"), "/_river/river.json\n").unwrap();
+        fs::write(root.join("Test 2.md"), "").unwrap();
+        assert_eq!(status(&root).unwrap().files.len(), 2);
+        assert!(ensure_repository(&root).unwrap());
+        assert!(status(&root).unwrap().files.is_empty());
+        // Something staged by the writer is never committed for them.
+        let other = folder();
+        init(&other).unwrap();
+        fs::write(other.join("Draft.md"), "staged on purpose").unwrap();
+        let repo = open(&other).unwrap();
+        let mut index = repo.index().unwrap();
+        index.add_path(Path::new("Draft.md")).unwrap();
+        index.write().unwrap();
+        assert!(!ensure_repository(&other).unwrap());
+        assert!(log(&other, None).unwrap().is_empty());
+        fs::remove_dir_all(root).unwrap();
+        fs::remove_dir_all(other).unwrap();
     }
 }

@@ -448,6 +448,8 @@ preview and export once in the Mac app to confirm.
 the document lock; failure only leaves the Initialize fallback) and from `History::open`.
 New repositories get `/_river/river.json` in `.git/info/exclude` and a starting snapshot
 written through the real index, so status is clean. The old `.gitignore` writer is gone.
+A repository with no commits and nothing staged (as older River builds left behind)
+also gets the snapshot; anything the writer staged is never committed for them.
 Source Control always shows the new-branch field. Verified by a VCS test (clean status,
 snapshot contents, untouched `.gitignore`, single exclude rule, immediate branching,
 adopting an existing repository) and by `verify:git`, which now starts from a folder
