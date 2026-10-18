@@ -593,7 +593,7 @@ sample documents.
 | Risk | Mitigation |
 |---|---|
 | Typesetting quality (prose justification, hyphenation) | Phase-0 spike; Knuth–Plass for justified text; golden visual tests |
-| Webview differences (WebKit vs WebView2 vs WebKitGTK) affecting the editor/UI | CodeMirror 6 is cross-browser tested; keep UI CSS conservative; E2E tests per OS |
+| Webview differences (WKWebView vs WebView2) affecting the editor/UI | CodeMirror 6 is cross-browser tested; keep UI CSS conservative; E2E tests per OS |
 | libgit2 credential edge cases (SSH agents, 2FA tokens) | Lean on OS keychains + credential helpers; clear error messages; device-flow sign-in in v1.1 |
 | Autosave store corrupted/deleted | It's a disposable safety net in `.git/river-autosave/`; real history is unaffected |
 | Large projects (multi-file novels with 100+ chapters) | Per-file parse caches, project-level indices built lazily, pagination only for the previewed file / includes |
